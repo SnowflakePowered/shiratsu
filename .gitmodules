@@ -1,0 +1,6 @@
+[submodule "res/stone"]
+	path = res/stone
+	url = https://github.com/SnowflakePowered/stone
+[submodule "stone"]
+	path = stone
+	url = https://github.com/SnowflakePowered/stone
