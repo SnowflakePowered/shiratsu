@@ -8,6 +8,7 @@ pub mod stone;
 pub mod region;
 pub mod util;
 pub mod info;
+pub mod dats;
 
 #[cfg(test)]
 mod tests {
