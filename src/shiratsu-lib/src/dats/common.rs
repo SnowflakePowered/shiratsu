@@ -6,7 +6,7 @@ use std::fmt::Debug;
 pub enum DatError {
     ParseError(String),
     BadFileNameError(NamingConvention),
-    RegionError(RegionError)
+    RegionError(RegionError),
 }
 
 impl From<RegionError> for DatError {
@@ -17,7 +17,7 @@ impl From<RegionError> for DatError {
 
 impl std::error::Error for DatError {}
 
-impl std::fmt::Display for DatError  {
+impl std::fmt::Display for DatError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
     }
@@ -28,57 +28,52 @@ pub type Result<T> = std::result::Result<T, DatError>;
 /// Describes a single file that is a part of a GameEntry
 impl RomEntry {
     /// The MD5 Hash of the ROM
-    pub fn hash_md5(&self) -> Option<&str>
-    {
+    pub fn hash_md5(&self) -> Option<&str> {
         self.md5.as_deref()
     }
     /// The SHA1 Hash of the ROM
-    pub fn hash_sha1(&self) -> Option<&str>
-    {
+    pub fn hash_sha1(&self) -> Option<&str> {
         self.sha1.as_deref()
     }
     /// The CRC hash of the ROM
-    pub fn hash_crc(&self) -> Option<&str>
-    {
+    pub fn hash_crc(&self) -> Option<&str> {
         self.crc.as_deref()
     }
     /// The canonical file name of the ROM
-    pub fn file_name(&self) -> &str
-    {
+    pub fn file_name(&self) -> &str {
         &self.file_name
     }
     /// The size of the ROM
-    pub fn size(&self) -> u64
-    {
+    pub fn size(&self) -> u64 {
         self.size
     }
 }
 
 pub struct RomEntry {
     /// The MD5 Hash of the ROM
-    pub (super) md5: Option<String>,
+    pub(super) md5: Option<String>,
     /// The SHA1 Hash of the ROM
-    pub (super) sha1: Option<String>,
+    pub(super) sha1: Option<String>,
     /// The CRC hash of the ROM
-    pub (super) crc: Option<String>,
+    pub(super) crc: Option<String>,
     /// The canonical file name of the ROM
-    pub (super) file_name: String,
+    pub(super) file_name: String,
     /// The size of the ROM
-    pub (super) size: u64,
+    pub(super) size: u64,
 }
 
 /// A single entry that describes a game, which may hold a collection of RomEntries
 pub struct GameEntry {
     /// The name of the game entry, as is.
-    pub (super) entry_name: String,
+    pub(super) entry_name: String,
     /// Any ROM entries that are part of this game entry.
-    pub (super) rom_entries: Vec<RomEntry>,
+    pub(super) rom_entries: Vec<RomEntry>,
     /// Any serials this game was released under.
-    pub (super) serials: Vec<String>,
+    pub(super) serials: Vec<String>,
     /// The source of the game.
-    pub (super) source: &'static str,
+    pub(super) source: &'static str,
     /// Any information retrieved from the name of the game entry, if any.
-    pub (super) info: Option<Box<dyn StructuredlyNamed>>
+    pub(super) info: Option<Box<dyn StructuredlyNamed>>,
 }
 
 /// A single entry that describes a game, which may hold a collection of RomEntries
@@ -129,7 +124,7 @@ impl Debug for GameEntry {
         } else {
             writeln!(f, "  (info {:?})", self.info().unwrap())?;
         }
-        write!(f, "  (source {}))", self.source())
+        write!(f, "  (source \"{}\"))", self.source())
     }
 }
 
@@ -137,7 +132,14 @@ impl Debug for dyn StructuredlyNamed {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "")?;
         writeln!(f, "    (release \"{}\")", self.release_name())?;
-        writeln!(f, "    (region {:?})", self.region().iter().map(|&r| r.into()).collect::<Vec<&str>>())?;
+        writeln!(
+            f,
+            "    (region {:?})",
+            self.region()
+                .iter()
+                .map(|&r| r.into())
+                .collect::<Vec<&str>>()
+        )?;
         writeln!(f, "    (part {:?})", self.part_number())?;
         writeln!(f, "    (version {:?})", self.version())?;
         writeln!(f, "    (status {:?})", self.development_status())?;
@@ -157,7 +159,7 @@ impl Debug for RomEntry {
     }
 }
 
-impl <T: StructuredlyNamed + 'static> From<T> for Box<dyn StructuredlyNamed> {
+impl<T: StructuredlyNamed + 'static> From<T> for Box<dyn StructuredlyNamed> {
     fn from(val: T) -> Self {
         Box::new(val)
     }
@@ -197,7 +199,7 @@ pub enum DevelopmentStatus {
     /// In No-Intro, this is equivalent to the (Beta) flag. In TOSEC, (alpha), (beta), (preview), and (pre-release) all
     /// fall under this status.
     Prelease,
-    /// An unreleased, unfinished product that was not released. 
+    /// An unreleased, unfinished product that was not released.
     ///
     /// In No-Intro, this is equivalent to the (Proto) flag. In TOSEC, this is equivalent to the (proto) flag.
     Prototype,
@@ -213,7 +215,7 @@ pub enum NamingConvention {
     /// Defined at https://www.tosecdev.org/tosec-naming-convention
     TOSEC,
     /// The naming convention used by No-Intro, redump.org, and others.
-    /// 
+    ///
     /// Defined at https://datomatic.no-intro.org/stuff/The%20Official%20No-Intro%20Convention%20(20071030).pdf
     NoIntro,
 }
@@ -221,8 +223,14 @@ pub enum NamingConvention {
 /// Two RomEntries are PartialEq if they have matching hashes.
 impl PartialEq for RomEntry {
     fn eq(&self, other: &RomEntry) -> bool {
-         (self.hash_md5().is_some() && other.hash_md5().is_some() && self.hash_md5().unwrap() == other.hash_md5().unwrap()) &&
-         (self.hash_sha1().is_some() && other.hash_sha1().is_some() && self.hash_sha1().unwrap() == other.hash_sha1().unwrap())  &&
-         (self.hash_crc().is_some() && other.hash_crc().is_some() && self.hash_crc().unwrap() == other.hash_crc().unwrap()) 
+        (self.hash_md5().is_some()
+            && other.hash_md5().is_some()
+            && self.hash_md5().unwrap() == other.hash_md5().unwrap())
+            && (self.hash_sha1().is_some()
+                && other.hash_sha1().is_some()
+                && self.hash_sha1().unwrap() == other.hash_sha1().unwrap())
+            && (self.hash_crc().is_some()
+                && other.hash_crc().is_some()
+                && self.hash_crc().unwrap() == other.hash_crc().unwrap())
     }
 }

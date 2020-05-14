@@ -1,18 +1,19 @@
-
 use lazy_static::lazy_static;
-use lazy_static_include::{lazy_static_include_str, lazy_static_include_str_inner, lazy_static_include_str_impl};
+use lazy_static_include::{
+    lazy_static_include_str, lazy_static_include_str_impl, lazy_static_include_str_inner,
+};
 
 use serde;
 use serde::Deserialize;
 use serde_json;
 use serde_json::Value;
-use std::io;
 use std::collections::HashMap;
+use std::io;
 
 type Result<T> = std::result::Result<T, StoneError>;
 
 lazy_static_include_str!(STONE_DIST, "../../stone/dist/stone.dist.json");
-lazy_static!{
+lazy_static! {
     pub static ref STONE: HashMap<PlatformId, PlatformInfo> = load_platform_info().unwrap();
 }
 
@@ -21,7 +22,7 @@ pub enum StoneError {
     Deserialization(serde_json::Error),
     Io(io::Error),
     InvalidStoneFile,
-    InvalidPlatformId(String)
+    InvalidPlatformId(String),
 }
 
 impl From<serde_json::Error> for StoneError {
@@ -47,7 +48,7 @@ impl std::fmt::Display for StoneError {
 pub struct PlatformId(String);
 
 impl From<&dyn AsRef<str>> for PlatformId {
-    fn from(platform_id_str: &dyn AsRef<str>) -> PlatformId{
+    fn from(platform_id_str: &dyn AsRef<str>) -> PlatformId {
         let result = platform_id_str.as_ref();
         PlatformId(result.to_ascii_uppercase())
     }
@@ -71,7 +72,9 @@ pub struct PlatformInfo {
 
 fn load_platform_info() -> Result<HashMap<PlatformId, PlatformInfo>> {
     let stone_data: Value = serde_json::from_str(*STONE_DIST)?;
-    let platform_data = stone_data.get("Platforms").ok_or(StoneError::InvalidStoneFile)?;
+    let platform_data = stone_data
+        .get("Platforms")
+        .ok_or(StoneError::InvalidStoneFile)?;
     let value = serde_json::from_value::<HashMap<PlatformId, PlatformInfo>>(platform_data.clone())?;
     Ok(value)
 }

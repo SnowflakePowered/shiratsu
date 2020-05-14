@@ -1,18 +1,18 @@
+use super::super::Result;
 use super::super::*;
 use crate::region::{from_nointro_region, Region};
-use super::super::Result;
 use lazy_static::*;
-use regex::{Regex, RegexSet};
+use regex::Regex;
+
 use nom::{
     bytes::complete::{is_not, tag},
+    bytes::streaming::take_till,
     // see the "streaming/complete" paragraph lower for an explanation of these submodules
     character::complete::char,
-    sequence::{pair, delimited},
+    combinator::{complete, opt},
     multi::many0,
-    bytes::streaming::take_till,
+    sequence::{delimited, pair},
     IResult,
-    combinator::{opt, complete},
-    
 };
 
 fn parens(input: &str) -> IResult<&str, &str> {
@@ -30,25 +30,45 @@ pub struct NoIntroName {
     version: Option<String>,
     is_unlicensed: bool,
     is_demo: bool,
-    status: DevelopmentStatus
+    status: DevelopmentStatus,
 }
 
-impl <T> From<nom::Err<T>> for DatError {
+impl<T> From<nom::Err<T>> for DatError {
     fn from(_: nom::Err<T>) -> Self {
         DatError::BadFileNameError(NamingConvention::NoIntro)
     }
 }
 
+struct Article(&'static str, &'static str);
+
+macro_rules! article {
+    ($article: expr) => {
+        Article(concat!(", ", $article), concat!($article, " "))
+    };
+}
+
+fn move_article(mut text: String, articles: &[Article]) -> String {
+    let min_art = articles
+        .iter()
+        .filter_map(|art| text.find(art.0).map(|idx| (art, idx)))
+        .min_by_key(|(_, idx)| *idx);
+
+    match min_art {
+        None => return text,
+        Some((article, index)) => {
+            text.replace_range(index..index + article.0.len(), "");
+            text.insert_str(0, article.1);
+            return text;
+        }
+    }
+}
+
 pub fn do_parse(input: &str) -> IResult<&str, NoIntroName> {
     lazy_static! {
-        static ref REGEXES: RegexSet = RegexSet::new(&[
-            r"a^", // 0: NOTHING
-            r"^v([0-9]?)+(\.([0-9]?)+)?", // 1: VERSION
-            r"^Rev [0-9]", // 2: REVISION
-            r"^Beta\s?([0-9]?)+", // 3: BETA
-            r"^Disc ([0-9]?)+", // 4: DISC
-        ]).unwrap();
-        static ref DISC: Regex = Regex::new( r"^Disc (([0-9]?)+)").unwrap();
+        static ref REVISION: Regex = Regex::new(r"^Rev [0-9]").unwrap();
+        static ref VERSION: Regex = Regex::new(r"^v([0-9]?)+(\.([0-9]?)+)?").unwrap();
+        static ref BETA: Regex = Regex::new(r"^Beta\s?([0-9]?)+").unwrap();
+        static ref DISC: Regex = Regex::new(r"^Disc (([0-9]?)+)").unwrap();
     };
 
     let (input, _) = opt(tag("[BIOS]"))(input)?;
@@ -65,45 +85,65 @@ pub fn do_parse(input: &str) -> IResult<&str, NoIntroName> {
     let mut status = DevelopmentStatus::Release;
 
     for flag in flags {
-        let match_index = REGEXES.matches(flag).into_iter().count();
-        match match_index {
-            0 => { // NOTHING
-                match flag {
-                    "Proto" => {
-                        status = DevelopmentStatus::Prototype;
-                    }
-                    "Sample" => {
-                        is_demo = true;
-                    }
-                    "Unl" => {
-                        is_unlicensed = true;
-                    }
-                    _ => continue
-                }
-            },
-            1 | 2 => { // VERSION | REVISION
-                version = Some(String::from(flag))
-            },
-            3 => { // BETA
-                status = DevelopmentStatus::Prelease
-            },
-            4 => { // DISC
-                part_number = DISC.captures(flag)
+        match flag {
+            "Proto" => {
+                status = DevelopmentStatus::Prototype;
+            }
+            "Sample" => {
+                is_demo = true;
+            }
+            "Unl" => {
+                is_unlicensed = true;
+            }
+            _ if VERSION.is_match(flag) || REVISION.is_match(flag) => {
+                version = Some(String::from(flag));
+            }
+            _ if BETA.is_match(flag) => status = DevelopmentStatus::Prelease,
+            _ if DISC.is_match(flag) => {
+                part_number = DISC
+                    .captures(flag)
                     .map(|caps| caps.get(1).map(|i| i.as_str().parse::<i32>().ok()))
-                    .unwrap_or(None).unwrap_or(None)
-            },
-            _ => continue
+                    .unwrap_or(None)
+                    .unwrap_or(None);
+            }
+            _ => continue,
         }
     }
-    Ok((input, NoIntroName {
-        release_name: String::from(title.trim()),
-        region: region_code,
-        part_number,
-        version,
-        is_demo,
-        is_unlicensed,
-        status
-    }))
+
+    let name = move_article(
+        String::from(title.trim()),
+        &[
+            article!("Eine"),
+            article!("The"),
+            article!("Der"),
+            article!("Die"),
+            article!("Das"),
+            article!("Ein"),
+            article!("Les"),
+            article!("Los"),
+            article!("Las"),
+            article!("An"),
+            article!("De"),
+            article!("La"),
+            article!("Le"),
+            article!("El"),
+            article!("A"),
+        ],
+    );
+
+    Ok((
+        input,
+        NoIntroName {
+            // todo: move article to the front.
+            release_name: name,
+            region: region_code,
+            part_number,
+            version,
+            is_demo,
+            is_unlicensed,
+            status,
+        },
+    ))
 }
 
 fn nointro_parser<'a>(input: String) -> Result<NoIntroName> {

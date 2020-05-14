@@ -1,7 +1,7 @@
-use phf::phf_map;
-use indexmap::IndexSet;
-use std::iter::once;
 use crate::chained_iter;
+use indexmap::IndexSet;
+use phf::phf_map;
+use std::iter::once;
 
 #[derive(Debug)]
 pub enum RegionError {
@@ -10,7 +10,7 @@ pub enum RegionError {
 
 impl std::error::Error for RegionError {}
 
-impl std::fmt::Display for RegionError  {
+impl std::fmt::Display for RegionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
     }
@@ -26,7 +26,7 @@ pub enum RegionFormat {
     /// GoodTools naming standards ((U), (J), etc.)
     GoodTools,
     /// No-Intro naming standards (country names)
-    NoIntro
+    NoIntro,
 }
 
 static TOSEC_REGION: phf::Map<&'static str, Region> = phf_map! {
@@ -272,7 +272,7 @@ pub enum Region {
     SouthAfrica,
 }
 
-/// Parse a valid TOSEC region string into a `Vec<Region>`. 
+/// Parse a valid TOSEC region string into a `Vec<Region>`.
 /// A valid region string is 2 uppercase letter country codes, separated by hyphens.
 ///
 /// # Arguments
@@ -281,7 +281,7 @@ pub fn from_tosec_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
     let mut regions = IndexSet::<Region>::new();
     for region_code in region_str.as_ref().split('-') {
         if region_code.len() != 2 {
-            return Err(RegionError::InvalidFormat(RegionFormat::TOSEC))
+            return Err(RegionError::InvalidFormat(RegionFormat::TOSEC));
         }
         regions.insert(*TOSEC_REGION.get(region_code).unwrap_or(&Region::Unknown));
     }
@@ -292,7 +292,7 @@ pub fn from_tosec_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
     }
 }
 
-/// Parse a valid GoodTools region string into a `Vec<Region>`. 
+/// Parse a valid GoodTools region string into a `Vec<Region>`.
 ///
 /// # Arguments
 /// - `region_str` The region string.
@@ -303,17 +303,19 @@ pub fn from_goodtools_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>
         "F" | "W" | "JUE" => Ok(vec![Region::Japan, Region::UnitedStates, Region::Europe]),
         "UE" => Ok(vec![Region::UnitedStates, Region::Europe]),
         "JU" => Ok(vec![Region::Japan, Region::UnitedStates]),
-        _ => Ok(vec![*GOODTOOLS_REGION.get(region_str.as_ref()).unwrap_or(&Region::Unknown)])
+        _ => Ok(vec![*GOODTOOLS_REGION
+            .get(region_str.as_ref())
+            .unwrap_or(&Region::Unknown)]),
     }
 }
 
-/// Parse a valid No-Intro region string into a `Vec<Region>`. 
+/// Parse a valid No-Intro region string into a `Vec<Region>`.
 /// A valid region string is a comma + space separated list of valid country names.
 ///
 /// Country names are case sensitive.
-/// 
-/// The following strings are expanded 
-/// 
+///
+/// The following strings are expanded
+///
 /// - `World` is expanded to USA, Japan, and Europe.
 /// - `Scandinavia` is expanded to Denmark, Norway, and Sweden.
 /// # Arguments
@@ -322,7 +324,7 @@ pub fn from_nointro_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> 
     let mut regions = IndexSet::<Region>::new();
     for region_code in region_str.as_ref().split(", ") {
         if !region_code.chars().all(|c| char::is_ascii_alphabetic(&c)) {
-            return Err(RegionError::InvalidFormat(RegionFormat::NoIntro))
+            return Err(RegionError::InvalidFormat(RegionFormat::NoIntro));
         }
 
         match region_code {
@@ -336,12 +338,12 @@ pub fn from_nointro_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> 
                 regions.insert(Region::Norway);
                 regions.insert(Region::Sweden);
             }
-            _ => {
-                match NOINTRO_REGION.get(region_code) {
-                    Some(&region) => { regions.insert(region); }
-                    None => return Err(RegionError::InvalidFormat(RegionFormat::NoIntro))
+            _ => match NOINTRO_REGION.get(region_code) {
+                Some(&region) => {
+                    regions.insert(region);
                 }
-            }
+                None => return Err(RegionError::InvalidFormat(RegionFormat::NoIntro)),
+            },
         }
     }
     if regions.is_empty() {
@@ -351,7 +353,7 @@ pub fn from_nointro_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> 
     }
 }
 
-/// Creates a TOSEC-compatible ISO code region string, separated by hyphens, 
+/// Creates a TOSEC-compatible ISO code region string, separated by hyphens,
 /// from a vector of Region.
 pub fn to_region_string(regions: &Vec<Region>) -> String {
     regions
@@ -366,23 +368,20 @@ pub fn to_region_string(regions: &Vec<Region>) -> String {
 /// This function expects that the input string is a valid GoodTools, No-Intro, or TOSEC region string.
 /// If no match can be found, returns unknown region.
 pub fn parse_regions<T: AsRef<str>>(region_str: T) -> Vec<Region> {
-    let good_tools_try = from_goodtools_region(&region_str)
-        .unwrap_or(vec![Region::Unknown]);
-    let nointro_try = from_nointro_region(&region_str)
-        .unwrap_or(vec![Region::Unknown]);
-    let tosec_try = from_tosec_region(&region_str)
-        .unwrap_or(vec![Region::Unknown]);
-        // thanks @Rantanen on the Rust discord
-    chained_iter![good_tools_try, nointro_try, tosec_try].into_iter()
+    let good_tools_try = from_goodtools_region(&region_str).unwrap_or(vec![Region::Unknown]);
+    let nointro_try = from_nointro_region(&region_str).unwrap_or(vec![Region::Unknown]);
+    let tosec_try = from_tosec_region(&region_str).unwrap_or(vec![Region::Unknown]);
+    // thanks @Rantanen on the Rust discord
+    chained_iter![good_tools_try, nointro_try, tosec_try]
+        .into_iter()
         // Precalculate all the counts so they don't need to be calculated for
         // every single comparison.
-        .map(|v| (v.iter().filter(|&r| *r != Region::Unknown).count(), v))        
+        .map(|v| (v.iter().filter(|&r| *r != Region::Unknown).count(), v))
         // Use the count as the key to get max by.
         .max_by_key(|(count, _)| *count)
         // Map the (count, vec) tuple back to the vec.
         // The count has served its purpose.
         .map(|(_, v)| v)
-        
         // In case the option was none (the input Vec was empty), return empty vec.
         .unwrap_or_else(|| vec![Region::Unknown])
 }
