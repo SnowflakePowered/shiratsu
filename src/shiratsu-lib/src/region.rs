@@ -300,9 +300,7 @@ pub fn from_goodtools_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>
     match region_str.as_ref() {
         "1" => Ok(vec![Region::Japan, Region::SouthKorea]),
         "4" => Ok(vec![Region::UnitedStates, Region::Brazil]),
-        "F" => Ok(vec![Region::UnitedStates, Region::Japan, Region::Europe]),
-        "W" => Ok(vec![Region::UnitedStates, Region::Japan, Region::Europe]),
-        "JUE" => Ok(vec![Region::UnitedStates, Region::Japan, Region::Europe]),
+        "F" | "W" | "JUE" => Ok(vec![Region::Japan, Region::UnitedStates, Region::Europe]),
         "UE" => Ok(vec![Region::UnitedStates, Region::Europe]),
         "JU" => Ok(vec![Region::Japan, Region::UnitedStates]),
         _ => Ok(vec![*GOODTOOLS_REGION.get(region_str.as_ref()).unwrap_or(&Region::Unknown)])
@@ -359,7 +357,7 @@ pub fn to_region_string(regions: &Vec<Region>) -> String {
     regions
         .iter()
         .map(|r| r.into())
-        .collect::<Vec<&'static str>>()
+        .collect::<Vec<&str>>()
         .join("-")
 }
 
@@ -389,13 +387,13 @@ pub fn parse_regions<T: AsRef<str>>(region_str: T) -> Vec<Region> {
         .unwrap_or_else(|| vec![Region::Unknown])
 }
 
-impl From<&Region> for &'static str {
+impl From<&Region> for &str {
     fn from(region: &Region) -> Self {
         (*region).into()
     }
 }
 
-impl From<Region> for &'static str {
+impl From<Region> for &str {
     fn from(region: Region) -> Self {
         match region {
             Region::UnitedArabEmirates => "AE",
