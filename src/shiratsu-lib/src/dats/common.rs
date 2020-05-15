@@ -73,7 +73,7 @@ pub struct GameEntry {
     /// The source of the game.
     pub(super) source: &'static str,
     /// Any information retrieved from the name of the game entry, if any.
-    pub(super) info: Option<Box<dyn StructuredlyNamed>>,
+    pub(super) info: Option<NameInfo>,
 }
 
 /// A single entry that describes a game, which may hold a collection of RomEntries
@@ -94,8 +94,53 @@ impl GameEntry {
     pub fn source(&self) -> &str {
         self.source
     }
-    pub fn info(&self) -> Option<&Box<dyn StructuredlyNamed>> {
+    pub fn info(&self) -> Option<&NameInfo> {
         self.info.as_ref()
+    }
+}
+
+pub struct NameInfo {
+    pub(super) release_name: String,
+    pub(super) region: Vec<Region>,
+    pub(super) part_number: Option<i32>,
+    pub(super) version: Option<String>,
+    pub(super) is_unlicensed: bool,
+    pub(super) is_demo: bool,
+    pub(super) status: DevelopmentStatus,
+}
+
+impl NameInfo {
+    /// The region of the game.
+    fn region(&self) -> &[Region] {
+        &self.region
+    }
+    /// If this entry is split into multiple parts, the part number of this entry.
+    fn part_number(&self) -> Option<i32> {
+        self.part_number
+    }
+    /// Whether or not this game is unlicensed.
+    fn is_unlicensed(&self) -> bool {
+        self.is_unlicensed
+    }
+    /// Whether or not this game is a sample or a demo version of a full game.
+    fn is_demo(&self) -> bool {
+        self.is_demo
+    }
+    /// The version of the game entry.
+    fn version(&self) -> Option<&str> {
+        self.version.as_deref()
+    }
+    /// The name of the release, with all tags removed, and articles at the beginning of the title.
+    fn release_name(&self) -> &str {
+        &self.release_name.as_str()
+    }
+    /// The development status of the game entry.
+    fn development_status(&self) -> DevelopmentStatus {
+        self.status
+    }
+    /// The naming convention of the structuredly named filename.
+    fn naming_convention(&self) -> NamingConvention {
+        NamingConvention::NoIntro
     }
 }
 
@@ -128,7 +173,7 @@ impl Debug for GameEntry {
     }
 }
 
-impl Debug for dyn StructuredlyNamed {
+impl Debug for NameInfo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "")?;
         writeln!(f, "    (release \"{}\")", self.release_name())?;
@@ -157,32 +202,6 @@ impl Debug for RomEntry {
         writeln!(f, "    (sha1 {}) ", self.hash_sha1().unwrap_or("None"))?;
         write!(f, "    (size {}))", self.size())
     }
-}
-
-impl<T: StructuredlyNamed + 'static> From<T> for Box<dyn StructuredlyNamed> {
-    fn from(val: T) -> Self {
-        Box::new(val)
-    }
-}
-
-/// Extra props for a GameEntry that follows a naming convention.
-pub trait StructuredlyNamed {
-    /// The region of the game.
-    fn region(&self) -> &[Region];
-    /// If this entry is split into multiple parts, the part number of this entry.
-    fn part_number(&self) -> Option<i32>;
-    /// Whether or not this game is unlicensed.
-    fn is_unlicensed(&self) -> bool;
-    /// Whether or not this game is a sample or a demo version of a full game.
-    fn is_demo(&self) -> bool;
-    /// The version of the game entry.
-    fn version(&self) -> Option<&str>;
-    /// The name of the release, with all tags removed, and articles at the beginning of the title.
-    fn release_name(&self) -> &str;
-    /// The development status of the game entry.
-    fn development_status(&self) -> DevelopmentStatus;
-    /// The naming convention of the structuredly named filename.
-    fn naming_convention(&self) -> NamingConvention;
 }
 
 #[derive(Debug, Copy, Clone)]

@@ -20,8 +20,12 @@ fn parens(input: &str) -> IResult<&str, &str> {
     delimited(pair(opt(char(' ')), char('(')), is_not(")"), char(')'))(input)
 }
 
+// fn brackets(input: &str) -> IResult<&str, &str> {
+//     delimited(pair(opt(char(' ')), char('[')), is_not("]"), char(']'))(input)
+// }
+
 wrap_error! {
-    wrap <'a> NoIntroNameError(nom::Err<(&'a str, nom::error::ErrorKind)>) for DatError {
+    wrap <'a> TosecNameError(nom::Err<(&'a str, nom::error::ErrorKind)>) for DatError {
         fn from (err) {
             DatError::ParseError(format!("Error parsing Redump XML: {}", err.0.to_string()))
         }
@@ -168,16 +172,16 @@ pub fn do_parse(input: &str) -> IResult<&str, NameInfo> {
 
 fn nointro_parser<'a>(input: String) -> Result<NameInfo> {
     let value = do_parse(&input).map(|(_, value)| value)
-        .map_err::<NoIntroNameError, _>(|err|err.into())?;
+        .map_err::<TosecNameError, _>(|err|err.into())?;
     Ok(value)
 }
 
-pub trait NoIntroNameable {
-    fn try_from_nointro(nointro: String) -> Result<NameInfo>;
+pub trait TosecNameable {
+    fn try_from_tosec(nointro: String) -> Result<NameInfo>;
 }
 
-impl NoIntroNameable for NameInfo {
-    fn try_from_nointro(name: String) -> Result<NameInfo> {
+impl TosecNameable for NameInfo {
+    fn try_from_tosec(name: String) -> Result<NameInfo> {
         nointro_parser(name)
     }
 }

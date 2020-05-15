@@ -1,6 +1,5 @@
 use serde::Deserialize;
 use std::convert::{TryFrom, TryInto};
-use crate::wrap_error;
 
 use super::super::Result;
 use super::super::*;
@@ -26,11 +25,17 @@ struct Datafile {
     game: Vec<Game>,
 }
 
-wrap_error! {
-    wrap NoIntroParserError(ParseError) for DatError {
-        fn from (err) {
-            DatError::ParseError(format!("Error parsing No-Intro XML: {}", err.0.to_string()))
-        }
+// Private wrapping error for ParseError
+struct NoIntroParserError(ParseError);
+impl From<ParseError> for NoIntroParserError {
+    fn from(err: ParseError) -> Self {
+        NoIntroParserError(err)
+    }
+}
+
+impl From<NoIntroParserError> for DatError {
+    fn from(err: NoIntroParserError) -> Self {
+        DatError::ParseError(format!("Error parsing No-Intro XML: {}", err.0.to_string()))
     }
 }
 
@@ -46,7 +51,7 @@ impl TryFrom<Game> for GameEntry {
         let name = game.name;
         Ok(GameEntry {
             entry_name: name.clone(),
-            info: Some(NameInfo::try_from_nointro(name).map(|n| n.into())?),
+            info: Some(NameInfo::try_from_tosec(name).map(|n| n.into())?),
             serials: rom.iter().filter_map(|r| r.serial.clone()).collect(),
             rom_entries: rom.into_iter().map(|r| r.into()).collect(),
             source: "No-Intro",
