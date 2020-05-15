@@ -52,7 +52,7 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
             "Proto" => {
                 status = DevelopmentStatus::Prototype;
             }
-            "Sample" => {
+            "Kiosk" | "Demo" | "Sample" | "Bonus Disc" | "Taikenban" /* 体験版 */ | "Tentou Taikenban" /* 店頭体験版 */=> {
                 is_demo = true;
             }
             "Unl" => {
@@ -93,18 +93,18 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
     ))
 }
 
-fn nointro_parser<'a>(input: String) -> Result<NameInfo> {
-    let value = do_parse(&input).map(|(_, value)| value)
+fn nointro_parser<'a>(input: &str) -> Result<NameInfo> {
+    let value = do_parse(input).map(|(_, value)| value)
         .map_err::<NoIntroNameError, _>(|err|err.into())?;
     Ok(value)
 }
 
 pub trait NoIntroNameable {
-    fn try_from_nointro(nointro: String) -> Result<NameInfo>;
+    fn try_from_nointro(nointro: &str) -> Result<NameInfo>;
 }
 
 impl NoIntroNameable for NameInfo {
-    fn try_from_nointro(name: String) -> Result<NameInfo> {
+    fn try_from_nointro(name: &str) -> Result<NameInfo> {
         nointro_parser(name)
     }
 }

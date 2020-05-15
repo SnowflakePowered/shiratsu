@@ -109,12 +109,12 @@ pub fn do_parse<'a, 'b>(title: &'a str, input: &'b str) -> IResult<&'b str, Name
     
 }
 
-fn tosec_parser<'a>(input: String) -> Result<NameInfo> {
+fn tosec_parser<'a>(input: &str) -> Result<NameInfo> {
     lazy_static! {
         static ref FIND_TITLE_WITH_DEMO_AND_DATE: Regex = Regex::new(r"^(.+) (\(((19|20)[\dx]{2})\)|\(((19|20)[0-9x]{2})-[0-9]{2}\)|\(((19|20)[0-9x]{2})-[0-9]{2}-[0-9][0-9x]\))").unwrap();
     };
     
-    let title_captures = FIND_TITLE_WITH_DEMO_AND_DATE.captures(&input)
+    let title_captures = FIND_TITLE_WITH_DEMO_AND_DATE.captures(input)
         .ok_or(DatError::BadFileNameError(NamingConvention::TOSEC))?;
     let full_match = title_captures.get(0)
         .ok_or(DatError::BadFileNameError(NamingConvention::TOSEC))?;
@@ -131,11 +131,11 @@ fn tosec_parser<'a>(input: String) -> Result<NameInfo> {
 }
 
 pub trait TosecNameable {
-    fn try_from_tosec(tosec: String) -> Result<NameInfo>;
+    fn try_from_tosec(tosec: &str) -> Result<NameInfo>;
 }
 
 impl TosecNameable for NameInfo {
-    fn try_from_tosec(name: String) -> Result<NameInfo> {
+    fn try_from_tosec(name: &str) -> Result<NameInfo> {
         tosec_parser(name)
     }
 }

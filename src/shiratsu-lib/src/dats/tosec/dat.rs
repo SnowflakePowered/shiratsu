@@ -28,8 +28,8 @@ impl TryFrom<Game> for GameEntry {
         let rom = game.rom;
         let name = game.name;
         Ok(GameEntry {
-            entry_name: name.clone(),
-            info: Some(NameInfo::try_from_tosec(name).map(|n| n.into())?),
+            info: Some(NameInfo::try_from_tosec(&name).map(|n| n.into())?),
+            entry_name: name,
             serials: vec![],
             rom_entries: rom.into_iter().map(|r| r.into()).collect(),
             source: "TOSEC",

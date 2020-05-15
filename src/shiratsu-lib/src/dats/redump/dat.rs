@@ -27,8 +27,8 @@ impl TryFrom<Game> for GameEntry {
         let rom = game.rom;
         let name = game.name;
         Ok(GameEntry {
-            entry_name: name.clone(),
-            info: Some(NameInfo::try_from_nointro(name).map(|n| n.into())?),
+            info: Some(NameInfo::try_from_nointro(&name).map(|n| n.into())?),
+            entry_name: name,
             serials: game.serial
                 .map(|s|  s.split(",")
                     .map(|split| split.trim().replace(" ", "-")).collect())
