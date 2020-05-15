@@ -39,26 +39,39 @@ impl<T> From<nom::Err<T>> for DatError {
     }
 }
 
-struct Article(&'static str, &'static str);
+struct Article(&'static str, &'static str, Regex);
+
+impl Article {
+    fn find(&self, text: &str) -> Option<usize> {
+        self.2.find(text).map(|m| m.start())
+    }
+    const fn len_from(&self, idx: usize) -> usize {
+        self.0.len() + idx
+    }
+}
 
 macro_rules! article {
     ($article: expr) => {
-        Article(concat!(", ", $article), concat!($article, " "))
+        Article(
+            concat!(", ", $article),
+            concat!($article, " "),
+            Regex::new(concat!(", ", $article, "($|\\s)")).unwrap(),
+        )
     };
 }
 
 fn move_article(mut text: String, articles: &[Article]) -> String {
     let min_art = articles
         .iter()
-        .filter_map(|art| text.find(art.0).map(|idx| (art, idx)))
+        .filter_map(|art| art.find(&text).map(|idx| (art, idx)))
         .min_by_key(|(_, idx)| *idx);
 
     match min_art {
-        None => return text,
+        None => text,
         Some((article, index)) => {
-            text.replace_range(index..index + article.0.len(), "");
+            text.replace_range(index..article.len_from(index), "");
             text.insert_str(0, article.1);
-            return text;
+            text
         }
     }
 }
@@ -71,6 +84,25 @@ pub fn do_parse(input: &str) -> IResult<&str, NoIntroName> {
         static ref DISC: Regex = Regex::new(r"^Disc (([0-9]?)+)").unwrap();
     };
 
+    lazy_static! {
+        static ref ARTICLES: Vec<Article> = vec![
+            article!("Eine"),
+            article!("The"),
+            article!("Der"),
+            article!("Die"),
+            article!("Das"),
+            article!("Ein"),
+            article!("Les"),
+            article!("Los"),
+            article!("Las"),
+            article!("An"),
+            article!("De"),
+            article!("La"),
+            article!("Le"),
+            article!("El"),
+            article!("A")
+        ];
+    }
     let (input, _) = opt(tag("[BIOS]"))(input)?;
     let (input, title) = take_till(|c| c == '(')(input)?;
     let (input, region) = parens(input)?;
@@ -134,7 +166,6 @@ pub fn do_parse(input: &str) -> IResult<&str, NoIntroName> {
     Ok((
         input,
         NoIntroName {
-            // todo: move article to the front.
             release_name: name,
             region: region_code,
             part_number,
