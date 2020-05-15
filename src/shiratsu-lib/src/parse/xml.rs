@@ -1,4 +1,4 @@
-use super::{DatError, Result as DatResult};
+use super::{ParseError, Result as DatResult};
 use quick_xml::de::{from_str as from_xml, from_reader as from_xml_buf, DeError};
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
@@ -15,7 +15,7 @@ pub(super) struct Datfile<T> {
     header: Option<Header>,
 }
 
-pub(super) fn parse_dat<G: PartialEq + DeserializeOwned, E: Into<DatError> + From<DeError>>(
+pub(super) fn parse_dat<G: PartialEq + DeserializeOwned, E: Into<ParseError> + From<DeError>>(
     f: &str,
     expect_homepage: Option<&'static str>,
 ) -> DatResult<Datfile<G>> {
@@ -28,7 +28,7 @@ pub(super) fn parse_dat<G: PartialEq + DeserializeOwned, E: Into<DatError> + Fro
                 return Ok(e);
             }
         }
-        Err(DatError::HeaderMismatchError(
+        Err(ParseError::HeaderMismatchError(
             expect_homepage.unwrap(),
             e.header.map(|h| h.homepage).flatten(),
         ))
@@ -37,7 +37,7 @@ pub(super) fn parse_dat<G: PartialEq + DeserializeOwned, E: Into<DatError> + Fro
 
 pub(super) fn parse_dat_unchecked<
     G: PartialEq + DeserializeOwned,
-    E: Into<DatError> + From<DeError>,
+    E: Into<ParseError> + From<DeError>,
 >(
     f: &str,
 ) -> DatResult<Datfile<G>> {
@@ -45,7 +45,7 @@ pub(super) fn parse_dat_unchecked<
     d.map_err(|e| e.into())
 }
 
-pub(super) fn parse_dat_buf<R: BufRead, G: PartialEq + DeserializeOwned, E: Into<DatError> + From<DeError>>(
+pub(super) fn parse_dat_buf<R: BufRead, G: PartialEq + DeserializeOwned, E: Into<ParseError> + From<DeError>>(
     f: R,
     expect_homepage: Option<&'static str>,
 ) -> DatResult<Datfile<G>> {
@@ -58,7 +58,7 @@ pub(super) fn parse_dat_buf<R: BufRead, G: PartialEq + DeserializeOwned, E: Into
                 return Ok(e);
             }
         }
-        Err(DatError::HeaderMismatchError(
+        Err(ParseError::HeaderMismatchError(
             expect_homepage.unwrap(),
             e.header.map(|h| h.homepage).flatten(),
         ))
@@ -68,7 +68,7 @@ pub(super) fn parse_dat_buf<R: BufRead, G: PartialEq + DeserializeOwned, E: Into
 pub(super) fn parse_dat_unchecked_buf<
     R: BufRead,
     G: PartialEq + DeserializeOwned,
-    E: Into<DatError> + From<DeError>,
+    E: Into<ParseError> + From<DeError>,
 >(
     f: R,
 ) -> DatResult<Datfile<G>> {

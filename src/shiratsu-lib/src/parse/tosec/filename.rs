@@ -25,9 +25,9 @@ fn brackets(input: &str) -> IResult<&str, &str> {
 }
 
 wrap_error! {
-    wrap <'a> TosecNameError(nom::Err<(&'a str, nom::error::ErrorKind)>) for DatError {
+    wrap <'a> TosecNameError(nom::Err<(&'a str, nom::error::ErrorKind)>) for ParseError {
         fn from (_) {
-            DatError::BadFileNameError(NamingConvention::TOSEC)
+            ParseError::BadFileNameError(NamingConvention::TOSEC)
         }
     }
 }
@@ -115,14 +115,14 @@ fn tosec_parser<'a>(input: &str) -> Result<NameInfo> {
     };
     
     let title_captures = FIND_TITLE_WITH_DEMO_AND_DATE.captures(input)
-        .ok_or(DatError::BadFileNameError(NamingConvention::TOSEC))?;
+        .ok_or(ParseError::BadFileNameError(NamingConvention::TOSEC))?;
     let full_match = title_captures.get(0)
-        .ok_or(DatError::BadFileNameError(NamingConvention::TOSEC))?;
+        .ok_or(ParseError::BadFileNameError(NamingConvention::TOSEC))?;
     let title = title_captures.get(1)
-        .ok_or(DatError::BadFileNameError(NamingConvention::TOSEC))?
+        .ok_or(ParseError::BadFileNameError(NamingConvention::TOSEC))?
         .as_str();
     let _ = title_captures.get(1)
-        .ok_or(DatError::BadFileNameError(NamingConvention::TOSEC))?;
+        .ok_or(ParseError::BadFileNameError(NamingConvention::TOSEC))?;
     let value = do_parse(title, &input[full_match.end()..])
         .map(|(_, value)| value)
         .map_err::<TosecNameError, _>(|err|err.into())?;

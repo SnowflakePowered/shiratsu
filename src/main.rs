@@ -1,11 +1,11 @@
 extern crate shiratsu_lib;
-use shiratsu_lib::dats::*;
-use shiratsu_lib::dats::{
+use shiratsu_lib::parse::*;
+use shiratsu_lib::parse::{
     nointro::*,
     tosec::*,
     redump::*,
 };
-use shiratsu_lib::dats::Result;
+use shiratsu_lib::parse::Result;
 use shiratsu_lib::stone::get_platforms;
 fn main() -> Result<()>{
     let xml = r#"<?xml version="1.0"?>

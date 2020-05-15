@@ -1,5 +1,5 @@
 use crate::wrap_error;
-use quick_xml::de::DeError as ParseError;
+use quick_xml::de::DeError as XmlError;
 use serde::Deserialize;
 use std::convert::{TryFrom, TryInto};
 
@@ -23,7 +23,7 @@ struct Game {
 }
 
 impl TryFrom<Game> for GameEntry {
-    type Error = DatError;
+    type Error = ParseError;
     fn try_from(game: Game) -> Result<Self> {
         let rom = game.rom;
         let name = game.name;
@@ -50,9 +50,9 @@ impl From<Rom> for RomEntry {
 }
 
 wrap_error! {
-    wrap TosecParserError(ParseError) for DatError {
+    wrap TosecParserError(XmlError) for ParseError {
         fn from (err) {
-            DatError::ParseError(format!("Error parsing TOSEC XML: {}", err.0.to_string()))
+            ParseError::ParseError(format!("Error parsing TOSEC XML: {}", err.0.to_string()))
         }
     }
 }

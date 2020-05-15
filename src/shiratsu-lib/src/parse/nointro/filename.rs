@@ -20,9 +20,9 @@ fn parens(input: &str) -> IResult<&str, &str> {
 }
 
 wrap_error! {
-    wrap <'a> NoIntroNameError(nom::Err<(&'a str, nom::error::ErrorKind)>) for DatError {
+    wrap <'a> NoIntroNameError(nom::Err<(&'a str, nom::error::ErrorKind)>) for ParseError {
         fn from (err) {
-            DatError::ParseError(format!("Error parsing Redump XML: {}", err.0.to_string()))
+            ParseError::ParseError(format!("Error parsing Redump XML: {}", err.0.to_string()))
         }
     }
 }

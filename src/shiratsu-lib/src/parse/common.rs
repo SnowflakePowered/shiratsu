@@ -3,30 +3,30 @@ use std::fmt;
 use std::fmt::Display;
 
 #[derive(Debug)]
-pub enum DatError {
+pub enum ParseError {
     ParseError(String),
     BadFileNameError(NamingConvention),
     RegionError(RegionError),
     HeaderMismatchError(&'static str, Option<String>),
 }
 
-impl From<RegionError> for DatError {
+impl From<RegionError> for ParseError {
     fn from(err: RegionError) -> Self {
-        DatError::RegionError(err)
+        ParseError::RegionError(err)
     }
 }
 
-impl std::error::Error for DatError {}
+impl std::error::Error for ParseError {}
 
-impl std::fmt::Display for DatError {
+impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DatError::ParseError(val) => write!(f,"{}", val),
-            DatError::BadFileNameError(convention) => 
+            ParseError::ParseError(val) => write!(f,"{}", val),
+            ParseError::BadFileNameError(convention) => 
                 write!(f, "The provided file name could not be parsed properly in the {:?} naming convention", convention),
-            DatError::RegionError(region_err) =>
+            ParseError::RegionError(region_err) =>
                 write!(f, "{}", region_err),
-            DatError::HeaderMismatchError(expected, actual) =>
+            ParseError::HeaderMismatchError(expected, actual) =>
                 write!(f, 
                     "Expected DAT to have header homepage {} but got actual {}. Use the parse_unchecked variants to ignore header checking.", 
                     expected, actual.as_deref().unwrap_or("None"))
@@ -34,7 +34,7 @@ impl std::fmt::Display for DatError {
     }
 }
 
-pub type Result<T> = std::result::Result<T, DatError>;
+pub type Result<T> = std::result::Result<T, ParseError>;
 
 
 /// Describes a single file that is a part of a GameEntry

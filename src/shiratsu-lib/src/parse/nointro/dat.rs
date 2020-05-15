@@ -2,7 +2,7 @@ use crate::wrap_error;
 use serde::Deserialize;
 use std::convert::{TryFrom, TryInto};
 
-use quick_xml::de::DeError as ParseError;
+use quick_xml::de::DeError as XmlError;
 
 use super::super::nointro::NoIntroNameable;
 use super::super::xml::*;
@@ -24,7 +24,7 @@ struct Game {
 }
 
 impl TryFrom<Game> for GameEntry {
-    type Error = DatError;
+    type Error = ParseError;
     fn try_from(game: Game) -> Result<Self> {
         let rom = game.rom;
         let name = game.name;
@@ -51,9 +51,9 @@ impl From<Rom> for RomEntry {
 }
 
 wrap_error! {
-    wrap NoIntroParserError(ParseError) for DatError {
+    wrap NoIntroParserError(XmlError) for ParseError {
         fn from (err) {
-            DatError::ParseError(format!("Error parsing No-Intro XML: {}", err.0.to_string()))
+            ParseError::ParseError(format!("Error parsing No-Intro XML: {}", err.0.to_string()))
         }
     }
 }

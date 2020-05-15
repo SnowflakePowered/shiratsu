@@ -8,12 +8,11 @@ extern crate phf;
 pub mod stone;
 pub mod region;
 mod util;
-pub mod dats;
+pub mod parse;
 
 #[cfg(test)]
 mod tests {
     use crate::region::{Region, parse_regions};
-    use crate::dats::GameEntry;
     #[test]
     fn it_works() {
         assert_eq!(2 + 2, 4);
