@@ -259,14 +259,17 @@ pub enum NamingConvention {
 /// Two RomEntries are PartialEq if they have matching hashes.
 impl PartialEq for RomEntry {
     fn eq(&self, other: &RomEntry) -> bool {
-        (self.hash_md5().is_some()
-            && other.hash_md5().is_some()
-            && self.hash_md5().unwrap() == other.hash_md5().unwrap())
-            && (self.hash_sha1().is_some()
-                && other.hash_sha1().is_some()
-                && self.hash_sha1().unwrap() == other.hash_sha1().unwrap())
-            && (self.hash_crc().is_some()
-                && other.hash_crc().is_some()
-                && self.hash_crc().unwrap() == other.hash_crc().unwrap())
+        if let (Some(my_md5), Some(other_md5),
+                Some(my_sha1), Some(other_sha1),
+                Some(my_crc), Some(other_crc)) = 
+                (self.hash_md5(), other.hash_md5(),
+                self.hash_sha1(), other.hash_sha1(),
+                self.hash_crc(), other.hash_crc()) {
+            my_md5 == other_md5 
+                    && my_sha1 == other_sha1
+                    && my_crc == other_crc
+        } else {
+            false
+        }
     }
 }
