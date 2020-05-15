@@ -1,124 +1,132 @@
 use super::super::Result;
 use super::super::*;
-use crate::region::{from_nointro_region, Region};
+use super::super::article::move_article;
+use crate::region::{from_tosec_region, Region};
 use crate::wrap_error;
 use lazy_static::*;
 use regex::Regex;
 
 use nom::{
-    bytes::complete::{is_not, tag},
-    bytes::streaming::take_till,
+    bytes::complete::is_not,
     // see the "streaming/complete" paragraph lower for an explanation of these submodules
     character::complete::char,
-    combinator::{complete, opt},
+    combinator::complete,
     multi::many0,
-    sequence::{delimited, pair},
+    sequence::delimited,
     IResult,
 };
 
-fn parens(input: &str) -> IResult<&str, &str> {
-    delimited(pair(opt(char(' ')), char('(')), is_not(")"), char(')'))(input)
+fn strict_parens(input: &str) -> IResult<&str, &str> {
+    delimited(char('('), is_not(")"), char(')'))(input)
 }
 
-// fn brackets(input: &str) -> IResult<&str, &str> {
-//     delimited(pair(opt(char(' ')), char('[')), is_not("]"), char(']'))(input)
-// }
+fn brackets(input: &str) -> IResult<&str, &str> {
+    delimited(char('['), is_not("]"), char(']'))(input)
+}
 
 wrap_error! {
     wrap <'a> TosecNameError(nom::Err<(&'a str, nom::error::ErrorKind)>) for DatError {
-        fn from (err) {
-            DatError::ParseError(format!("Error parsing Redump XML: {}", err.0.to_string()))
+        fn from (_) {
+            DatError::BadFileNameError(NamingConvention::TOSEC)
         }
     }
 }
 
-
-pub fn do_parse(input: &str) -> IResult<&str, NameInfo> {
+pub fn do_parse<'a, 'b>(title: &'a str, input: &'b str) -> IResult<&'b str, NameInfo> {
     lazy_static! {
-        static ref REVISION: Regex = Regex::new(r"^Rev [0-9]").unwrap();
-        static ref VERSION: Regex = Regex::new(r"^v([0-9]?)+(\.([0-9]?)+)?").unwrap();
-        static ref BETA: Regex = Regex::new(r"^Beta\s?([0-9]?)+").unwrap();
-        static ref DISC: Regex = Regex::new(r"^Disc (([0-9]?)+)").unwrap();
-    };
-    
-    let (input, _) = opt(tag("[BIOS]"))(input)?;
-    let (input, title) = take_till(|c| c == '(')(input)?;
-    let (input, region) = parens(input)?;
-    let (input, flags) = many0(parens)(input)?;
-    let (input, _) = complete(opt(tag("[b]")))(input)?;
-    let region_code = from_nointro_region(region).unwrap_or(vec![Region::Unknown]);
-
+        static ref DATE: Regex = Regex::new(r"^((19|20)[\dx]{2})$|^((19|20)[\dx]{2})-[\d]{2}$|^((19|20)[\dx]{2})-[\d]{2}-[\d][\dx]$").unwrap();
+        static ref EXTRACT_PART: Regex = Regex::new(r"^\d+").unwrap();
+        static ref EXTRACT_DEMO: Regex = Regex::new(r" \(demo\)").unwrap();
+        static ref REVISION: Regex = Regex::new(r"Rev [0-9]$").unwrap();
+        static ref VERSION: Regex = Regex::new(r"v([\.0-9]?)+$").unwrap();
+    }
+    let mut title = title;
+    let (input, _publisher) = strict_parens(input)?;
+    let (input, tags) = many0(strict_parens)(input)?;
+    let (input, flags) = complete(many0(brackets))(input)?;
     let mut part_number: Option<i32> = None;
     let mut version: Option<String> = None;
     let mut is_unlicensed = false;
     let mut is_demo = false;
     let mut status = DevelopmentStatus::Release;
+    let mut region: Option<Vec<Region>> = None;
+    for tag in tags {
+        if region.is_none() {
+            let region_candidate = from_tosec_region(tag);
+            if let Ok(good_region) = region_candidate{
+                region = Some(good_region)
+            }
+        }
 
-    for flag in flags {
-        match flag {
-            "Proto" => {
-                status = DevelopmentStatus::Prototype;
-            }
-            "Sample" => {
-                is_demo = true;
-            }
-            "Unl" => {
-                is_unlicensed = true;
-            }
-            _ if VERSION.is_match(flag) || REVISION.is_match(flag) => {
-                version = Some(String::from(flag));
-            }
-            _ if BETA.is_match(flag) => status = DevelopmentStatus::Prelease,
-            _ if DISC.is_match(flag) => {
-                part_number = DISC
-                    .captures(flag)
-                    .map(|caps| caps.get(1).map(|i| i.as_str().parse::<i32>().ok()))
-                    .unwrap_or(None)
-                    .unwrap_or(None);
+        match tag {
+            "alpha" | "beta" | "preview" | "pre-release" => status = DevelopmentStatus::Prelease,
+            "proto" => status = DevelopmentStatus::Prototype,
+            _ if tag.len() > 4 => match &tag[0..4] {
+                "Disc" | "Disk" | "File" | "Part" | "Tape" => {
+                    part_number = EXTRACT_PART.find(&tag[5..]).map(|m| {
+                        m.as_str().parse::<i32>().ok()
+                    }).unwrap_or(None)
+                }
+                _ => continue,
             }
             _ => continue,
         }
     }
 
-    // let name = move_article(
-    //     String::from(title.trim()),
-    //     &[
-    //         article!("Eine"),
-    //         article!("The"),
-    //         article!("Der"),
-    //         article!("Die"),
-    //         article!("Das"),
-    //         article!("Ein"),
-    //         article!("Les"),
-    //         article!("Los"),
-    //         article!("Las"),
-    //         article!("An"),
-    //         article!("De"),
-    //         article!("La"),
-    //         article!("Le"),
-    //         article!("El"),
-    //         article!("A"),
-    //     ],
-    // );
+    if flags.iter().any(|&c| c == "p") {
+        is_unlicensed = true
+    }
+    if let Some(m) = EXTRACT_DEMO.find(title) {
+        title = &title[0..m.start()];
+        is_demo = true;
+    }
+    if let Some(m) = VERSION.find(title) {
+        title = &title[0..m.start()];
+        version = Some(m.as_str().to_string())
+    } else if let Some(m) = REVISION.find(title) {
+        title = &title[0..m.start()];
+        version = Some(m.as_str().to_string())
+    }
+
+    let name = move_article(
+        String::from(title.trim()),
+        &article::ARTICLES,
+    );
 
     Ok((
         input,
         NameInfo {
-            release_name: String::from(title.trim()),
-            region: region_code,
+            release_name: name,
+            region: region.unwrap_or(vec![Region::Unknown]),
             part_number,
             version,
             is_demo,
             is_unlicensed,
             status,
+            naming_convention: NamingConvention::TOSEC,
         },
     ))
     
 }
 
 fn tosec_parser<'a>(input: String) -> Result<NameInfo> {
-    let value = do_parse(&input).map(|(_, value)| value)
+    lazy_static! {
+        static ref FIND_TITLE_WITH_DEMO_AND_DATE: Regex = Regex::new(r"^(.+) (\(((19|20)[\dx]{2})\)|\(((19|20)[0-9x]{2})-[0-9]{2}\)|\(((19|20)[0-9x]{2})-[0-9]{2}-[0-9][0-9x]\))").unwrap();
+    };
+    
+    let title_captures = FIND_TITLE_WITH_DEMO_AND_DATE.captures(&input)
+        .ok_or(DatError::BadFileNameError(NamingConvention::TOSEC))?;
+    let full_match = title_captures.get(0)
+        .ok_or(DatError::BadFileNameError(NamingConvention::TOSEC))?;
+    let title = title_captures.get(1)
+        .ok_or(DatError::BadFileNameError(NamingConvention::TOSEC))?
+        .as_str();
+    let _ = title_captures.get(1)
+        .ok_or(DatError::BadFileNameError(NamingConvention::TOSEC))?;
+    let value = do_parse(title, &input[full_match.end()..])
+        .map(|(_, value)| value)
         .map_err::<TosecNameError, _>(|err|err.into())?;
+        
     Ok(value)
 }
 

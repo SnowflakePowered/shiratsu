@@ -1,10 +1,10 @@
 use serde::Deserialize;
 use std::convert::{TryFrom, TryInto};
 use crate::wrap_error;
-use self::xml::*;
 use quick_xml::de::{DeError as ParseError};
+use super::super::nointro::NoIntroNameable;
+use super::super::xml::*;
 use super::super::*;
-
 #[derive(Debug, Deserialize, PartialEq)]
 struct Rom {
     name: String,
@@ -60,14 +60,14 @@ wrap_error! {
 /// This function will check that the 
 /// XML has the proper header for redump.org DATs. Use
 /// `parse_redump_unchecked` if you wish to ignore the header.
-pub fn parse(f: &str) -> Result<Vec<GameEntry>> {
+fn parse(f: &str) -> Result<Vec<GameEntry>> {
     parse_dat::<Game, RedumpParserError>(f, Some("redump.org"))?
             .game.into_iter().map(|g| g.try_into()).collect()
 }
 
 /// Parses the contents of a redump.org XML DAT into a vector of `GameEntries`,
 /// ignoring the header.
-pub fn parse_unchecked(f: &str) -> Result<Vec<GameEntry>> {
+fn parse_unchecked(f: &str) -> Result<Vec<GameEntry>> {
     parse_dat_unchecked::<Game, RedumpParserError>(f)?.game.into_iter().map(|g| g.try_into()).collect()
 }
 
@@ -75,13 +75,35 @@ pub fn parse_unchecked(f: &str) -> Result<Vec<GameEntry>> {
 /// This function will check that the 
 /// XML has the proper header for redump.org DATs. Use
 /// `parse_redump_unchecked` if you wish to ignore the header.
-pub fn parse_buf<R: std::io::BufRead>(f: R) -> Result<Vec<GameEntry>> {
+fn parse_buf<R: std::io::BufRead>(f: R) -> Result<Vec<GameEntry>> {
     parse_dat_buf::<R, Game, RedumpParserError>(f, Some("redump.org"))?
             .game.into_iter().map(|g| g.try_into()).collect()
 }
 
 /// Parses the contents of a redump.org XML DAT into a vector of `GameEntries`,
 /// ignoring the header.
-pub fn parse_unchecked_buf<R: std::io::BufRead>(f: R) -> Result<Vec<GameEntry>> {
+fn parse_unchecked_buf<R: std::io::BufRead>(f: R) -> Result<Vec<GameEntry>> {
     parse_dat_unchecked_buf::<R, Game, RedumpParserError>(f)?.game.into_iter().map(|g| g.try_into()).collect()
+}
+
+pub trait FromRedump {
+    fn try_from_redump(dat: &str) -> Result<Vec<GameEntry>>;
+    fn try_unchecked_from_redump(dat: &str) -> Result<Vec<GameEntry>>;
+    fn try_from_redump_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<GameEntry>>;
+    fn try_unchecked_from_redump_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<GameEntry>>;
+}
+
+impl FromRedump for GameEntry {
+    fn try_from_redump(dat: &str) -> Result<Vec<GameEntry>> {
+        parse(dat)
+    }
+    fn try_unchecked_from_redump(dat: &str) -> Result<Vec<GameEntry>> {
+        parse_unchecked(dat)
+    }
+    fn try_from_redump_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<GameEntry>> {
+        parse_buf(buf)
+    }
+    fn try_unchecked_from_redump_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<GameEntry>> {
+        parse_unchecked_buf(buf)
+    }
 }

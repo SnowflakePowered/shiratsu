@@ -1,5 +1,6 @@
 extern crate lazy_static_include;
 extern crate lazy_static;
+
 extern crate serde;
 extern crate serde_json;
 extern crate phf;
@@ -21,7 +22,12 @@ mod tests {
     #[test]
     fn nointro_region_parses() {
         assert_eq!(parse_regions("USA, Europe"), vec![Region::UnitedStates, Region::Europe]);
-        
+    }
+    
+    #[test]
+    fn tosec_region_parses() {
+        assert_eq!(parse_regions("US"), vec![Region::UnitedStates]);
+        assert_eq!(parse_regions("US-ZZ"), vec![Region::UnitedStates, Region::Unknown]);
     }
 }
 

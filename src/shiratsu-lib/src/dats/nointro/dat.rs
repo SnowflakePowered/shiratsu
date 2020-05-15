@@ -1,13 +1,12 @@
+use crate::wrap_error;
 use serde::Deserialize;
 use std::convert::{TryFrom, TryInto};
-use crate::wrap_error;
 
-use super::super::Result;
+use quick_xml::de::DeError as ParseError;
+
+use super::super::nointro::NoIntroNameable;
+use super::super::xml::*;
 use super::super::*;
-use quick_xml::de::{DeError as ParseError};
-
-use self::xml::*;
-
 #[derive(Debug, Deserialize, PartialEq)]
 struct Rom {
     name: String,
@@ -60,32 +59,67 @@ wrap_error! {
 }
 
 /// Parses the contents of a No-Intro XML DAT into a vector of `GameEntries`
-/// This function will check that the 
+/// This function will check that the
 /// XML has the proper header for No-Intro DATs. Use
 /// `parse_nointro_unchecked` if you wish to ignore the header.
-pub fn parse(f: &str) -> Result<Vec<GameEntry>> {
+fn parse(f: &str) -> Result<Vec<GameEntry>> {
     parse_dat::<Game, NoIntroParserError>(f, Some("No-Intro"))?
-            .game.into_iter().map(|g| g.try_into()).collect()
+        .game
+        .into_iter()
+        .map(|g| g.try_into())
+        .collect()
 }
 
 /// Parses the contents of a No-Intro XML DAT into a vector of `GameEntries`,
 /// ignoring the header element.
-pub fn parse_unchecked(f: &str) -> Result<Vec<GameEntry>> {
-    parse_dat_unchecked::<Game, NoIntroParserError>(f)?.game.into_iter().map(|g| g.try_into()).collect()
+fn parse_unchecked(f: &str) -> Result<Vec<GameEntry>> {
+    parse_dat_unchecked::<Game, NoIntroParserError>(f)?
+        .game
+        .into_iter()
+        .map(|g| g.try_into())
+        .collect()
 }
-
 
 /// Parses the contents of a No-Intro XML DAT into a vector of `GameEntries`
-/// This function will check that the 
+/// This function will check that the
 /// XML has the proper header for No-Intro DATs. Use
 /// `parse_nointro_unchecked` if you wish to ignore the header.
-pub fn parse_buf<R: std::io::BufRead>(f: R) -> Result<Vec<GameEntry>> {
+fn parse_buf<R: std::io::BufRead>(f: R) -> Result<Vec<GameEntry>> {
     parse_dat_buf::<R, Game, NoIntroParserError>(f, Some("No-Intro"))?
-            .game.into_iter().map(|g| g.try_into()).collect()
+        .game
+        .into_iter()
+        .map(|g| g.try_into())
+        .collect()
 }
 
 /// Parses the contents of a No-Intro XML DAT into a vector of `GameEntries`,
 /// ignoring the header element.
-pub fn parse_unchecked_buf<R: std::io::BufRead>(f: R) -> Result<Vec<GameEntry>> {
-    parse_dat_unchecked_buf::<R, Game, NoIntroParserError>(f)?.game.into_iter().map(|g| g.try_into()).collect()
+fn parse_unchecked_buf<R: std::io::BufRead>(f: R) -> Result<Vec<GameEntry>> {
+    parse_dat_unchecked_buf::<R, Game, NoIntroParserError>(f)?
+        .game
+        .into_iter()
+        .map(|g| g.try_into())
+        .collect()
+}
+
+pub trait FromNoIntro {
+    fn try_from_nointro(dat: &str) -> Result<Vec<GameEntry>>;
+    fn try_unchecked_from_nointro(dat: &str) -> Result<Vec<GameEntry>>;
+    fn try_from_nointro_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<GameEntry>>;
+    fn try_unchecked_from_nointro_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<GameEntry>>;
+}
+
+impl FromNoIntro for GameEntry {
+    fn try_from_nointro(dat: &str) -> Result<Vec<GameEntry>> {
+        parse(dat)
+    }
+    fn try_unchecked_from_nointro(dat: &str) -> Result<Vec<GameEntry>> {
+        parse_unchecked(dat)
+    }
+    fn try_from_nointro_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<GameEntry>> {
+        parse_buf(buf)
+    }
+    fn try_unchecked_from_nointro_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<GameEntry>> {
+        parse_unchecked_buf(buf)
+    }
 }

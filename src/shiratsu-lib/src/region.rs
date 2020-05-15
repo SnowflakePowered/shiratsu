@@ -278,14 +278,23 @@ pub enum Region {
 /// # Arguments
 /// - `region_str` The region string.
 pub fn from_tosec_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
-    let mut regions = IndexSet::<Region>::new();
-    for region_code in region_str.as_ref().split('-') {
-        if region_code.len() != 2 {
-            return Err(RegionError::InvalidFormat(RegionFormat::TOSEC));
+    let mut regions: IndexSet<Region> = IndexSet::new();
+    let mut iter = region_str.as_ref().split('-').enumerate().peekable();
+    while let Some((idx, region_code)) = iter.next() {
+        let region = *TOSEC_REGION.get(region_code).unwrap_or(&Region::Unknown);
+        if idx == 0 && iter.peek().is_none() {
+            if region_code.len() != 2 { // No allocation path.
+                return Err(RegionError::InvalidFormat(RegionFormat::TOSEC));
+            }
+            return Ok(vec![region]);
+        } else {
+            if region_code.len() != 2 {
+                return Err(RegionError::InvalidFormat(RegionFormat::TOSEC));
+            }
+            regions.insert(region);
         }
-        regions.insert(*TOSEC_REGION.get(region_code).unwrap_or(&Region::Unknown));
     }
-    if regions.is_empty() {
+     if regions.is_empty() {
         Err(RegionError::InvalidFormat(RegionFormat::TOSEC))
     } else {
         Ok(regions.into_iter().collect::<Vec<Region>>())

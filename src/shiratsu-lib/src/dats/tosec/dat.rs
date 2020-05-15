@@ -1,8 +1,10 @@
 use serde::Deserialize;
 use std::convert::{TryFrom, TryInto};
 use crate::wrap_error;
-use self::xml::*;
 use quick_xml::de::{DeError as ParseError};
+
+use super::super::tosec::TosecNameable;
+use super::super::xml::*;
 use super::super::*;
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -59,14 +61,14 @@ wrap_error! {
 /// This function will check that the 
 /// XML has the proper header for TOSEC DATs. Use
 /// `parse_tosec_unchecked` if you wish to ignore the header.
-pub fn parse(f: &str) -> Result<Vec<GameEntry>> {
+fn parse(f: &str) -> Result<Vec<GameEntry>> {
     parse_dat::<Game, TosecParserError>(f, Some("TOSEC"))?
             .game.into_iter().map(|g| g.try_into()).collect()
 }
 
 /// Parses the contents of a TOSEC XML DAT into a vector of `GameEntries`,
 /// ignoring the header element.
-pub fn parse_unchecked(f: &str) -> Result<Vec<GameEntry>> {
+fn parse_unchecked(f: &str) -> Result<Vec<GameEntry>> {
     parse_dat_unchecked::<Game, TosecParserError>(f)?.game.into_iter().map(|g| g.try_into()).collect()
 }
 
@@ -75,13 +77,35 @@ pub fn parse_unchecked(f: &str) -> Result<Vec<GameEntry>> {
 /// This function will check that the 
 /// XML has the proper header for TOSEC DATs. Use
 /// `parse_tosec_unchecked` if you wish to ignore the header.
-pub fn parse_buf<R: std::io::BufRead>(f: R) -> Result<Vec<GameEntry>> {
+fn parse_buf<R: std::io::BufRead>(f: R) -> Result<Vec<GameEntry>> {
     parse_dat_buf::<R, Game, TosecParserError>(f, Some("TOSEC"))?
             .game.into_iter().map(|g| g.try_into()).collect()
 }
 
 /// Parses the contents of a TOSEC XML DAT into a vector of `GameEntries`,
 /// ignoring the header element.
-pub fn parse_unchecked_buf<R: std::io::BufRead>(f: R) -> Result<Vec<GameEntry>> {
+fn parse_unchecked_buf<R: std::io::BufRead>(f: R) -> Result<Vec<GameEntry>> {
     parse_dat_unchecked_buf::<R, Game, TosecParserError>(f)?.game.into_iter().map(|g| g.try_into()).collect()
+}
+
+pub trait FromTosec {
+    fn try_from_tosec(dat: &str) -> Result<Vec<GameEntry>>;
+    fn try_unchecked_from_tosec(dat: &str) -> Result<Vec<GameEntry>>;
+    fn try_from_tosec_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<GameEntry>>;
+    fn try_unchecked_from_tosec_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<GameEntry>>;
+}
+
+impl FromTosec for GameEntry {
+    fn try_from_tosec(dat: &str) -> Result<Vec<GameEntry>> {
+        parse(dat)
+    }
+    fn try_unchecked_from_tosec(dat: &str) -> Result<Vec<GameEntry>> {
+        parse_unchecked(dat)
+    }
+    fn try_from_tosec_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<GameEntry>> {
+        parse_buf(buf)
+    }
+    fn try_unchecked_from_tosec_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<GameEntry>> {
+        parse_unchecked_buf(buf)
+    }
 }

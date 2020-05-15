@@ -88,6 +88,7 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
             is_demo,
             is_unlicensed,
             status,
+            naming_convention: NamingConvention::NoIntro,
         },
     ))
 }

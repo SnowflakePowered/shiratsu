@@ -122,6 +122,8 @@ pub struct NameInfo {
     pub(super) is_unlicensed: bool,
     pub(super) is_demo: bool,
     pub(super) status: DevelopmentStatus,
+    pub(super) naming_convention: NamingConvention,
+
 }
 
 impl NameInfo {
@@ -155,7 +157,7 @@ impl NameInfo {
     }
     /// The naming convention of the structuredly named filename.
     fn naming_convention(&self) -> NamingConvention {
-        NamingConvention::NoIntro
+        self.naming_convention
     }
 }
 
@@ -201,7 +203,7 @@ impl Display for NameInfo {
                 .collect::<Vec<&str>>()
         )?;
         writeln!(f, "    (part {})", self.part_number().map(|i| format!("{}", i)).as_deref().unwrap_or("None"))?;
-        writeln!(f, "    (version {})", self.version().unwrap_or("None"))?;
+        writeln!(f, "    (version \"{}\")", self.version().unwrap_or("None"))?;
         writeln!(f, "    (status {:?})", self.development_status())?;
         writeln!(f, "    (is-demo? {})", self.is_demo())?;
         writeln!(f, "    (is-unlicensed? {})", self.is_unlicensed())?;

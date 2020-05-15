@@ -13,8 +13,9 @@ macro_rules! chained_iter {
 
 #[macro_export(local_inner_macros)]
 macro_rules! wrap_error {
-    ($(wrap $wrapper:ident ($error: ty) for $coerce: ty { fn from ($err: ident) { $body: expr } })*) => {
+    ($(wrap $wrapper:ident ($error: ty) for $coerce: ty { fn from ($err: tt) { $body: expr } })*) => {
         $(
+            #[derive(Debug)]
             struct $wrapper($error);
 
             impl From<$error> for $wrapper {
@@ -31,8 +32,9 @@ macro_rules! wrap_error {
             }
         )*
     };
-    ($(wrap <$type:tt> $wrapper:ident ($error: ty) for $coerce: ty { fn from ($err: ident) { $body: expr } })*) => {
+    ($(wrap <$type:tt> $wrapper:ident ($error: ty) for $coerce: ty { fn from ($err: tt) { $body: expr } })*) => {
         $(
+            #[derive(Debug)]
             struct $wrapper<$type>($error);
 
             impl <$type> From<$error> for $wrapper<$type> {

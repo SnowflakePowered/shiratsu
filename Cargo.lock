@@ -109,6 +109,7 @@ checksum = "25020779544bf717b917323b42f23c9dbef1bd2b97b576df6484a0c8709705c6"
 dependencies = [
  "lexical-core",
  "memchr",
+ "regex",
  "version_check",
 ]
 
