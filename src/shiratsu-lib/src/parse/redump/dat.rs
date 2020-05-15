@@ -97,11 +97,11 @@ pub trait FromRedump {
     /// This function will check that the
     /// XML has the proper header for redump.org DATs. Use
     /// `parse_redump_unchecked` if you wish to ignore the header.
-    fn try_from_redump(dat: &str) -> Result<Vec<GameEntry>>;
+    fn try_from_redump_str(dat: &str) -> Result<Vec<GameEntry>>;
 
     /// Parses the contents of a redump.org XML DAT into a vector of `GameEntries`,
     /// ignoring the header.
-    fn try_unchecked_from_redump(dat: &str) -> Result<Vec<GameEntry>>;
+    fn try_unchecked_from_redump_str(dat: &str) -> Result<Vec<GameEntry>>;
 
     /// Parses the contents of a redump.org XML DAT into a vector of `GameEntries`
     /// This function will check that the
@@ -115,11 +115,11 @@ pub trait FromRedump {
 }
 
 impl FromRedump for GameEntry {
-    fn try_from_redump(dat: &str) -> Result<Vec<GameEntry>> {
+    fn try_from_redump_str(dat: &str) -> Result<Vec<GameEntry>> {
         parse(dat)
     }
 
-    fn try_unchecked_from_redump(dat: &str) -> Result<Vec<GameEntry>> {
+    fn try_unchecked_from_redump_str(dat: &str) -> Result<Vec<GameEntry>> {
         parse_unchecked(dat)
     }
 

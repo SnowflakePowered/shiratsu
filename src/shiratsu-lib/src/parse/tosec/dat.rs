@@ -95,11 +95,11 @@ pub trait FromTosec {
     /// This function will check that the
     /// XML has the proper header for TOSEC DATs. Use
     /// `parse_tosec_unchecked` if you wish to ignore the header.
-    fn try_from_tosec(dat: &str) -> Result<Vec<GameEntry>>;
+    fn try_from_tosec_str(dat: &str) -> Result<Vec<GameEntry>>;
 
     /// Parses the contents of a TOSEC XML DAT into a vector of `GameEntries`,
     /// ignoring the header element.
-    fn try_unchecked_from_tosec(dat: &str) -> Result<Vec<GameEntry>>;
+    fn try_unchecked_from_tosec_str(dat: &str) -> Result<Vec<GameEntry>>;
 
     /// Parses the contents of a TOSEC XML DAT into a vector of `GameEntries`
     /// This function will check that the
@@ -113,10 +113,10 @@ pub trait FromTosec {
 }
 
 impl FromTosec for GameEntry {
-    fn try_from_tosec(dat: &str) -> Result<Vec<GameEntry>> {
+    fn try_from_tosec_str(dat: &str) -> Result<Vec<GameEntry>> {
         parse(dat)
     }
-    fn try_unchecked_from_tosec(dat: &str) -> Result<Vec<GameEntry>> {
+    fn try_unchecked_from_tosec_str(dat: &str) -> Result<Vec<GameEntry>> {
         parse_unchecked(dat)
     }
     fn try_from_tosec_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<GameEntry>> {

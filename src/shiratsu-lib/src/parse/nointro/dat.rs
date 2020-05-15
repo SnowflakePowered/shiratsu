@@ -94,11 +94,11 @@ pub trait FromNoIntro {
     /// This function will check that the
     /// XML has the proper header for No-Intro DATs. Use
     /// `parse_nointro_unchecked` if you wish to ignore the header.
-    fn try_from_nointro(dat: &str) -> Result<Vec<GameEntry>>;
+    fn try_from_nointro_str(dat: &str) -> Result<Vec<GameEntry>>;
 
     /// Parses the contents of a No-Intro XML DAT into a vector of `GameEntries`,
     /// ignoring the header element.
-    fn try_unchecked_from_nointro(dat: &str) -> Result<Vec<GameEntry>>;
+    fn try_unchecked_from_nointro_str(dat: &str) -> Result<Vec<GameEntry>>;
 
     /// Parses the contents of a No-Intro XML DAT into a vector of `GameEntries`
     /// This function will check that the
@@ -112,10 +112,10 @@ pub trait FromNoIntro {
 }
 
 impl FromNoIntro for GameEntry {
-    fn try_from_nointro(dat: &str) -> Result<Vec<GameEntry>> {
+    fn try_from_nointro_str(dat: &str) -> Result<Vec<GameEntry>> {
         parse(dat)
     }
-    fn try_unchecked_from_nointro(dat: &str) -> Result<Vec<GameEntry>> {
+    fn try_unchecked_from_nointro_str(dat: &str) -> Result<Vec<GameEntry>> {
         parse_unchecked(dat)
     }
     fn try_from_nointro_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<GameEntry>> {

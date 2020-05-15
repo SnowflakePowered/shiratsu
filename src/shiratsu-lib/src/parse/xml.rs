@@ -1,12 +1,12 @@
 use super::{ParseError, Result as DatResult};
-use quick_xml::de::{from_str as from_xml, from_reader as from_xml_buf, DeError};
+use quick_xml::de::{from_reader as from_xml_buf, from_str as from_xml, DeError};
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use std::io::BufRead;
 
 #[derive(Debug, Deserialize, PartialEq)]
 struct Header {
-    pub(super) homepage: Option<String>,
+    homepage: Option<String>,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -20,8 +20,9 @@ pub(super) fn parse_dat<G: PartialEq + DeserializeOwned, E: Into<ParseError> + F
     expect_homepage: Option<&'static str>,
 ) -> DatResult<Datfile<G>> {
     parse_dat_unchecked::<G, E>(f).and_then(|e| {
-        if expect_homepage.is_none() && e.header.is_none() || expect_homepage.is_none() 
-            && e.header.as_ref().unwrap().homepage.is_none() {
+        if expect_homepage.is_none() && e.header.is_none()
+            || expect_homepage.is_none() && e.header.as_ref().unwrap().homepage.is_none()
+        {
             return Ok(e);
         } else if let Some(expected) = expect_homepage {
             if expected == e.header.as_ref().unwrap().homepage.as_deref().unwrap() {
@@ -45,13 +46,18 @@ pub(super) fn parse_dat_unchecked<
     d.map_err(|e| e.into())
 }
 
-pub(super) fn parse_dat_buf<R: BufRead, G: PartialEq + DeserializeOwned, E: Into<ParseError> + From<DeError>>(
+pub(super) fn parse_dat_buf<
+    R: BufRead,
+    G: PartialEq + DeserializeOwned,
+    E: Into<ParseError> + From<DeError>,
+>(
     f: R,
     expect_homepage: Option<&'static str>,
 ) -> DatResult<Datfile<G>> {
     parse_dat_unchecked_buf::<R, G, E>(f).and_then(|e| {
-        if expect_homepage.is_none() && e.header.is_none() || expect_homepage.is_none() 
-            && e.header.as_ref().unwrap().homepage.is_none() {
+        if expect_homepage.is_none() && e.header.is_none()
+            || expect_homepage.is_none() && e.header.as_ref().unwrap().homepage.is_none()
+        {
             return Ok(e);
         } else if let Some(expected) = expect_homepage {
             if expected == e.header.as_ref().unwrap().homepage.as_deref().unwrap() {
@@ -75,4 +81,3 @@ pub(super) fn parse_dat_unchecked_buf<
     let d: Result<Datfile<G>, E> = from_xml_buf(f).map_err::<E, _>(|e| e.into());
     d.map_err(|e| e.into())
 }
-
