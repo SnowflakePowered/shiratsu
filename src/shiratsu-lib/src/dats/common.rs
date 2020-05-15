@@ -1,12 +1,13 @@
 use crate::region::{Region, RegionError};
 use std::fmt;
-use std::fmt::Debug;
+use std::fmt::Display;
 
 #[derive(Debug)]
 pub enum DatError {
     ParseError(String),
     BadFileNameError(NamingConvention),
     RegionError(RegionError),
+    HeaderMismatchError(&'static str, Option<String>),
 }
 
 impl From<RegionError> for DatError {
@@ -19,11 +20,22 @@ impl std::error::Error for DatError {}
 
 impl std::fmt::Display for DatError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        match self {
+            DatError::ParseError(val) => write!(f,"{}", val),
+            DatError::BadFileNameError(convention) => 
+                write!(f, "The provided file name could not be parsed properly in the {:?} naming convention", convention),
+            DatError::RegionError(region_err) =>
+                write!(f, "{}", region_err),
+            DatError::HeaderMismatchError(expected, actual) =>
+                write!(f, 
+                    "Expected DAT to have header homepage {} but got actual {}. Use the parse_unchecked variants to ignore header checking.", 
+                    expected, actual.as_deref().unwrap_or("None"))
+        }
     }
 }
 
 pub type Result<T> = std::result::Result<T, DatError>;
+
 
 /// Describes a single file that is a part of a GameEntry
 impl RomEntry {
@@ -49,6 +61,7 @@ impl RomEntry {
     }
 }
 
+#[derive(Debug)]
 pub struct RomEntry {
     /// The MD5 Hash of the ROM
     pub(super) md5: Option<String>,
@@ -63,6 +76,7 @@ pub struct RomEntry {
 }
 
 /// A single entry that describes a game, which may hold a collection of RomEntries
+#[derive(Debug)]
 pub struct GameEntry {
     /// The name of the game entry, as is.
     pub(super) entry_name: String,
@@ -99,6 +113,7 @@ impl GameEntry {
     }
 }
 
+#[derive(Debug)]
 pub struct NameInfo {
     pub(super) release_name: String,
     pub(super) region: Vec<Region>,
@@ -144,12 +159,12 @@ impl NameInfo {
     }
 }
 
-impl Debug for GameEntry {
+impl Display for GameEntry {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "(game {:?} ", self.entry_name())?;
+        writeln!(f, "(game \"{}\" ", self.entry_name())?;
         write!(f, " [")?;
         if let Some(r) = self.rom_entries().iter().nth(0) {
-            write!(f, "{:?}", r)?;
+            write!(f, "{}", r)?;
         }
         let mut iter = self.rom_entries().iter().skip(1).peekable();
         if iter.peek().is_some() {
@@ -157,9 +172,9 @@ impl Debug for GameEntry {
         }
         while let Some(r) = iter.next() {
             if iter.peek().is_some() {
-                writeln!(f, "  {:?}", r)?;
+                writeln!(f, "  {}", r)?;
             } else {
-                write!(f, "  {:?}", r)?;
+                write!(f, "  {}", r)?;
             }
         }
         writeln!(f, "]")?;
@@ -167,13 +182,13 @@ impl Debug for GameEntry {
         if self.info().is_none() {
             writeln!(f, " (info None)")?;
         } else {
-            writeln!(f, "  (info {:?})", self.info().unwrap())?;
+            writeln!(f, "  (info {})", self.info().unwrap())?;
         }
         write!(f, "  (source \"{}\"))", self.source())
     }
 }
 
-impl Debug for NameInfo {
+impl Display for NameInfo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "")?;
         writeln!(f, "    (release \"{}\")", self.release_name())?;
@@ -185,8 +200,8 @@ impl Debug for NameInfo {
                 .map(|&r| r.into())
                 .collect::<Vec<&str>>()
         )?;
-        writeln!(f, "    (part {:?})", self.part_number())?;
-        writeln!(f, "    (version {:?})", self.version())?;
+        writeln!(f, "    (part {})", self.part_number().map(|i| format!("{}", i)).as_deref().unwrap_or("None"))?;
+        writeln!(f, "    (version {})", self.version().unwrap_or("None"))?;
         writeln!(f, "    (status {:?})", self.development_status())?;
         writeln!(f, "    (is-demo? {})", self.is_demo())?;
         writeln!(f, "    (is-unlicensed? {})", self.is_unlicensed())?;
@@ -194,7 +209,7 @@ impl Debug for NameInfo {
     }
 }
 
-impl Debug for RomEntry {
+impl Display for RomEntry {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "(rom \"{}\" ", self.file_name())?;
         writeln!(f, "    (crc {}) ", self.hash_crc().unwrap_or("None"))?;

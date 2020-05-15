@@ -1,9 +1,9 @@
 use serde::Deserialize;
 use std::convert::{TryFrom, TryInto};
-
-use super::super::Result;
+use crate::wrap_error;
+use self::xml::*;
+use quick_xml::de::{DeError as ParseError};
 use super::super::*;
-use quick_xml::de::{from_str as from_xml, DeError as ParseError};
 
 #[derive(Debug, Deserialize, PartialEq)]
 struct Rom {
@@ -12,36 +12,12 @@ struct Rom {
     crc: String,
     md5: String,
     sha1: String,
-    serial: Option<String>,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
 struct Game {
     name: String,
     rom: Vec<Rom>,
-}
-#[derive(Debug, Deserialize, PartialEq)]
-struct Datafile {
-    game: Vec<Game>,
-}
-
-// Private wrapping error for ParseError
-struct NoIntroParserError(ParseError);
-impl From<ParseError> for NoIntroParserError {
-    fn from(err: ParseError) -> Self {
-        NoIntroParserError(err)
-    }
-}
-
-impl From<NoIntroParserError> for DatError {
-    fn from(err: NoIntroParserError) -> Self {
-        DatError::ParseError(format!("Error parsing No-Intro XML: {}", err.0.to_string()))
-    }
-}
-
-pub fn parse(f: &str) -> Result<Vec<GameEntry>> {
-    let d: Datafile = from_xml(f).map_err::<NoIntroParserError, _>(|e| e.into())?;
-    d.game.into_iter().map(|g| g.try_into()).collect()
 }
 
 impl TryFrom<Game> for GameEntry {
@@ -52,9 +28,9 @@ impl TryFrom<Game> for GameEntry {
         Ok(GameEntry {
             entry_name: name.clone(),
             info: Some(NameInfo::try_from_tosec(name).map(|n| n.into())?),
-            serials: rom.iter().filter_map(|r| r.serial.clone()).collect(),
+            serials: vec![],
             rom_entries: rom.into_iter().map(|r| r.into()).collect(),
-            source: "No-Intro",
+            source: "TOSEC",
         })
     }
 }
@@ -69,4 +45,43 @@ impl From<Rom> for RomEntry {
             size: rom.size,
         }
     }
+}
+
+wrap_error! {
+    wrap TosecParserError(ParseError) for DatError {
+        fn from (err) {
+            DatError::ParseError(format!("Error parsing TOSEC XML: {}", err.0.to_string()))
+        }
+    }
+}
+
+/// Parses the contents of a TOSEC XML DAT into a vector of `GameEntries`
+/// This function will check that the 
+/// XML has the proper header for TOSEC DATs. Use
+/// `parse_tosec_unchecked` if you wish to ignore the header.
+pub fn parse(f: &str) -> Result<Vec<GameEntry>> {
+    parse_dat::<Game, TosecParserError>(f, Some("TOSEC"))?
+            .game.into_iter().map(|g| g.try_into()).collect()
+}
+
+/// Parses the contents of a TOSEC XML DAT into a vector of `GameEntries`,
+/// ignoring the header element.
+pub fn parse_unchecked(f: &str) -> Result<Vec<GameEntry>> {
+    parse_dat_unchecked::<Game, TosecParserError>(f)?.game.into_iter().map(|g| g.try_into()).collect()
+}
+
+
+/// Parses the contents of a TOSEC XML DAT into a vector of `GameEntries`
+/// This function will check that the 
+/// XML has the proper header for TOSEC DATs. Use
+/// `parse_tosec_unchecked` if you wish to ignore the header.
+pub fn parse_buf<R: std::io::BufRead>(f: R) -> Result<Vec<GameEntry>> {
+    parse_dat_buf::<R, Game, TosecParserError>(f, Some("TOSEC"))?
+            .game.into_iter().map(|g| g.try_into()).collect()
+}
+
+/// Parses the contents of a TOSEC XML DAT into a vector of `GameEntries`,
+/// ignoring the header element.
+pub fn parse_unchecked_buf<R: std::io::BufRead>(f: R) -> Result<Vec<GameEntry>> {
+    parse_dat_unchecked_buf::<R, Game, TosecParserError>(f)?.game.into_iter().map(|g| g.try_into()).collect()
 }

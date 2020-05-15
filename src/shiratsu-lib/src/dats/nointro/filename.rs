@@ -4,11 +4,10 @@ use crate::region::{from_nointro_region, Region};
 use crate::wrap_error;
 use lazy_static::*;
 use regex::Regex;
+use super::super::article::move_article;
 
 use nom::{
-    bytes::complete::{is_not, tag},
-    bytes::streaming::take_till,
-    // see the "streaming/complete" paragraph lower for an explanation of these submodules
+    bytes::complete::{is_not, tag, take_till},
     character::complete::char,
     combinator::{complete, opt},
     multi::many0,
@@ -28,70 +27,13 @@ wrap_error! {
     }
 }
 
-struct Article(&'static str, &'static str, Regex);
-
-impl Article {
-    fn find(&self, text: &str) -> Option<usize> {
-        self.2.find(text).map(|m| m.start())
-    }
-    const fn len_from(&self, idx: usize) -> usize {
-        self.0.len() + idx
-    }
-}
-
-macro_rules! article {
-    ($article: expr) => {
-        Article(
-            concat!(", ", $article),
-            concat!($article, " "),
-            Regex::new(concat!(", ", $article, "($|\\s)")).unwrap(),
-        )
-    };
-}
-
-fn move_article(mut text: String, articles: &[Article]) -> String {
-    let min_art = articles
-        .iter()
-        .filter_map(|art| art.find(&text).map(|idx| (art, idx)))
-        .min_by_key(|(_, idx)| *idx);
-
-    match min_art {
-        None => text,
-        Some((article, index)) => {
-            text.replace_range(index..article.len_from(index), "");
-            text.insert_str(0, article.1);
-            text
-        }
-    }
-}
-
-pub fn do_parse(input: &str) -> IResult<&str, NameInfo> {
+fn do_parse(input: &str) -> IResult<&str, NameInfo> {
     lazy_static! {
         static ref REVISION: Regex = Regex::new(r"^Rev [0-9]").unwrap();
         static ref VERSION: Regex = Regex::new(r"^v([0-9]?)+(\.([0-9]?)+)?").unwrap();
         static ref BETA: Regex = Regex::new(r"^Beta\s?([0-9]?)+").unwrap();
         static ref DISC: Regex = Regex::new(r"^Disc (([0-9]?)+)").unwrap();
     };
-
-    lazy_static! {
-        static ref ARTICLES: Vec<Article> = vec![
-            article!("Eine"),
-            article!("The"),
-            article!("Der"),
-            article!("Die"),
-            article!("Das"),
-            article!("Ein"),
-            article!("Les"),
-            article!("Los"),
-            article!("Las"),
-            article!("An"),
-            article!("De"),
-            article!("La"),
-            article!("Le"),
-            article!("El"),
-            article!("A")
-        ];
-    }
     let (input, _) = opt(tag("[BIOS]"))(input)?;
     let (input, title) = take_till(|c| c == '(')(input)?;
     let (input, region) = parens(input)?;
@@ -133,23 +75,7 @@ pub fn do_parse(input: &str) -> IResult<&str, NameInfo> {
 
     let name = move_article(
         String::from(title.trim()),
-        &[
-            article!("Eine"),
-            article!("The"),
-            article!("Der"),
-            article!("Die"),
-            article!("Das"),
-            article!("Ein"),
-            article!("Les"),
-            article!("Los"),
-            article!("Las"),
-            article!("An"),
-            article!("De"),
-            article!("La"),
-            article!("Le"),
-            article!("El"),
-            article!("A"),
-        ],
+        &article::ARTICLES,
     );
 
     Ok((

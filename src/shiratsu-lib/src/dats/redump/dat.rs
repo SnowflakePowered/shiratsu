@@ -1,8 +1,8 @@
 use serde::Deserialize;
 use std::convert::{TryFrom, TryInto};
 use crate::wrap_error;
-
-use quick_xml::de::{from_str as from_xml, DeError as ParseError};
+use self::xml::*;
+use quick_xml::de::{DeError as ParseError};
 use super::super::*;
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -20,24 +20,6 @@ struct Game {
     rom: Vec<Rom>,
     serial: Option<Vec<String>>,
 }
-#[derive(Debug, Deserialize, PartialEq)]
-struct Datafile {
-    game: Vec<Game>
-}
-
-wrap_error! {
-    wrap RedumpParserError(ParseError) for DatError {
-        fn from (err) {
-            DatError::ParseError(format!("Error parsing Redump XML: {}", err.0.to_string()))
-        }
-    }
-}
-
-pub fn parse(f: &str) -> Result<Vec<GameEntry>> {
-    let d: Datafile = from_xml(f)
-        .map_err::<RedumpParserError,_>(|e| e.into())?;
-    d.game.into_iter().map(|g| g.try_into()).collect()
-}
 
 impl TryFrom<Game> for GameEntry {
     type Error = DatError;
@@ -49,7 +31,7 @@ impl TryFrom<Game> for GameEntry {
             info: Some(NameInfo::try_from_nointro(name).map(|n| n.into())?),
             serials: game.serial.unwrap_or(vec![]),
             rom_entries: rom.into_iter().map(|r|r.into( )).collect(),
-            source: "Redump.org",
+            source: "redump.org",
         })
     }
 }
@@ -64,4 +46,42 @@ impl From<Rom> for RomEntry {
             size: rom.size,
         }
     }
+}
+
+wrap_error! {
+    wrap RedumpParserError(ParseError) for DatError {
+        fn from (err) {
+            DatError::ParseError(format!("Error parsing redump.org XML: {}", err.0.to_string()))
+        }
+    }
+}
+
+/// Parses the contents of a redump.org XML DAT into a vector of `GameEntries`
+/// This function will check that the 
+/// XML has the proper header for redump.org DATs. Use
+/// `parse_redump_unchecked` if you wish to ignore the header.
+pub fn parse(f: &str) -> Result<Vec<GameEntry>> {
+    parse_dat::<Game, RedumpParserError>(f, Some("redump.org"))?
+            .game.into_iter().map(|g| g.try_into()).collect()
+}
+
+/// Parses the contents of a redump.org XML DAT into a vector of `GameEntries`,
+/// ignoring the header.
+pub fn parse_unchecked(f: &str) -> Result<Vec<GameEntry>> {
+    parse_dat_unchecked::<Game, RedumpParserError>(f)?.game.into_iter().map(|g| g.try_into()).collect()
+}
+
+/// Parses the contents of a redump.org XML DAT into a vector of `GameEntries`
+/// This function will check that the 
+/// XML has the proper header for redump.org DATs. Use
+/// `parse_redump_unchecked` if you wish to ignore the header.
+pub fn parse_buf<R: std::io::BufRead>(f: R) -> Result<Vec<GameEntry>> {
+    parse_dat_buf::<R, Game, RedumpParserError>(f, Some("redump.org"))?
+            .game.into_iter().map(|g| g.try_into()).collect()
+}
+
+/// Parses the contents of a redump.org XML DAT into a vector of `GameEntries`,
+/// ignoring the header.
+pub fn parse_unchecked_buf<R: std::io::BufRead>(f: R) -> Result<Vec<GameEntry>> {
+    parse_dat_unchecked_buf::<R, Game, RedumpParserError>(f)?.game.into_iter().map(|g| g.try_into()).collect()
 }

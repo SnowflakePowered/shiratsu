@@ -1,6 +1,7 @@
 extern crate shiratsu_lib;
+use shiratsu_lib::dats::*;
 use shiratsu_lib::dats::Result;
-
+use shiratsu_lib::stone::get_platforms;
 fn main() -> Result<()>{
     let xml = r#"<?xml version="1.0"?>
     <!DOCTYPE datafile PUBLIC "-//Logiqx//DTD ROM Management Datafile//EN" "http://www.logiqx.com/Dats/datafile.dtd">
@@ -19,9 +20,12 @@ fn main() -> Result<()>{
 		<rom name="Resident Evil 4 (USA) (Disc 2).iso" size="1459978240" crc="6c83a5ff" md5="2381acd2199d6e7566932df86901903d" sha1="c75f7936814636ffe03277f363fc3427c98602ee"/>
 	</game>
     </datafile>"#;
-    // let vecs = shiratsu_lib::dats::parse_redump(xml)?;
-    // for game in vecs.iter() {
-    //     println!("{:?}", game)
-    // }
+    let vecs = from_unchecked_redump(xml)?;
+    for game in vecs.iter() {
+        println!("{}", game)
+    }
+    for platform in get_platforms() {
+        println!("{:?}", platform.1)
+    }
     Ok(())
 }

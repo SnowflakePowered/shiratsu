@@ -9,6 +9,7 @@ use serde_json;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::io;
+use std::convert::TryFrom;
 
 type Result<T> = std::result::Result<T, StoneError>;
 
@@ -47,10 +48,15 @@ impl std::fmt::Display for StoneError {
 #[derive(Debug, Deserialize, Eq, PartialEq, Hash)]
 pub struct PlatformId(String);
 
-impl From<&dyn AsRef<str>> for PlatformId {
-    fn from(platform_id_str: &dyn AsRef<str>) -> PlatformId {
+impl TryFrom<&dyn AsRef<str>> for PlatformId {
+    type Error = StoneError;
+    fn try_from(platform_id_str: &dyn AsRef<str>) -> Result<PlatformId> {
         let result = platform_id_str.as_ref();
-        PlatformId(result.to_ascii_uppercase())
+        if !result.contains("_") {
+            Err(StoneError::InvalidPlatformId(String::from(result)))
+        } else {
+            Ok(PlatformId(result.to_ascii_uppercase()))
+        }
     }
 }
 

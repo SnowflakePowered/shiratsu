@@ -32,42 +32,6 @@ wrap_error! {
     }
 }
 
-struct Article(&'static str, &'static str, Regex);
-
-impl Article {
-    fn find(&self, text: &str) -> Option<usize> {
-        self.2.find(text).map(|m| m.start())
-    }
-    const fn len_from(&self, idx: usize) -> usize {
-        self.0.len() + idx
-    }
-}
-
-macro_rules! article {
-    ($article: expr) => {
-        Article(
-            concat!(", ", $article),
-            concat!($article, " "),
-            Regex::new(concat!(", ", $article, "($|\\s)")).unwrap(),
-        )
-    };
-}
-
-fn move_article(mut text: String, articles: &[Article]) -> String {
-    let min_art = articles
-        .iter()
-        .filter_map(|art| art.find(&text).map(|idx| (art, idx)))
-        .min_by_key(|(_, idx)| *idx);
-
-    match min_art {
-        None => text,
-        Some((article, index)) => {
-            text.replace_range(index..article.len_from(index), "");
-            text.insert_str(0, article.1);
-            text
-        }
-    }
-}
 
 pub fn do_parse(input: &str) -> IResult<&str, NameInfo> {
     lazy_static! {
@@ -76,26 +40,7 @@ pub fn do_parse(input: &str) -> IResult<&str, NameInfo> {
         static ref BETA: Regex = Regex::new(r"^Beta\s?([0-9]?)+").unwrap();
         static ref DISC: Regex = Regex::new(r"^Disc (([0-9]?)+)").unwrap();
     };
-
-    lazy_static! {
-        static ref ARTICLES: Vec<Article> = vec![
-            article!("Eine"),
-            article!("The"),
-            article!("Der"),
-            article!("Die"),
-            article!("Das"),
-            article!("Ein"),
-            article!("Les"),
-            article!("Los"),
-            article!("Las"),
-            article!("An"),
-            article!("De"),
-            article!("La"),
-            article!("Le"),
-            article!("El"),
-            article!("A")
-        ];
-    }
+    
     let (input, _) = opt(tag("[BIOS]"))(input)?;
     let (input, title) = take_till(|c| c == '(')(input)?;
     let (input, region) = parens(input)?;
@@ -135,31 +80,31 @@ pub fn do_parse(input: &str) -> IResult<&str, NameInfo> {
         }
     }
 
-    let name = move_article(
-        String::from(title.trim()),
-        &[
-            article!("Eine"),
-            article!("The"),
-            article!("Der"),
-            article!("Die"),
-            article!("Das"),
-            article!("Ein"),
-            article!("Les"),
-            article!("Los"),
-            article!("Las"),
-            article!("An"),
-            article!("De"),
-            article!("La"),
-            article!("Le"),
-            article!("El"),
-            article!("A"),
-        ],
-    );
+    // let name = move_article(
+    //     String::from(title.trim()),
+    //     &[
+    //         article!("Eine"),
+    //         article!("The"),
+    //         article!("Der"),
+    //         article!("Die"),
+    //         article!("Das"),
+    //         article!("Ein"),
+    //         article!("Les"),
+    //         article!("Los"),
+    //         article!("Las"),
+    //         article!("An"),
+    //         article!("De"),
+    //         article!("La"),
+    //         article!("Le"),
+    //         article!("El"),
+    //         article!("A"),
+    //     ],
+    // );
 
     Ok((
         input,
         NameInfo {
-            release_name: name,
+            release_name: String::from(title.trim()),
             region: region_code,
             part_number,
             version,
@@ -168,20 +113,21 @@ pub fn do_parse(input: &str) -> IResult<&str, NameInfo> {
             status,
         },
     ))
+    
 }
 
-fn nointro_parser<'a>(input: String) -> Result<NameInfo> {
+fn tosec_parser<'a>(input: String) -> Result<NameInfo> {
     let value = do_parse(&input).map(|(_, value)| value)
         .map_err::<TosecNameError, _>(|err|err.into())?;
     Ok(value)
 }
 
 pub trait TosecNameable {
-    fn try_from_tosec(nointro: String) -> Result<NameInfo>;
+    fn try_from_tosec(tosec: String) -> Result<NameInfo>;
 }
 
 impl TosecNameable for NameInfo {
     fn try_from_tosec(name: String) -> Result<NameInfo> {
-        nointro_parser(name)
+        tosec_parser(name)
     }
 }

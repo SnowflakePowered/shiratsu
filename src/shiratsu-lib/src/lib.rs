@@ -6,7 +6,7 @@ extern crate phf;
 
 pub mod stone;
 pub mod region;
-pub mod util;
+mod util;
 pub mod dats;
 
 #[cfg(test)]

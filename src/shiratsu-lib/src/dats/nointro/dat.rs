@@ -4,7 +4,9 @@ use crate::wrap_error;
 
 use super::super::Result;
 use super::super::*;
-use quick_xml::de::{from_str as from_xml, DeError as ParseError};
+use quick_xml::de::{DeError as ParseError};
+
+use self::xml::*;
 
 #[derive(Debug, Deserialize, PartialEq)]
 struct Rom {
@@ -20,23 +22,6 @@ struct Rom {
 struct Game {
     name: String,
     rom: Vec<Rom>,
-}
-#[derive(Debug, Deserialize, PartialEq)]
-struct Datafile {
-    game: Vec<Game>,
-}
-
-wrap_error! {
-    wrap NoIntroParserError(ParseError) for DatError {
-        fn from (err) {
-            DatError::ParseError(format!("Error parsing No-Intro XML: {}", err.0.to_string()))
-        }
-    }
-}
-
-pub fn parse(f: &str) -> Result<Vec<GameEntry>> {
-    let d: Datafile = from_xml(f).map_err::<NoIntroParserError, _>(|e| e.into())?;
-    d.game.into_iter().map(|g| g.try_into()).collect()
 }
 
 impl TryFrom<Game> for GameEntry {
@@ -64,4 +49,43 @@ impl From<Rom> for RomEntry {
             size: rom.size,
         }
     }
+}
+
+wrap_error! {
+    wrap NoIntroParserError(ParseError) for DatError {
+        fn from (err) {
+            DatError::ParseError(format!("Error parsing No-Intro XML: {}", err.0.to_string()))
+        }
+    }
+}
+
+/// Parses the contents of a No-Intro XML DAT into a vector of `GameEntries`
+/// This function will check that the 
+/// XML has the proper header for No-Intro DATs. Use
+/// `parse_nointro_unchecked` if you wish to ignore the header.
+pub fn parse(f: &str) -> Result<Vec<GameEntry>> {
+    parse_dat::<Game, NoIntroParserError>(f, Some("No-Intro"))?
+            .game.into_iter().map(|g| g.try_into()).collect()
+}
+
+/// Parses the contents of a No-Intro XML DAT into a vector of `GameEntries`,
+/// ignoring the header element.
+pub fn parse_unchecked(f: &str) -> Result<Vec<GameEntry>> {
+    parse_dat_unchecked::<Game, NoIntroParserError>(f)?.game.into_iter().map(|g| g.try_into()).collect()
+}
+
+
+/// Parses the contents of a No-Intro XML DAT into a vector of `GameEntries`
+/// This function will check that the 
+/// XML has the proper header for No-Intro DATs. Use
+/// `parse_nointro_unchecked` if you wish to ignore the header.
+pub fn parse_buf<R: std::io::BufRead>(f: R) -> Result<Vec<GameEntry>> {
+    parse_dat_buf::<R, Game, NoIntroParserError>(f, Some("No-Intro"))?
+            .game.into_iter().map(|g| g.try_into()).collect()
+}
+
+/// Parses the contents of a No-Intro XML DAT into a vector of `GameEntries`,
+/// ignoring the header element.
+pub fn parse_unchecked_buf<R: std::io::BufRead>(f: R) -> Result<Vec<GameEntry>> {
+    parse_dat_unchecked_buf::<R, Game, NoIntroParserError>(f)?.game.into_iter().map(|g| g.try_into()).collect()
 }
