@@ -1,7 +1,7 @@
+use crate::wrap_error;
+use quick_xml::de::DeError as ParseError;
 use serde::Deserialize;
 use std::convert::{TryFrom, TryInto};
-use crate::wrap_error;
-use quick_xml::de::{DeError as ParseError};
 
 use super::super::tosec::TosecNameable;
 use super::super::xml::*;
@@ -57,41 +57,58 @@ wrap_error! {
     }
 }
 
-/// Parses the contents of a TOSEC XML DAT into a vector of `GameEntries`
-/// This function will check that the 
-/// XML has the proper header for TOSEC DATs. Use
-/// `parse_tosec_unchecked` if you wish to ignore the header.
 fn parse(f: &str) -> Result<Vec<GameEntry>> {
     parse_dat::<Game, TosecParserError>(f, Some("TOSEC"))?
-            .game.into_iter().map(|g| g.try_into()).collect()
+        .game
+        .into_iter()
+        .map(|g| g.try_into())
+        .collect()
 }
 
-/// Parses the contents of a TOSEC XML DAT into a vector of `GameEntries`,
-/// ignoring the header element.
 fn parse_unchecked(f: &str) -> Result<Vec<GameEntry>> {
-    parse_dat_unchecked::<Game, TosecParserError>(f)?.game.into_iter().map(|g| g.try_into()).collect()
+    parse_dat_unchecked::<Game, TosecParserError>(f)?
+        .game
+        .into_iter()
+        .map(|g| g.try_into())
+        .collect()
 }
 
-
-/// Parses the contents of a TOSEC XML DAT into a vector of `GameEntries`
-/// This function will check that the 
-/// XML has the proper header for TOSEC DATs. Use
-/// `parse_tosec_unchecked` if you wish to ignore the header.
 fn parse_buf<R: std::io::BufRead>(f: R) -> Result<Vec<GameEntry>> {
     parse_dat_buf::<R, Game, TosecParserError>(f, Some("TOSEC"))?
-            .game.into_iter().map(|g| g.try_into()).collect()
+        .game
+        .into_iter()
+        .map(|g| g.try_into())
+        .collect()
 }
 
-/// Parses the contents of a TOSEC XML DAT into a vector of `GameEntries`,
-/// ignoring the header element.
 fn parse_unchecked_buf<R: std::io::BufRead>(f: R) -> Result<Vec<GameEntry>> {
-    parse_dat_unchecked_buf::<R, Game, TosecParserError>(f)?.game.into_iter().map(|g| g.try_into()).collect()
+    parse_dat_unchecked_buf::<R, Game, TosecParserError>(f)?
+        .game
+        .into_iter()
+        .map(|g| g.try_into())
+        .collect()
 }
 
+/// Provides methods that parse an XML .dat files from [TOSEC](https://www.tosecdev.org/)
 pub trait FromTosec {
+    /// Parses the contents of a TOSEC XML DAT into a vector of `GameEntries`
+    /// This function will check that the
+    /// XML has the proper header for TOSEC DATs. Use
+    /// `parse_tosec_unchecked` if you wish to ignore the header.
     fn try_from_tosec(dat: &str) -> Result<Vec<GameEntry>>;
+
+    /// Parses the contents of a TOSEC XML DAT into a vector of `GameEntries`,
+    /// ignoring the header element.
     fn try_unchecked_from_tosec(dat: &str) -> Result<Vec<GameEntry>>;
+
+    /// Parses the contents of a TOSEC XML DAT into a vector of `GameEntries`
+    /// This function will check that the
+    /// XML has the proper header for TOSEC DATs. Use
+    /// `parse_tosec_unchecked` if you wish to ignore the header.
     fn try_from_tosec_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<GameEntry>>;
+
+    /// Parses the contents of a TOSEC XML DAT into a vector of `GameEntries`,
+    /// ignoring the header element.
     fn try_unchecked_from_tosec_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<GameEntry>>;
 }
 

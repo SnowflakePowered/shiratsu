@@ -23,23 +23,18 @@ fn main() -> Result<()>{
 		<description>Advance Guardian Heroes (2004)(Treasure - Ubisoft)(US)[!]</description>
 		<rom name="Advance Guardian Heroes (2004)(Treasure - Ubisoft)(US)[!].bin" size="8388608" crc="c501917f" sha1="d518d0a4818cc356ed79b29bc3c0e2264c0c2d07" md5="a26c440065d89f56275644ffa34140ef"/>
 	</game>
-	<game name="Advance Wars (2001)(Nintendo)(EU)(M4)[!]">
-		<description>Advance Wars (2001)(Nintendo)(EU)(M4)[!]</description>
-		<rom name="Advance Wars (2001)(Nintendo)(EU)(M4)[!].bin" size="8388608" crc="66fb29e9" sha1="d5f06a82c3e5f963ef169763edc2d691fed8124e" md5="f4c2b2fda444dcec1274844b9a764d64"/>
-	</game>
-	<game name="Altered Beast - Guardian of the Realms (2002)(Infogrames - Sega)(EU)(M5)[!]">
-		<description>Altered Beast - Guardian of the Realms (2002)(Infogrames - Sega)(EU)(M5)[!]</description>
-		<rom name="Altered Beast - Guardian of the Realms (2002)(Infogrames - Sega)(EU)(M5)[!].bin" size="8388608" crc="654f7916" sha1="4178bc2c89187dce127ab64dac2becf99fed0679" md5="c7c56aaed390488e4112ef64b51bb2ad"/>
-	</game>
+    <game name="Phantasy Star Online Episode I &amp; II (Europe) (En,Ja,Fr,De,Es)">
+    <category>Games</category>
+    <serial>DL-DOL-GPOP-EUR, SLUS 10230</serial>
+    <description>Phantasy Star Online Episode I &amp; II (Europe) (En,Ja,Fr,De,Es)</description>
+    <rom name="Phantasy Star Online Episode I &amp; II (Europe) (En,Ja,Fr,De,Es).iso" size="1459978240" crc="c9c7fbfe" md5="ee4c772cc90ecb6537a331538e1bf4db" sha1="da74531ed5bd62af29af4afe8ac33d97b0d21d4c"/>
+</game>
     </datafile>"#;
-    let vecs = GameEntry::try_unchecked_from_tosec(xml)?;
+    let vecs = GameEntry::try_unchecked_from_redump(xml)?;
     let demo = "Legend of TOSEC, The v20000101 (demo) (2019-04-02)(publisher)(US-EU)(Disc 3 of 3)(proto)";
     let demo_no = "Legend of TOSEC, The Rev 2 (2019-04-02)(publisher)(US)(File)(proto)(File)";
     for game in vecs.iter() {
         println!("{}", game)
     }
-    // for platform in get_platforms() {
-    //     println!("{:?}", platform.1)
-    // }
     Ok(())
 }

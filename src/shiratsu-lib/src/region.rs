@@ -2,7 +2,6 @@ use crate::chained_iter;
 use indexmap::IndexSet;
 use phf::phf_map;
 use std::iter::once;
-
 #[derive(Debug)]
 pub enum RegionError {
     InvalidFormat(RegionFormat),
