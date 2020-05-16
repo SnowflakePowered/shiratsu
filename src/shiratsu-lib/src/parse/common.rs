@@ -29,7 +29,7 @@ impl std::fmt::Display for ParseError {
             ParseError::HeaderMismatchError(expected, actual) =>
                 write!(f, 
                     "Expected DAT to have header homepage {} but got actual {}. Use the parse_unchecked variants to ignore header checking.", 
-                    expected, actual.as_deref().unwrap_or("None"))
+                    expected, actual.as_deref().unwrap_or("None")),
         }
     }
 }

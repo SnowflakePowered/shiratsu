@@ -1,2 +1,4 @@
+mod formats;
 mod platforms;
-pub use platforms::{PlatformId, PlatformInfo, get_stone as get_platforms};
+pub use formats::*;
+pub use platforms::{PlatformId, PlatformInfo, StoneError, StonePlatforms};

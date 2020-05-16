@@ -5,5 +5,4 @@ pub mod generic;
 mod article;
 mod common;
 pub(super) mod xml;
-
 pub use common::*;

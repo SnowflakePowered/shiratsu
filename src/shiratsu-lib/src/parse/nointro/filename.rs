@@ -65,8 +65,7 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
             _ if DISC.is_match(flag) => {
                 part_number = DISC
                     .captures(flag)
-                    .map(|caps| caps.get(1).map(|i| i.as_str().parse::<i32>().ok()))
-                    .unwrap_or(None)
+                    .and_then(|caps| caps.get(1).map(|i| i.as_str().parse::<i32>().ok()))
                     .unwrap_or(None);
             }
             _ => continue,
