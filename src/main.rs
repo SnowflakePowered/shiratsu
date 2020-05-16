@@ -18,7 +18,7 @@ fn main() -> Result<()>{
     let file = File::open("redump.dat")?;
     let mut reader = BufReader::new(file);
 
-    let vecs = GameEntry::try_unchecked_from_redump_buf(reader)?;
+    let vecs = GameEntry::try_from_redump_buf(reader)?;
     let stone = StonePlatforms::get();
     // let demo = "Legend of TOSEC, The v20000101 (demo) (2019-04-02)(publisher)(US-EU)(Disc 3 of 3)(proto)";
     // let demo_no = "Legend of TOSEC, The Rev 2 (2019-04-02)(publisher)(US)(File)(proto)(File)";

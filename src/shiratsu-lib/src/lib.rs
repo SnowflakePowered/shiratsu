@@ -11,7 +11,7 @@ mod util;
 pub mod parse;
 
 pub mod error {
-    #[derive(Debug)]
+    // #[derive(Debug)]
     pub enum ShiratsuError {
         StoneError(crate::stone::StoneError),
         ParseError(crate::parse::ParseError),
@@ -19,6 +19,16 @@ pub mod error {
     }
     impl std::error::Error for ShiratsuError {}
 
+    impl std::fmt::Debug for ShiratsuError{
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                ShiratsuError::StoneError(err) => write!(f, "{}", err),
+                ShiratsuError::ParseError(err) => write!(f, "{}", err),
+                ShiratsuError::IOError(err) => write!(f, "{}", err),
+            }
+        }
+    }
+    
     impl std::fmt::Display for ShiratsuError{
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             write!(f, "{:?}", self)

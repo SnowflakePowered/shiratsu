@@ -20,9 +20,10 @@ pub(super) fn parse_dat<G: PartialEq + DeserializeOwned, E: Into<ParseError> + F
     expect_homepage: Option<&'static str>,
 ) -> DatResult<Datfile<G>> {
     parse_dat_unchecked::<G, E>(f).and_then(|e| {
-        if expect_homepage.is_none() && e.header.is_none()
-            || expect_homepage.is_none() && e.header.as_ref().unwrap().homepage.is_none()
+        if let (None, &None) = (expect_homepage, &e.header)
         {
+           return Ok(e);
+        } else if let (None, &Some(&None)) = (expect_homepage, &e.header.as_ref().map(|header| &header.homepage)){
             return Ok(e);
         } else if let Some(expected) = expect_homepage {
             if expected == e.header.as_ref().unwrap().homepage.as_deref().unwrap() {
@@ -55,13 +56,16 @@ pub(super) fn parse_dat_buf<
     expect_homepage: Option<&'static str>,
 ) -> DatResult<Datfile<G>> {
     parse_dat_unchecked_buf::<R, G, E>(f).and_then(|e| {
-        if expect_homepage.is_none() && e.header.is_none()
-            || expect_homepage.is_none() && e.header.as_ref().unwrap().homepage.is_none()
+        if let (None, &None) = (expect_homepage, &e.header)
         {
+           return Ok(e);
+        } else if let (None, &Some(&None)) = (expect_homepage, &e.header.as_ref().map(|header| &header.homepage)){
             return Ok(e);
         } else if let Some(expected) = expect_homepage {
-            if expected == e.header.as_ref().unwrap().homepage.as_deref().unwrap() {
-                return Ok(e);
+            if let Some(homepage) = &e.header.as_ref().and_then(|header| header.homepage.as_deref()) {
+                if expected == *homepage {
+                    return Ok(e);
+                }
             }
         }
         Err(ParseError::HeaderMismatchError(
