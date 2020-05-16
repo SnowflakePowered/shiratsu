@@ -41,18 +41,20 @@ lazy_static! {
     ];
 }
 
-pub(super) fn move_article(mut text: String, articles: &[Article]) -> String {
+/// From a provided list of articles, mutates the provided title
+/// so that the first article encounted comes at the beginning of the string, if
+/// it is somewhere after a comma.
+///
+/// # Arguments
+/// - `title`: The string to move
+/// - `article`: The articles to check. The first article encountered in the correct position will be moved.
+pub(super) fn move_article(title: &mut String, articles: &[Article]) {
     let min_art = articles
         .iter()
-        .filter_map(|art| art.find(&text).map(|idx| (art, idx)))
+        .filter_map(|art| art.find(&title).map(|idx| (art, idx)))
         .min_by_key(|(_, idx)| *idx);
-
-    match min_art {
-        None => text,
-        Some((article, index)) => {
-            text.replace_range(index..article.len_from(index), "");
-            text.insert_str(0, article.1);
-            text
-        }
+    if let Some((article, index)) = min_art {
+        title.replace_range(index..article.len_from(index), "");
+        title.insert_str(0, article.1);
     }
 }

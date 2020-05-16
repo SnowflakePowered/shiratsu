@@ -72,10 +72,8 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
         }
     }
 
-    let name = move_article(
-        String::from(title.trim()),
-        &article::ARTICLES,
-    );
+    let mut name = String::from(title.trim());
+    move_article( &mut name,&article::ARTICLES);
 
     Ok((
         input,

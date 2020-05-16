@@ -88,10 +88,8 @@ pub fn do_parse<'a, 'b>(title: &'a str, input: &'b str) -> IResult<&'b str, Name
         version = Some(m.as_str().to_string())
     }
 
-    let name = move_article(
-        String::from(title.trim()),
-        &article::ARTICLES,
-    );
+    let mut name = String::from(title.trim());
+    move_article( &mut name,&article::ARTICLES);
 
     Ok((
         input,
