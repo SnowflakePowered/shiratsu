@@ -1,5 +1,6 @@
 extern crate lazy_static_include;
 extern crate lazy_static;
+extern crate chained_iter;
 
 extern crate serde;
 extern crate serde_json;

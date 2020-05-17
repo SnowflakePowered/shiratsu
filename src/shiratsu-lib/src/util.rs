@@ -1,16 +1,3 @@
-// todo: export this out to its own library.
-// thanks @Rantanen on the Rust discord for the idea.
-
-#[macro_export]
-macro_rules! chained_iter {
-    ($elem: expr) => (
-        once($elem)
-    );
-    ($first: expr, $($rest: expr), + $(,)?) => {
-        once($first)$(.chain(once($rest)))*
-    }
-}
-
 #[macro_export(local_inner_macros)]
 macro_rules! wrap_error {
     ($(wrap $wrapper:ident ($error: ty) for $coerce: ty { fn from ($err: tt) { $body: expr } })*) => {
