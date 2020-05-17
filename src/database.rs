@@ -107,6 +107,7 @@ fn create_database(conn: &mut Connection) -> SqliteResult<()> {
     tx.execute(
         "CREATE TABLE game ( 
         game_id INTEGER PRIMARY KEY,
+        platform_id TEXT NOT NULL,
         entry_name TEXT NOT NULL,
         release_name TEXT,
         region TEXT NOT NULL,
@@ -160,6 +161,7 @@ fn insert_entry(
 
     tx.execute_named(r#"
         INSERT INTO game (
+            platform_id,
             entry_name,
             release_name,
             region,
@@ -171,9 +173,10 @@ fn insert_entry(
             naming_convention,
             source
         )
-        VALUES (:entry_name, :release_name, :region, :part_number, :is_unlicensed, :is_demo, :version, :status, :naming_convention, :source)
+        VALUES (:platform_id, :entry_name, :release_name, :region, :part_number, :is_unlicensed, :is_demo, :version, :status, :naming_convention, :source)
     "#,
     named_params! {
+        ":platform_id": platform.as_ref(),
         ":entry_name": entry.entry_name(),
         ":release_name": entry.info().map(|n| n.release_name()),
         ":region": region_str.as_deref().unwrap_or(Region::Unknown.as_ref()),

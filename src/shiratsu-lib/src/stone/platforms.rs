@@ -82,6 +82,12 @@ impl std::fmt::Display for StoneError {
 #[derive(Debug, Deserialize, Eq, PartialEq, Hash, Clone)]
 pub struct PlatformId(String);
 
+impl AsRef<str> for PlatformId {
+    fn as_ref(&self) -> &str{
+        &self.0
+    }
+}
+
 impl TryFrom<String> for &'static PlatformId {
     type Error = StoneError;
     fn try_from(platform_id_str: String) -> Result<&'static PlatformId> {
