@@ -56,7 +56,7 @@ impl RomEntry {
         &self.file_name
     }
     /// The size of the ROM
-    pub fn size(&self) -> u64 {
+    pub fn size(&self) -> u32 {
         self.size
     }
 }
@@ -72,7 +72,7 @@ pub struct RomEntry {
     /// The canonical file name of the ROM
     pub(super) file_name: String,
     /// The size of the ROM
-    pub(super) size: u64,
+    pub(super) size: u32,
 }
 
 /// A single entry that describes a game, which may hold a collection of RomEntries
@@ -128,35 +128,35 @@ pub struct NameInfo {
 
 impl NameInfo {
     /// The region of the game.
-    fn region(&self) -> &[Region] {
+    pub fn region(&self) -> &[Region] {
         &self.region
     }
     /// If this entry is split into multiple parts, the part number of this entry.
-    fn part_number(&self) -> Option<i32> {
+    pub fn part_number(&self) -> Option<i32> {
         self.part_number
     }
     /// Whether or not this game is unlicensed.
-    fn is_unlicensed(&self) -> bool {
+    pub fn is_unlicensed(&self) -> bool {
         self.is_unlicensed
     }
     /// Whether or not this game is a sample or a demo version of a full game.
-    fn is_demo(&self) -> bool {
+    pub fn is_demo(&self) -> bool {
         self.is_demo
     }
     /// The version of the game entry.
-    fn version(&self) -> Option<&str> {
+    pub fn version(&self) -> Option<&str> {
         self.version.as_deref()
     }
     /// The name of the release, with all tags removed, and articles at the beginning of the title.
-    fn release_name(&self) -> &str {
+    pub fn release_name(&self) -> &str {
         &self.release_name.as_str()
     }
     /// The development status of the game entry.
-    fn development_status(&self) -> DevelopmentStatus {
+    pub fn development_status(&self) -> DevelopmentStatus {
         self.status
     }
     /// The naming convention of the structuredly named filename.
-    fn naming_convention(&self) -> NamingConvention {
+    pub fn naming_convention(&self) -> NamingConvention {
         self.naming_convention
     }
 }
@@ -199,7 +199,7 @@ impl Display for NameInfo {
             "    (region {:?})",
             self.region()
                 .iter()
-                .map(|&r| r.into())
+                .map(|r| r.into())
                 .collect::<Vec<&str>>()
         )?;
         writeln!(f, "    (part {})", self.part_number().map(|i| format!("{}", i)).as_deref().unwrap_or("None"))?;
@@ -234,11 +234,27 @@ pub enum DevelopmentStatus {
     ///
     /// In No-Intro, this is equivalent to the (Beta) flag. In TOSEC, (alpha), (beta), (preview), and (pre-release) all
     /// fall under this status.
-    Prelease,
+    Prerelease,
     /// An unreleased, unfinished product that was not released.
     ///
     /// In No-Intro, this is equivalent to the (Proto) flag. In TOSEC, this is equivalent to the (proto) flag.
     Prototype,
+}
+
+impl From<&DevelopmentStatus> for &str {
+    fn from(status: &DevelopmentStatus) -> Self {
+        match status {
+            DevelopmentStatus::Release => "release",
+            DevelopmentStatus::Prerelease => "prerelease",
+            DevelopmentStatus::Prototype => "prototype"
+        }
+    }
+}
+
+impl AsRef<str> for DevelopmentStatus {
+    fn as_ref(&self) -> &str {
+        self.into()
+    } 
 }
 
 /// Naming convention commonly used by DAT producers.
@@ -256,6 +272,21 @@ pub enum NamingConvention {
     NoIntro,
 }
 
+impl From<&NamingConvention> for &str {
+    fn from(naming: &NamingConvention) -> Self {
+        match naming {
+            NamingConvention::Unknown => "Unknown",
+            NamingConvention::TOSEC => "TOSEC",
+            NamingConvention::NoIntro => "No-Intro",
+        }
+    }
+}
+
+impl AsRef<str> for NamingConvention {
+    fn as_ref(&self) -> &str {
+        self.into()
+    } 
+}
 /// Two RomEntries are PartialEq if they have matching hashes.
 impl PartialEq for RomEntry {
     fn eq(&self, other: &RomEntry) -> bool {

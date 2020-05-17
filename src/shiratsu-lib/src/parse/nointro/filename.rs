@@ -61,7 +61,7 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
             _ if VERSION.is_match(flag) || REVISION.is_match(flag) => {
                 version = Some(String::from(flag));
             }
-            _ if BETA.is_match(flag) => status = DevelopmentStatus::Prelease,
+            _ if BETA.is_match(flag) => status = DevelopmentStatus::Prerelease,
             _ if DISC.is_match(flag) => {
                 part_number = DISC
                     .captures(flag)

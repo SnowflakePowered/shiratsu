@@ -8,7 +8,7 @@ use std::convert::{TryFrom, TryInto};
 #[derive(Debug, Deserialize, PartialEq)]
 struct Rom {
     name: String,
-    size: u64,
+    size: u32,
     crc: String,
     md5: String,
     sha1: String,

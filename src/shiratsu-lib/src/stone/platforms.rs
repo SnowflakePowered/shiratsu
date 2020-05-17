@@ -15,7 +15,7 @@ type Result<T> = std::result::Result<T, StoneError>;
 
 lazy_static_include_str!(STONE_DIST, "../../stone/dist/stone.dist.json");
 lazy_static! {
-    pub static ref STONE: StonePlatforms = load_platform_info().unwrap();
+    pub static ref STONE: (StonePlatforms, String) = load_platform_info().unwrap();
 }
 
 pub struct StonePlatforms {
@@ -43,7 +43,11 @@ impl StonePlatforms {
     
     /// Gets a reference to the global list of Stone platforms embedded in the library.
     pub fn get() -> &'static StonePlatforms {
-        &STONE
+        &STONE.0
+    }
+
+    pub fn version() -> &'static str {
+        &STONE.1
     }
 }
 
@@ -115,18 +119,6 @@ impl TryFrom<&str> for &'static PlatformId {
     }
 }
 
-impl TryFrom<&dyn AsRef<str>> for &'static PlatformId {
-    type Error = StoneError;
-    fn try_from(platform_id_str: &dyn AsRef<str>) -> Result<&'static PlatformId> {
-        let stone = StonePlatforms::get();
-        if let Some(platform_id_ref) = stone.get_platform_id_ref(platform_id_str.as_ref()) {
-            Ok(platform_id_ref)
-        } else {
-            Err(StoneError::InvalidPlatformId(String::from(platform_id_str.as_ref())))
-        }
-    }
-}
-
 /// Describes a platform's ID and file types in Stone
 #[derive(Debug, Deserialize)]
 pub struct PlatformInfo {
@@ -166,10 +158,14 @@ impl PlatformInfo {
     }
 }
 
-fn load_platform_info() -> Result<StonePlatforms> {
+fn load_platform_info() -> Result<(StonePlatforms, String)> {
     let stone_data: Value = serde_json::from_str(*STONE_DIST)?;
     let platform_data = stone_data
         .get("Platforms")
+        .ok_or(StoneError::InvalidStoneFile)?;
+    let version = stone_data.get("version")
+        .and_then(|val|val.as_str())
+        .map(|val| String::from(val))
         .ok_or(StoneError::InvalidStoneFile)?;
     let mut value =
         serde_json::from_value::<HashMap<PlatformId, PlatformInfo>>(platform_data.clone())?;
@@ -181,5 +177,5 @@ fn load_platform_info() -> Result<StonePlatforms> {
             platform.file_types.insert(String::from(&ext[1..]), mime);
         }
     }
-    Ok(StonePlatforms::new(value))
+    Ok((StonePlatforms::new(value), version))
 }

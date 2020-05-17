@@ -10,3 +10,4 @@ edition = "2018"
 
 [dependencies]
 shiratsu-lib = { path = "./src/shiratsu-lib" }
+rusqlite = { version = "0.23.1", features = ["backup", "bundled"] }

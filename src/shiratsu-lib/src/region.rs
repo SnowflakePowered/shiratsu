@@ -363,7 +363,7 @@ pub fn from_nointro_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> 
 
 /// Creates a TOSEC-compatible ISO code region string, separated by hyphens,
 /// from a vector of Region.
-pub fn to_region_string(regions: &Vec<Region>) -> String {
+pub fn to_region_string(regions: &[Region]) -> String {
     regions
         .iter()
         .map(|r| r.into())
@@ -394,14 +394,14 @@ pub fn parse_regions<T: AsRef<str>>(region_str: T) -> Vec<Region> {
         .unwrap_or_else(|| vec![Region::Unknown])
 }
 
-impl From<&Region> for &str {
-    fn from(region: &Region) -> Self {
-        (*region).into()
-    }
+impl AsRef<str> for Region {
+    fn as_ref(&self) -> &str {
+        self.into()
+    } 
 }
 
-impl From<Region> for &str {
-    fn from(region: Region) -> Self {
+impl From<&Region> for &str {
+    fn from(region: &Region) -> Self {
         match region {
             Region::UnitedArabEmirates => "AE",
             Region::Albania => "AL",

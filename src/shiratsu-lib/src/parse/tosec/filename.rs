@@ -59,7 +59,7 @@ pub fn do_parse<'a, 'b>(title: &'a str, input: &'b str) -> IResult<&'b str, Name
         }
 
         match tag {
-            "alpha" | "beta" | "preview" | "pre-release" => status = DevelopmentStatus::Prelease,
+            "alpha" | "beta" | "preview" | "pre-release" => status = DevelopmentStatus::Prerelease,
             "proto" => status = DevelopmentStatus::Prototype,
             _ if tag.len() > 4 => match &tag[0..4] {
                 "Disc" | "Disk" | "File" | "Part" | "Tape" => {

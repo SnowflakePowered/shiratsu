@@ -10,6 +10,9 @@ pub mod region;
 mod util;
 pub mod parse;
 
+#[cfg(feature = "rusqlite")]
+pub mod rusqlite;
+
 pub mod error {
     // #[derive(Debug)]
     pub enum ShiratsuError {
