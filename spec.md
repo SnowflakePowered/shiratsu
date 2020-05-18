@@ -34,7 +34,8 @@ Each row of the `game` table is REQUIRED to describe a single *game entry*.
 | `game_id`           | An internal ID used to refer to the `serial` and `rom` rows related to this `game` row. This ID is unstable and MUST NOT be persisted. | REQUIRED |
 | `platform_id`       | The Stone *platform ID* of the *platform* this *game entry* was intended for.                                                          | REQUIRED |
 | `entry_name`        | The canonical name of the *game entry*                                                                                                 | REQUIRED |
-| `release_name`      | The distribution or release name of the *game entry* that is is known as.†\* This is usable as a search term for scraping purposes.    | REQUIRED |
+| `entry_title`       | The canonical name of the *game entry*, with any metadata flags removed.                                                               | REQUIRED |
+| `release_title`     | The distribution or release name of the *game entry* that is is known as.†\* This is usable as a search term for scraping purposes.    | REQUIRED |
 | `region`            | The region the game was released under.†                                                                                               | REQUIRED |
 | `part_number`       | If this *game entry* is multi-part, or is one part of multiple discs or tapes, the part number thereof.†                               | OPTIONAL |
 | `is_unlicensed`     | If this *game entry* is of an unlicensed release.†                                                                                     | REQUIRED |
@@ -44,7 +45,7 @@ Each row of the `game` table is REQUIRED to describe a single *game entry*.
 | `naming_convention` | The *naming convention* used the `entry_name` conforms to.                                                                             | REQUIRED |
 | `source`            | The name of the *cataloguing organization* that provided the source data.                                                              | REQUIRED |
 
-†as ascertained from the `entry_name`, in accordance with the *naming convention* used by the source data.
+†as ascertained from the `entry_title`, in accordance with the *naming convention* used by the source data.
 \* see [release name derivation](#release-name-derivation) on how this name is derived.
 
 The `game_id` value MUST NOT be saved or persisted anywhere outside of a query. It SHOULD NOT be used for anything except to refer to other tables that relate
@@ -52,8 +53,8 @@ to a game entry, and SHALL NOT carry any meaning across different releases of th
 game entry, and MAY change without incurring API breakage across different releases of the Shiragame database. They MUST only be treated as opaque cursors by the
 client consumer.
 
-#### Release Name Derivation
-The release name is the name the *game entry* was sold or distributed under, without any copyright or trademark markers. This is derived from the *game entry* name with the following rules.
+#### Release Title Derivation
+The release title is the name the *game entry* was sold or distributed under, without any copyright or trademark markers. This is derived from the *game entry* name with the following rules.
 
 1. The first article following a comma is moved to the beginning of the string. For example, "Legend of Shiratsu, The - Wind of the City" becomes "The Legend of Shiratsu - Wind of the City".
    The following strings are considered 'articles'.

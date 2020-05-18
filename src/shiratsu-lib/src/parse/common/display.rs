@@ -33,7 +33,8 @@ impl fmt::Display for GameEntry {
 impl fmt::Display for NameInfo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "")?;
-        writeln!(f, "    (release \"{}\")", self.release_name())?;
+        writeln!(f, "    (entry \"{}\")", self.entry_title())?;
+        writeln!(f, "    (release \"{}\")", self.release_title())?;
         writeln!(
             f,
             "    (region {:?})",

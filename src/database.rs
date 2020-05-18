@@ -114,7 +114,8 @@ fn create_database(conn: &mut Connection) -> SqliteResult<()> {
         game_id INTEGER PRIMARY KEY,
         platform_id TEXT NOT NULL,
         entry_name TEXT NOT NULL,
-        release_name TEXT,
+        entry_title TEXT,
+        release_title TEXT,
         region TEXT NOT NULL,
         part_number INTEGER,
         is_unlicensed BOOLEAN NOT NULL,
@@ -169,7 +170,8 @@ fn insert_entry(
         INSERT INTO game (
             platform_id,
             entry_name,
-            release_name,
+            entry_title,
+            release_title,
             region,
             part_number,
             is_unlicensed,
@@ -179,12 +181,13 @@ fn insert_entry(
             naming_convention,
             source
         )
-        VALUES (:platform_id, :entry_name, :release_name, :region, :part_number, :is_unlicensed, :is_demo, :version, :status, :naming_convention, :source)
+        VALUES (:platform_id, :entry_name, :entry_title, :release_title, :region, :part_number, :is_unlicensed, :is_demo, :version, :status, :naming_convention, :source)
     "#,
     named_params! {
         ":platform_id": platform.as_ref(),
         ":entry_name": entry.entry_name(),
-        ":release_name": entry.info().map(|n| n.release_name()),
+        ":entry_title": entry.info().map(|n| n.entry_title()),
+        ":release_title": entry.info().map(|n| n.release_title()),
         ":region": region_str.as_deref().unwrap_or(Region::Unknown.as_ref()),
         ":part_number": entry.info().map(|n| n.part_number()),
         ":is_unlicensed": entry.info().map(|n| n.is_unlicensed()).unwrap_or(false),

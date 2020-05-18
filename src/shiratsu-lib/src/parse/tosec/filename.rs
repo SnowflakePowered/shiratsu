@@ -87,14 +87,16 @@ pub fn do_parse<'a, 'b>(title: &'a str, input: &'b str) -> IResult<&'b str, Name
         version = Some(m.as_str().to_string())
     }
 
-    let mut name = String::from(title.trim());
-    move_article(&mut name, &ARTICLES);
-    replace_hyphen(&mut name);
+    let entry_title = String::from(title.trim());
+    let mut release_title = entry_title.clone();
+    move_article(&mut release_title, &ARTICLES);
+    replace_hyphen(&mut release_title);
 
     Ok((
         input,
         NameInfo {
-            release_name: name,
+            entry_title,
+            release_title,
             region: region.unwrap_or(vec![Region::Unknown]),
             part_number,
             version,

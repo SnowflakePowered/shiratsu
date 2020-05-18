@@ -3,7 +3,8 @@ use super::*;
 
 #[derive(Debug)]
 pub struct NameInfo {
-    pub(in super::super) release_name: String,
+    pub(in super::super) entry_title: String,
+    pub(in super::super) release_title: String,
     pub(in super::super) region: Vec<Region>,
     pub(in super::super) part_number: Option<i32>,
     pub(in super::super) version: Option<String>,
@@ -35,8 +36,11 @@ impl NameInfo {
         self.version.as_deref()
     }
     /// The name of the release, with all tags removed, and articles at the beginning of the title.
-    pub fn release_name(&self) -> &str {
-        &self.release_name.as_str()
+    pub fn release_title(&self) -> &str {
+        &self.release_title.as_str()
+    }
+    pub fn entry_title(&self) -> &str {
+        &self.entry_title.as_str()
     }
     /// The development status of the game entry.
     pub fn development_status(&self) -> DevelopmentStatus {

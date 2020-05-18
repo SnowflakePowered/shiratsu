@@ -71,13 +71,15 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
         }
     }
 
-    let mut name = String::from(title.trim());
-    move_article(&mut name, &ARTICLES);
-    replace_hyphen(&mut name);
+    let entry_title = String::from(title.trim());
+    let mut release_title = entry_title.clone();
+    move_article(&mut release_title, &ARTICLES);
+    replace_hyphen(&mut release_title);
     Ok((
         input,
         NameInfo {
-            release_name: name,
+            entry_title,
+            release_title,
             region: region_code,
             part_number,
             version,
