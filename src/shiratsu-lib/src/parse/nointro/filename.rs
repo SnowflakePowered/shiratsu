@@ -31,8 +31,8 @@ fn take_until_parens(input: &str) -> IResult<&str, (&str, &str, &str)> {
 
 wrap_error! {
     wrap <'a> NoIntroNameError(nom::Err<(&'a str, nom::error::ErrorKind)>) for ParseError {
-        fn from (err) {
-            ParseError::ParseError(format!("Error parsing Redump XML: {}", err.0.to_string()))
+        fn from (_) {
+            ParseError::BadFileNameError(NamingConvention::NoIntro)
         }
     }
 }
