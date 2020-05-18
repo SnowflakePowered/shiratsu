@@ -30,7 +30,7 @@ wrap_error! {
 fn do_parse(input: &str) -> IResult<&str, NameInfo> {
     lazy_static! {
         static ref REVISION: Regex = Regex::new(r"^Rev [0-9]").unwrap();
-        static ref VERSION: Regex = Regex::new(r"^v([0-9]?)+(\.([0-9]?)+)?").unwrap();
+        static ref VERSION: Regex = Regex::new(r"^(v|Version )([0-9]?)+(\.([\w\.]?)+)?").unwrap();
         static ref BETA: Regex = Regex::new(r"^Beta\s?([0-9]?)+").unwrap();
         static ref DISC: Regex = Regex::new(r"^Disc (([0-9]?)+)").unwrap();
     };

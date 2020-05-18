@@ -10,6 +10,9 @@ use std::path::Path;
 use std::result;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{io, io::ErrorKind};
+
+use uuid::Uuid;
+
 pub struct ShiratsuDatabase {
     memory_connection: Connection,
 }
@@ -83,21 +86,23 @@ fn write_meta_table(conn: &mut Connection) -> SqliteResult<()> {
     tx.execute(
         "CREATE TABLE shiragame (
         shiragame TEXT,
-        schema_version INTEGER,
+        schema_version TEXT,
         stone_version TEXT,
         generated TEXT,
-        generated_by TEXT
+        release TEXT,
+        aggregator TEXT
     )",
         params! {},
     )?;
-    tx.execute_named("INSERT INTO shiragame (shiragame, schema_version, stone_version, generated, generated_by)
-                                        VALUES(:shiragame, :schema_version, :stone_version, :generated, :generated_by)",
+    tx.execute_named("INSERT INTO shiragame (shiragame, schema_version, stone_version, generated, release, aggregator)
+                                        VALUES(:shiragame, :schema_version, :stone_version, :generated, :release, :aggregator)",
                     named_params! {
                         ":shiragame": "shiragame",
-                        ":schema_version": 2,
+                        ":schema_version": "2.0.0",
                         ":stone_version": StonePlatforms::version(),
                         ":generated": get_unix_time_string(),
-                        ":generated_by": "shiratsu"
+                        ":release": Uuid::new_v4().to_string(),
+                        ":aggregator": "shiratsu"
                     })?;
     tx.commit()
 }
@@ -125,6 +130,7 @@ fn create_database(conn: &mut Connection) -> SqliteResult<()> {
     tx.execute(
         "CREATE TABLE serial ( 
         serial TEXT NOT NULL,
+        normalized TEXT NOT NULL,
         game_id INTEGER NOT NULL,
         FOREIGN KEY (game_id) REFERENCES game (game_id)
     )",
@@ -221,12 +227,14 @@ fn insert_entry(
             r#"
             INSERT INTO serial(
                 serial,
+                normalized,
                 game_id
             )
-            VALUES (:serial, :game_id)
+            VALUES (:serial, :normalized, :game_id)
         "#,
             named_params! {
-                ":serial" : serial,
+                ":serial" : serial.as_ref(),
+                ":normalized" : serial.as_normalized(platform).as_ref().as_ref(),
                 ":game_id": game_id,
             },
         )?;

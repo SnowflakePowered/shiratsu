@@ -1,6 +1,6 @@
 [package]
 name = "shiratsu"
-version = "0.1.0"
+version = "2.0.0"
 authors = ["Ronny Chan <ronny6993@gmail.com>"]
 edition = "2018"
 
@@ -11,3 +11,4 @@ edition = "2018"
 [dependencies]
 shiratsu-lib = { path = "./src/shiratsu-lib" }
 rusqlite = { version = "0.23.1", features = ["backup", "bundled"] }
+uuid = { version = "0.8", features = ["v4"] }

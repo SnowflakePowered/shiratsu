@@ -1,5 +1,6 @@
 extern crate rusqlite;
 
+use std::borrow::Cow;
 use std::fs::File;
 use std::io::BufReader;
 
@@ -33,6 +34,11 @@ fn main() -> Result<()>{
     // println!("Parsed {} games", vecs.iter().count());
     // let nes = String::from("NINTENDO").try_into()?;
 
+    let serial = Serial::new("LSP-020170".to_string());
+    // match  {
+        
+    // }
+    println!("{:?}", serial.as_normalized("SONY_PSX".try_into()?));
     for game in vecs.iter() {
         db.add_entry(game, platform_id).unwrap();
     }

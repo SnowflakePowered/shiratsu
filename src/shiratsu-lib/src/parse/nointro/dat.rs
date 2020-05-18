@@ -31,7 +31,9 @@ impl TryFrom<Game> for GameEntry {
         Ok(GameEntry {
             info: Some(NameInfo::try_from_nointro(&name).map(|n| n.into())?),
             entry_name: name,
-            serials: rom.iter().filter_map(|r| r.serial.clone()).collect(),
+            serials: rom.iter().filter_map(|r| r.serial.clone())
+                .map(|s| Serial::new(s))
+                .collect(),
             rom_entries: rom.into_iter().map(|r| r.into()).collect(),
             source: "No-Intro",
         })
