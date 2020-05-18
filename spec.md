@@ -115,6 +115,7 @@ Describes this release of the Shiragame database. This table MUST only contain o
 | `generated`      | The time this release was created, expressed as a Unix timestamp (seconds since epoch)                           | REQUIRED |
 | `release`        | A version 4 UUID that identifies this Shiragame database.                                                        | REQUIRED |
 | `aggregator`     | The aggregator that generated this Shiragame database. In shiratsu's case, the string `shiratsu`                 | REQUIRED |
+
 [stone.dist]: https://github.com/SnowflakePowered/stone/blob/master/dist/stone.dist.json
 
 ## Versioning
