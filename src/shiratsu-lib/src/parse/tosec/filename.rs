@@ -1,6 +1,6 @@
 use super::super::Result;
 use super::super::*;
-use crate::region::{from_tosec_region, Region};
+use crate::region::Region;
 use crate::wrap_error;
 use lazy_static::*;
 use regex::Regex;
@@ -51,7 +51,7 @@ pub fn do_parse<'a, 'b>(title: &'a str, input: &'b str) -> IResult<&'b str, Name
     let mut region: Option<Vec<Region>> = None;
     for tag in tags {
         if region.is_none() {
-            let region_candidate = from_tosec_region(tag);
+            let region_candidate = Region::try_from_tosec_region(tag);
             if let Ok(good_region) = region_candidate{
                 region = Some(good_region)
             }

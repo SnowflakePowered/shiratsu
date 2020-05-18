@@ -1,6 +1,6 @@
 use super::super::Result;
 use super::super::*;
-use crate::region::{from_nointro_region, Region};
+use crate::region::Region;
 use crate::wrap_error;
 use lazy_static::*;
 use regex::Regex;
@@ -51,7 +51,7 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
     let mut input = input;
     while let None = region_code {
         let (_input, (l, region_candidate, r)) = alt((parens_with, take_until_parens))(input)?;
-        if let Ok(region) = from_nointro_region(region_candidate) {
+        if let Ok(region) = Region::try_from_nointro_region(region_candidate) {
             region_code = Some(region)
         } else {
             entry_title.push_str(l);

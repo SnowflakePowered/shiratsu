@@ -2,7 +2,7 @@ use rusqlite::{backup::*, named_params, params, Connection, Result as SqliteResu
 
 use shiratsu_lib::{
     parse::*,
-    region::{to_region_string, Region},
+    region::Region,
     stone::{FindRomMimetype, PlatformId, StonePlatforms},
 };
 
@@ -164,7 +164,7 @@ fn insert_entry(
     let region_str = entry
         .info()
         .map(|n| n.region())
-        .map(|r| to_region_string(r));
+        .map(|r| Region::to_region_string(r));
 
     tx.execute_named(r#"
         INSERT INTO game (

@@ -270,12 +270,30 @@ pub enum Region {
     SouthAfrica,
 }
 
+impl Region {
+    pub fn try_from_tosec_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Self>> {
+        from_tosec_region(region_str)
+    }
+    pub fn try_from_nointro_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Self>> {
+        from_nointro_region(region_str)
+    }
+    pub fn try_from_goodtools_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Self>> {
+        from_goodtools_region(region_str)
+    }
+    pub fn to_region_string(regions: &[Self]) -> String {
+        to_region_string(regions)
+    }
+    pub fn from_region_string<T: AsRef<str>>(region_str: T) -> Vec<Self> {
+        parse_regions(region_str)
+    }
+}
+
 /// Parse a valid TOSEC region string into a `Vec<Region>`.
 /// A valid region string is 2 uppercase letter country codes, separated by hyphens.
 ///
 /// # Arguments
 /// - `region_str` The region string.
-pub fn from_tosec_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
+fn from_tosec_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
     let mut regions: IndexSet<Region> = IndexSet::new();
     let mut iter = region_str.as_ref().split('-').enumerate().peekable();
     while let Some((idx, region_code)) = iter.next() {
@@ -303,7 +321,7 @@ pub fn from_tosec_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
 ///
 /// # Arguments
 /// - `region_str` The region string.
-pub fn from_goodtools_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
+fn from_goodtools_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
     match region_str.as_ref() {
         "1" => Ok(vec![Region::Japan, Region::SouthKorea]),
         "4" => Ok(vec![Region::UnitedStates, Region::Brazil]),
@@ -327,7 +345,7 @@ pub fn from_goodtools_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>
 /// - `Scandinavia` is expanded to Denmark, Norway, and Sweden.
 /// # Arguments
 /// - `region_str` The region string.
-pub fn from_nointro_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
+fn from_nointro_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
     let mut regions = IndexSet::<Region>::new();
     for region_code in region_str.as_ref().split(", ") {
         if !region_code.chars().all(|c| char::is_ascii_alphabetic(&c)) {
@@ -362,7 +380,7 @@ pub fn from_nointro_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> 
 
 /// Creates a TOSEC-compatible ISO code region string, separated by hyphens,
 /// from a vector of Region.
-pub fn to_region_string(regions: &[Region]) -> String {
+fn to_region_string(regions: &[Region]) -> String {
     regions
         .iter()
         .map(|r| r.into())
@@ -374,7 +392,7 @@ pub fn to_region_string(regions: &[Region]) -> String {
 /// Returns the format that matches the best (meaning it contains the longest number of matches, excluding 'Unknown')
 /// This function expects that the input string is a valid GoodTools, No-Intro, or TOSEC region string.
 /// If no match can be found, returns unknown region.
-pub fn parse_regions<T: AsRef<str>>(region_str: T) -> Vec<Region> {
+fn parse_regions<T: AsRef<str>>(region_str: T) -> Vec<Region> {
     let good_tools_try = from_goodtools_region(&region_str).unwrap_or(vec![Region::Unknown]);
     let nointro_try = from_nointro_region(&region_str).unwrap_or(vec![Region::Unknown]);
     let tosec_try = from_tosec_region(&region_str).unwrap_or(vec![Region::Unknown]);

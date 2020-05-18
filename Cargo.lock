@@ -46,12 +46,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 
 [[package]]
-name = "chained_iter"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef0e8738487b704966a24e5eb00e92ae5b7f2e88baa9b0f3a04dcf7218040f1b"
-
-[[package]]
 name = "fallible-iterator"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -395,7 +389,6 @@ name = "shiratsu-lib"
 version = "0.1.0"
 dependencies = [
  "array_iterator",
- "chained_iter",
  "indexmap",
  "lazy-static-include",
  "lazy_static",
