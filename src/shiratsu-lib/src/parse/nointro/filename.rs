@@ -9,13 +9,24 @@ use nom::{
     bytes::complete::{is_not, tag, take_till},
     character::complete::char,
     combinator::{complete, opt},
-    multi::many0,
-    sequence::{delimited, pair},
+    branch::{alt},
+    multi::{many0},
+    Err as NomErr,
+    error::ErrorKind,
+    sequence::{delimited, pair, tuple},
     IResult,
 };
 
 fn parens(input: &str) -> IResult<&str, &str> {
     delimited(pair(opt(char(' ')), char('(')), is_not(")"), char(')'))(input)
+}
+
+fn parens_with(input: &str) -> IResult<&str, (&str, &str, &str)> {
+    tuple((alt((tag(" ("), tag("("))), is_not(")"), tag(")")))(input)
+}
+
+fn take_until_parens(input: &str) -> IResult<&str, (&str, &str, &str)> {
+    tuple((tag(""), take_till(|c| c == '('), tag("")))(input)
 }
 
 wrap_error! {
@@ -34,11 +45,28 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
         static ref DISC: Regex = Regex::new(r"^Disc (([0-9]?)+)").unwrap();
     };
     let (input, _) = opt(tag("[BIOS]"))(input)?;
+    let mut region_code: Option<Vec<Region>> = None;
     let (input, title) = take_till(|c| c == '(')(input)?;
-    let (input, region) = parens(input)?;
+    let mut entry_title = String::from(title);
+    let mut input = input;
+    while let None = region_code {
+        let (_input, (l, region_candidate, r)) = alt((parens_with, take_until_parens))(input)?;
+        if let Ok(region) = from_nointro_region(region_candidate) {
+            region_code = Some(region)
+        } else {
+            entry_title.push_str(l);
+            entry_title.push_str(region_candidate);
+            entry_title.push_str(r);
+        }
+        input = _input;
+        if input.len() == 0 {
+            return Err(NomErr::Error(("Could not find valid region string by the end of the name.", ErrorKind::Eof)));
+        }
+    }
+
     let (input, flags) = many0(parens)(input)?;
+    println!("{}", input);
     let (input, _) = complete(opt(tag("[b]")))(input)?;
-    let region_code = from_nointro_region(region).unwrap_or(vec![Region::Unknown]);
 
     let mut part_number: Option<i32> = None;
     let mut version: Option<String> = None;
@@ -67,11 +95,11 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
                     .and_then(|caps| caps.get(1).map(|i| i.as_str().parse::<i32>().ok()))
                     .unwrap_or(None);
             }
-            _ => continue,
+            _ => continue
         }
     }
-
-    let entry_title = String::from(title.trim());
+    
+    trim_right_mut(&mut entry_title);
     let mut release_title = entry_title.clone();
     move_article(&mut release_title, &ARTICLES);
     replace_hyphen(&mut release_title);
@@ -80,7 +108,7 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
         NameInfo {
             entry_title,
             release_title,
-            region: region_code,
+            region: region_code.unwrap_or(vec![Region::Unknown]),
             part_number,
             version,
             is_demo,

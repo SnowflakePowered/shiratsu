@@ -70,3 +70,7 @@ pub(in super::super) fn replace_hyphen(title: &mut String) {
     }
 }
 
+pub (in super::super) fn trim_right_mut(string: &mut String) {
+    let space_count = string.chars().rev().take_while(|&c| c == ' ').count();
+    string.truncate(string.len() - space_count);
+}

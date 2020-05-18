@@ -193,7 +193,7 @@ static NOINTRO_REGION: phf::Map<&'static str, Region> = phf_map! {
     "Turkey" => Region::Turkey,
     "Vietnam" => Region::Vietnam,
     "Yugoslavia" => Region::Yugoslavia,
-    "SouthAfrica" => Region::SouthAfrica,
+    "South Africa" => Region::SouthAfrica,
 };
 
 /// Possible regions of a ROM file taken mostly from TOSEC and No-Intro
