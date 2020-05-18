@@ -19,6 +19,8 @@ For definitions of "*platform*" and "*format*", please refer to the Stone specif
 
 Unlike OpenVGDB, Shiragame does not aim to be an all-in-one database. Its primary purpose is to provide an efficient method to identify and verify that a given file is a known *dump* that is part of a game distribution, and to identify the game such a *dump* is part of. Shiragame does not aim to catalogue information outside of what can be ascertained from the *game entry*'s *canonical name*. Once a searchable title is obtained from a *dump*, other tools may be used to scrape more information, such as cover arts and descriptions. Shiragame however, is only meant for the first step of identification.
 
+In addition, while Shiragame was created primarily for use with [Snowflake](https://github.com/SnowflakePowered/snowflake), a conscience effort is taken to maintain a stable, documented API in the form of this document.
+
 ## Schema and Format
 
 Shiragame is REQUIRED to be distributed as an SQLite database with the following tables.
@@ -32,7 +34,7 @@ Each row of the `game` table is REQUIRED to describe a single *game entry*.
 | `game_id`           | An internal ID used to refer to the `serial` and `rom` rows related to this `game` row. This ID is unstable and MUST NOT be persisted. | REQUIRED |
 | `platform_id`       | The Stone *platform ID* of the *platform* this *game entry* was intended for.                                                          | REQUIRED |
 | `entry_name`        | The canonical name of the *game entry*                                                                                                 | REQUIRED |
-| `release_name`      | The distribution or release name of the *game entry* that is is known as.† This is usable as a search term for scraping purposes.      | REQUIRED |
+| `release_name`      | The distribution or release name of the *game entry* that is is known as.†\* This is usable as a search term for scraping purposes.    | REQUIRED |
 | `region`            | The region the game was released under.†                                                                                               | REQUIRED |
 | `part_number`       | If this *game entry* is multi-part, or is one part of multiple discs or tapes, the part number thereof.†                               | OPTIONAL |
 | `is_unlicensed`     | If this *game entry* is of an unlicensed release.†                                                                                     | REQUIRED |
@@ -43,19 +45,42 @@ Each row of the `game` table is REQUIRED to describe a single *game entry*.
 | `source`            | The name of the *cataloguing organization* that provided the source data.                                                              | REQUIRED |
 
 †as ascertained from the `entry_name`, in accordance with the *naming convention* used by the source data.
+\* see [release name derivation](#release-name-derivation) on how this name is derived.
 
 The `game_id` value MUST NOT be saved or persisted anywhere outside of a query. It SHOULD NOT be used for anything except to refer to other tables that relate
 to a game entry, and SHALL NOT carry any meaning across different releases of the Shiragame database. It MUST NOT be used as a canonical identifier for a 
 game entry, and MAY change without incurring API breakage across different releases of the Shiragame database. They MUST only be treated as opaque cursors by the
 client consumer.
 
+#### Release Name Derivation
+The release name is the name the *game entry* was sold or distributed under, without any copyright or trademark markers. This is derived from the *game entry* name with the following rules.
+
+1. The first article following a comma is moved to the beginning of the string. For example, "Legend of Shiratsu, The - Wind of the City" becomes "The Legend of Shiratsu - Wind of the City".
+   The following strings are considered 'articles'.
+    1. Eine
+    2. The
+    3. Der
+    4. Die
+    5. Das
+    6. Ein
+    7. Les
+    8. Los
+    9. Las
+    10. An
+    11. De
+    12. La
+    13. Le
+    14. El
+    15. A
+2. All hyphens with spaces on both sides (matching the pattern ` - `) is removed, and at the index where the pattern begins, is replaces with a colon followed by a space (the pattern `: `). For example, "The Legend of Shiratsu - Wind of the City" becomes "The Legend of Shiratsu: Wind of the City".
+
 ### The Dump Entry table (`rom`)
 
 Each row of the `rom` table describes a single *dump entry* with the following schema.
 | Column      | Description                                                                                                 | Status      |
 | ----------- | ----------------------------------------------------------------------------------------------------------- | ----------- |
-| `file_name` | The *canonical filename* assigned to this *dump* by the *cataloguing organization*                          | REQUIRED    |
-| `mimetype`  | The Stone mimetype of the *format* of this file the *dump entry* refers to                                  | REQUIRED    |
+| `file_name` | The *canonical filename* assigned to this *dump* by the *cataloguing organization*.                         | REQUIRED    |
+| `mimetype`  | The Stone mimetype of the *format* of this file the *dump entry* refers to.                                 | REQUIRED    |
 | `md5`       | The MD5 hash of the file this *dump entry* refers to.                                                       | RECOMMENDED |
 | `crc`       | The CRC32 hash of the file this *dump entry* refers to.                                                     | RECOMMENDED |
 | `sha1`      | The SHA1 hash of the file this *dump entry* refers to.                                                      | RECOMMENDED |
@@ -72,8 +97,8 @@ Each row of the `rom` table describes a single *dump entry* with the following s
 
 | Column      | Description                                                                                                 | Status      |
 | ----------- | ----------------------------------------------------------------------------------------------------------- | ----------- |
-| `file_name` | The *canonical filename* assigned to this *dump* by the *cataloguing organization*                          | REQUIRED    |
-| `mimetype`  | The Stone mimetype of the *format* of this file the *dump entry* refers to                                  | REQUIRED    |
+| `file_name` | The *canonical filename* assigned to this *dump* by the *cataloguing organization*.                         | REQUIRED    |
+| `mimetype`  | The Stone mimetype of the *format* of this file the *dump entry* refers to.                                 | REQUIRED    |
 | `md5`       | The MD5 hash of the file this *dump entry* refers to.                                                       | RECOMMENDED |
 | `crc`       | The CRC32 hash of the file this *dump entry* refers to.                                                     | RECOMMENDED |
 | `sha1`      | The SHA1 hash of the file this *dump entry* refers to.                                                      | RECOMMENDED |
@@ -109,12 +134,12 @@ Describes this release of the Shiragame database. This table MUST only contain o
 
 | Column           | Description                                                                                                      | Status   |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------- | -------- |
-| `shiragame`      | The string `shiragame`                                                                                           | REQUIRED |
+| `shiragame`      | The string `shiragame`.                                                                                          | REQUIRED |
 | `schema_version` | The version of the schema used by this database.                                                                 | REQUIRED |
 | `stone_version`  | The version of the [Stone definitions file][stone.dist] used by this database, for *platform IDs* and mimetypes. | REQUIRED |
-| `generated`      | The time this release was created, expressed as a Unix timestamp (seconds since epoch)                           | REQUIRED |
+| `generated`      | The time this release was created, expressed as a Unix timestamp (seconds since epoch).                          | REQUIRED |
 | `release`        | A version 4 UUID that identifies this Shiragame database.                                                        | REQUIRED |
-| `aggregator`     | The aggregator that generated this Shiragame database. In shiratsu's case, the string `shiratsu`                 | REQUIRED |
+| `aggregator`     | The aggregator that generated this Shiragame database. In shiratsu's case, the string `shiratsu`.                | REQUIRED |
 
 [stone.dist]: https://github.com/SnowflakePowered/stone/blob/master/dist/stone.dist.json
 

@@ -1,6 +1,5 @@
 use super::super::Result;
 use super::super::*;
-use super::super::article::move_article;
 use crate::region::{from_tosec_region, Region};
 use crate::wrap_error;
 use lazy_static::*;
@@ -89,7 +88,8 @@ pub fn do_parse<'a, 'b>(title: &'a str, input: &'b str) -> IResult<&'b str, Name
     }
 
     let mut name = String::from(title.trim());
-    move_article( &mut name,&article::ARTICLES);
+    move_article(&mut name, &ARTICLES);
+    replace_hyphen(&mut name);
 
     Ok((
         input,

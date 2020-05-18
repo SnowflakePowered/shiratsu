@@ -5,6 +5,7 @@ mod serial;
 mod rom_entry;
 mod game_entry;
 mod name_info;
+mod release_name;
 
 mod display;
 mod error;
@@ -17,3 +18,4 @@ pub use serial::*;
 pub use name_info::*;
 pub use display::*;
 pub use error::*;
+pub(in super) use release_name::*;

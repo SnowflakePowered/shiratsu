@@ -11,7 +11,7 @@ macro_rules! article {
     };
 }
 
-pub(super) struct Article(&'static str, &'static str, Regex);
+pub(in super::super) struct Article(&'static str, &'static str, Regex);
 
 impl Article {
     fn find(&self, text: &str) -> Option<usize> {
@@ -22,7 +22,7 @@ impl Article {
     }
 }
 lazy_static! {
-    pub(super) static ref ARTICLES: Vec<Article> = vec![
+    pub(in super::super) static ref ARTICLES: Vec<Article> = vec![
         article!("Eine"),
         article!("The"),
         article!("Der"),
@@ -48,7 +48,7 @@ lazy_static! {
 /// # Arguments
 /// - `title`: The string to move
 /// - `article`: The articles to check. The first article encountered in the correct position will be moved.
-pub(super) fn move_article(title: &mut String, articles: &[Article]) {
+pub(in super::super) fn move_article(title: &mut String, articles: &[Article]) {
     let min_art = articles
         .iter()
         .filter_map(|art| art.find(&title).map(|idx| (art, idx)))
@@ -58,3 +58,15 @@ pub(super) fn move_article(title: &mut String, articles: &[Article]) {
         title.insert_str(0, article.1);
     }
 }
+
+
+/// Replaces the first hyphen found with a colon.
+pub(in super::super) fn replace_hyphen(title: &mut String) {
+    let mut hyphen_index = title.find(" - ");
+    while let Some(index) = hyphen_index {
+        let new_index = " - ".len() + index;
+        title.replace_range(index..new_index, ": ");
+        hyphen_index = (&title[new_index..]).find(" - ").map(|f| f + new_index);
+    }
+}
+

@@ -4,7 +4,6 @@ use crate::region::{from_nointro_region, Region};
 use crate::wrap_error;
 use lazy_static::*;
 use regex::Regex;
-use super::super::article::move_article;
 
 use nom::{
     bytes::complete::{is_not, tag, take_till},
@@ -73,8 +72,8 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
     }
 
     let mut name = String::from(title.trim());
-    move_article( &mut name,&article::ARTICLES);
-
+    move_article(&mut name, &ARTICLES);
+    replace_hyphen(&mut name);
     Ok((
         input,
         NameInfo {
