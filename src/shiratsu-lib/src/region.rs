@@ -1,4 +1,4 @@
-use chained_iter::chained_iter;
+use array_iterator::ArrayIterator;
 use indexmap::IndexSet;
 use phf::phf_map;
 #[derive(Debug)]
@@ -379,7 +379,7 @@ pub fn parse_regions<T: AsRef<str>>(region_str: T) -> Vec<Region> {
     let nointro_try = from_nointro_region(&region_str).unwrap_or(vec![Region::Unknown]);
     let tosec_try = from_tosec_region(&region_str).unwrap_or(vec![Region::Unknown]);
     // thanks @Rantanen on the Rust discord
-    chained_iter![good_tools_try, nointro_try, tosec_try]
+    ArrayIterator::new([good_tools_try, nointro_try, tosec_try])
         .into_iter()
         // Precalculate all the counts so they don't need to be calculated for
         // every single comparison.

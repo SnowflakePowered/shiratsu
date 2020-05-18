@@ -10,6 +10,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "array_iterator"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "015eb97c25bb20230c9fdf1533b4cee74b27924cd462f74b0d6fc011aaf196de"
+
+[[package]]
 name = "arrayvec"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -388,6 +394,7 @@ dependencies = [
 name = "shiratsu-lib"
 version = "0.1.0"
 dependencies = [
+ "array_iterator",
  "chained_iter",
  "indexmap",
  "lazy-static-include",
