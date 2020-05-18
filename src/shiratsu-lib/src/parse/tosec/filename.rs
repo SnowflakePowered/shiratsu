@@ -1,7 +1,6 @@
 use super::super::Result;
 use super::super::*;
 use crate::region::Region;
-use crate::wrap_error;
 use lazy_static::*;
 use regex::Regex;
 
@@ -21,14 +20,6 @@ fn strict_parens(input: &str) -> IResult<&str, &str> {
 
 fn brackets(input: &str) -> IResult<&str, &str> {
     delimited(char('['), is_not("]"), char(']'))(input)
-}
-
-wrap_error! {
-    wrap <'a> TosecNameError(nom::Err<(&'a str, nom::error::ErrorKind)>) for ParseError {
-        fn from (_) {
-            ParseError::BadFileNameError(NamingConvention::TOSEC)
-        }
-    }
 }
 
 pub fn do_parse<'a, 'b>(title: &'a str, input: &'b str) -> IResult<&'b str, NameInfo> {
@@ -115,17 +106,18 @@ fn tosec_parser<'a>(input: &str) -> Result<NameInfo> {
     };
     
     let title_captures = FIND_TITLE_WITH_DEMO_AND_DATE.captures(input)
-        .ok_or(ParseError::BadFileNameError(NamingConvention::TOSEC))?;
+        .ok_or(ParseError::BadFileNameError(NamingConvention::TOSEC, String::from(input)))?;
     let full_match = title_captures.get(0)
-        .ok_or(ParseError::BadFileNameError(NamingConvention::TOSEC))?;
+        .ok_or(ParseError::BadFileNameError(NamingConvention::TOSEC, String::from(input)))?;
     let title = title_captures.get(1)
-        .ok_or(ParseError::BadFileNameError(NamingConvention::TOSEC))?
+        .ok_or(ParseError::BadFileNameError(NamingConvention::TOSEC, String::from(input)))?
         .as_str();
     let _ = title_captures.get(1)
-        .ok_or(ParseError::BadFileNameError(NamingConvention::TOSEC))?;
+        .ok_or(ParseError::BadFileNameError(NamingConvention::TOSEC, String::from(input)))?;
     let value = do_parse(title, &input[full_match.end()..])
         .map(|(_, value)| value)
-        .map_err::<TosecNameError, _>(|err|err.into())?;
+        .map_err(|_|
+            ParseError::BadFileNameError(NamingConvention::TOSEC, String::from(input)))?;
         
     Ok(value)
 }

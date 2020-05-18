@@ -8,7 +8,7 @@ use super::*;
 #[derive(Debug)]
 pub enum ParseError {
     ParseError(String),
-    BadFileNameError(NamingConvention),
+    BadFileNameError(NamingConvention, String),
     RegionError(RegionError),
     HeaderMismatchError(&'static str, Option<String>),
 }
@@ -25,8 +25,8 @@ impl Display for ParseError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             ParseError::ParseError(val) => write!(f,"{}", val),
-            ParseError::BadFileNameError(convention) => 
-                write!(f, "The provided file name could not be parsed properly in the {:?} naming convention", convention),
+            ParseError::BadFileNameError(convention, string) => 
+                write!(f, "The \"{}\" could not be parsed properly in the {:?} naming convention", string, convention),
             ParseError::RegionError(region_err) =>
                 write!(f, "{}", region_err),
             ParseError::HeaderMismatchError(expected, actual) =>

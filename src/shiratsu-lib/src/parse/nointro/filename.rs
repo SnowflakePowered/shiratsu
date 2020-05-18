@@ -1,7 +1,6 @@
 use super::super::Result;
 use super::super::*;
 use crate::region::Region;
-use crate::wrap_error;
 use lazy_static::*;
 use regex::Regex;
 
@@ -10,7 +9,7 @@ use nom::{
     character::complete::char,
     combinator::{complete, opt},
     branch::{alt},
-    multi::{many0},
+    multi::many0,
     Err as NomErr,
     error::ErrorKind,
     sequence::{delimited, pair, tuple},
@@ -29,14 +28,6 @@ fn take_until_parens(input: &str) -> IResult<&str, (&str, &str, &str)> {
     tuple((tag(""), take_till(|c| c == '('), tag("")))(input)
 }
 
-wrap_error! {
-    wrap <'a> NoIntroNameError(nom::Err<(&'a str, nom::error::ErrorKind)>) for ParseError {
-        fn from (_) {
-            ParseError::BadFileNameError(NamingConvention::NoIntro)
-        }
-    }
-}
-
 fn do_parse(input: &str) -> IResult<&str, NameInfo> {
     lazy_static! {
         static ref REVISION: Regex = Regex::new(r"^Rev [0-9]").unwrap();
@@ -49,7 +40,7 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
     let (input, title) = take_till(|c| c == '(')(input)?;
     let mut entry_title = String::from(title);
     let mut input = input;
-    while let None = region_code {
+    while region_code.is_none() && input.len() > 0 {
         let (_input, (l, region_candidate, r)) = alt((parens_with, take_until_parens))(input)?;
         if let Ok(region) = Region::try_from_nointro_region(region_candidate) {
             region_code = Some(region)
@@ -59,13 +50,11 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
             entry_title.push_str(r);
         }
         input = _input;
-        if input.len() == 0 {
-            return Err(NomErr::Error(("Could not find valid region string by the end of the name.", ErrorKind::Eof)));
-        }
     }
-
+    if region_code.is_none() {
+        return Err(NomErr::Error(("Could not find valid region string by the end of the name.", ErrorKind::Eof)));
+    }
     let (input, flags) = many0(parens)(input)?;
-    println!("{}", input);
     let (input, _) = complete(opt(tag("[b]")))(input)?;
 
     let mut part_number: Option<i32> = None;
@@ -121,7 +110,7 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
 
 fn nointro_parser<'a>(input: &str) -> Result<NameInfo> {
     let value = do_parse(input).map(|(_, value)| value)
-        .map_err::<NoIntroNameError, _>(|err|err.into())?;
+        .map_err(|_| ParseError::BadFileNameError(NamingConvention::NoIntro, String::from(input)))?;
     Ok(value)
 }
 

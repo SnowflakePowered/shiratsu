@@ -61,24 +61,31 @@ pub mod error {
 
 #[cfg(test)]
 mod tests {
-    use crate::region::{Region, parse_regions};
+    use crate::region::Region;
     use crate::parse::NameInfo;
     use crate::parse::nointro::NoIntroNameable;
     use crate::parse::tosec::TosecNameable;
     #[test]
     fn nointro_region_parses() {
-        assert_eq!(parse_regions("USA, Europe"), vec![Region::UnitedStates, Region::Europe]);
+        assert_eq!(Region::from_region_string("USA, Europe"), vec![Region::UnitedStates, Region::Europe]);
     }
     
     #[test]
     fn tosec_region_parses() {
-        assert_eq!(parse_regions("US"), vec![Region::UnitedStates]);
-        assert_eq!(parse_regions("US-ZZ"), vec![Region::UnitedStates, Region::Unknown]);
+        assert_eq!(Region::from_region_string("US"), vec![Region::UnitedStates]);
+        assert_eq!(Region::from_region_string("US-ZZ"), vec![Region::UnitedStates, Region::Unknown]);
     }
 
     #[test]
     fn nointro_filename_parses() {
-        let parsed= NameInfo::try_from_nointro("Cube CD 20, The (40) - Testing (Europe) (Unl)").unwrap();
+        let parsed = NameInfo::try_from_nointro("Cube CD 20, The (40) - Testing (Europe) (Unl)").unwrap();
+        assert_eq!("Cube CD 20, The (40) - Testing", parsed.entry_title());
+        assert_eq!("The Cube CD 20 (40): Testing", parsed.release_title());
+    }
+
+    #[test]
+    fn nointro_filename_parses_end() {
+        let parsed = NameInfo::try_from_nointro("Cube CD 20, The (40) - Testing (Europe)").unwrap();
         assert_eq!("Cube CD 20, The (40) - Testing", parsed.entry_title());
         assert_eq!("The Cube CD 20 (40): Testing", parsed.release_title());
     }
@@ -95,7 +102,14 @@ mod tests {
         assert_eq!("Cube CD 20, The (40) - Testing", parsed.entry_title());
         assert_eq!("The Cube CD 20 (40): Testing", parsed.release_title());
         assert_eq!(&[Region::UnitedStates], parsed.region());
+    }
 
+    #[test]
+    fn tosec_filename_parses_end() {
+        let parsed = NameInfo::try_from_tosec("Cube CD 20, The (40) - Testing (demo) (2020)(SomePublisher)").unwrap();
+        assert_eq!("Cube CD 20, The (40) - Testing", parsed.entry_title());
+        assert_eq!("The Cube CD 20 (40): Testing", parsed.release_title());
+        assert_eq!(&[Region::Unknown], parsed.region());
     }
 }
 
