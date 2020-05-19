@@ -24,11 +24,14 @@ fn brackets(input: &str) -> IResult<&str, &str> {
 
 pub fn do_parse<'a, 'b>(title: &'a str, input: &'b str) -> IResult<&'b str, NameInfo> {
     lazy_static! {
-        static ref DATE: Regex = Regex::new(r"^((19|20)[\dx]{2})$|^((19|20)[\dx]{2})-[\d]{2}$|^((19|20)[\dx]{2})-[\d]{2}-[\d][\dx]$").unwrap();
+        static ref DATE: Regex = Regex::new(
+            r"^((19|20)[\dx]{2})$|^((19|20)[\dx]{2})-[\d]{2}$|^((19|20)[\dx]{2})-[\d]{2}-[\d][\dx]$"
+        )
+        .unwrap();
         static ref EXTRACT_PART: Regex = Regex::new(r"^\d+").unwrap();
         static ref EXTRACT_DEMO: Regex = Regex::new(r" \(demo\)").unwrap();
-        static ref REVISION: Regex = Regex::new(r"Rev [0-9]$").unwrap();
-        static ref VERSION: Regex = Regex::new(r"v([\.0-9]?)+$").unwrap();
+        static ref REVISION: Regex = Regex::new(r"Rev ([0-9]+)$").unwrap();
+        static ref VERSION: Regex = Regex::new(r"v([\.0-9]+)$").unwrap();
     }
     let mut title = title;
     let (input, _publisher) = strict_parens(input)?;
@@ -43,7 +46,7 @@ pub fn do_parse<'a, 'b>(title: &'a str, input: &'b str) -> IResult<&'b str, Name
     for tag in tags {
         if region.is_none() {
             let region_candidate = Region::try_from_tosec_region(tag);
-            if let Ok(good_region) = region_candidate{
+            if let Ok(good_region) = region_candidate {
                 region = Some(good_region)
             }
         }
@@ -53,12 +56,13 @@ pub fn do_parse<'a, 'b>(title: &'a str, input: &'b str) -> IResult<&'b str, Name
             "proto" => status = DevelopmentStatus::Prototype,
             _ if tag.len() > 4 => match &tag[0..4] {
                 "Disc" | "Disk" | "File" | "Part" | "Tape" => {
-                    part_number = EXTRACT_PART.find(&tag[5..]).map(|m| {
-                        m.as_str().parse::<i32>().ok()
-                    }).unwrap_or(None)
+                    part_number = EXTRACT_PART
+                        .find(&tag[5..])
+                        .map(|m| m.as_str().parse::<i32>().ok())
+                        .unwrap_or(None)
                 }
                 _ => continue,
-            }
+            },
             _ => continue,
         }
     }
@@ -70,12 +74,14 @@ pub fn do_parse<'a, 'b>(title: &'a str, input: &'b str) -> IResult<&'b str, Name
         title = &title[0..m.start()];
         is_demo = true;
     }
-    if let Some(m) = VERSION.find(title) {
+    if let Some(caps) = VERSION.captures(title) {
+        let m = caps.get(0).unwrap();
         title = &title[0..m.start()];
-        version = Some(m.as_str().to_string())
-    } else if let Some(m) = REVISION.find(title) {
+        version = caps.get(1).map(|cap| String::from(cap.as_str()))
+    } else if let Some(caps) = REVISION.captures(title) {
+        let m = caps.get(0).unwrap();
         title = &title[0..m.start()];
-        version = Some(m.as_str().to_string())
+        version = caps.get(1).map(|cap| String::from(cap.as_str()));
     }
 
     let entry_title = String::from(title.trim());
@@ -97,28 +103,39 @@ pub fn do_parse<'a, 'b>(title: &'a str, input: &'b str) -> IResult<&'b str, Name
             naming_convention: NamingConvention::TOSEC,
         },
     ))
-    
 }
 
 fn tosec_parser<'a>(input: &str) -> Result<NameInfo> {
     lazy_static! {
         static ref FIND_TITLE_WITH_DEMO_AND_DATE: Regex = Regex::new(r"^(.+) (\(((19|20)[\dx]{2})\)|\(((19|20)[0-9x]{2})-[0-9]{2}\)|\(((19|20)[0-9x]{2})-[0-9]{2}-[0-9][0-9x]\))").unwrap();
     };
-    
-    let title_captures = FIND_TITLE_WITH_DEMO_AND_DATE.captures(input)
-        .ok_or(ParseError::BadFileNameError(NamingConvention::TOSEC, String::from(input)))?;
-    let full_match = title_captures.get(0)
-        .ok_or(ParseError::BadFileNameError(NamingConvention::TOSEC, String::from(input)))?;
-    let title = title_captures.get(1)
-        .ok_or(ParseError::BadFileNameError(NamingConvention::TOSEC, String::from(input)))?
+
+    let title_captures =
+        FIND_TITLE_WITH_DEMO_AND_DATE
+            .captures(input)
+            .ok_or(ParseError::BadFileNameError(
+                NamingConvention::TOSEC,
+                String::from(input),
+            ))?;
+    let full_match = title_captures.get(0).ok_or(ParseError::BadFileNameError(
+        NamingConvention::TOSEC,
+        String::from(input),
+    ))?;
+    let title = title_captures
+        .get(1)
+        .ok_or(ParseError::BadFileNameError(
+            NamingConvention::TOSEC,
+            String::from(input),
+        ))?
         .as_str();
-    let _ = title_captures.get(1)
-        .ok_or(ParseError::BadFileNameError(NamingConvention::TOSEC, String::from(input)))?;
+    let _ = title_captures.get(1).ok_or(ParseError::BadFileNameError(
+        NamingConvention::TOSEC,
+        String::from(input),
+    ))?;
     let value = do_parse(title, &input[full_match.end()..])
         .map(|(_, value)| value)
-        .map_err(|_|
-            ParseError::BadFileNameError(NamingConvention::TOSEC, String::from(input)))?;
-        
+        .map_err(|_| ParseError::BadFileNameError(NamingConvention::TOSEC, String::from(input)))?;
+
     Ok(value)
 }
 

@@ -5,15 +5,14 @@ use lazy_static::*;
 use regex::Regex;
 
 use nom::{
+    branch::alt,
     bytes::complete::{is_not, tag, take_till},
     character::complete::char,
     combinator::{complete, opt},
-    branch::{alt},
-    multi::many0,
-    Err as NomErr,
     error::ErrorKind,
+    multi::many0,
     sequence::{delimited, pair, tuple},
-    IResult,
+    Err as NomErr, IResult,
 };
 
 fn parens(input: &str) -> IResult<&str, &str> {
@@ -30,8 +29,8 @@ fn take_until_parens(input: &str) -> IResult<&str, (&str, &str, &str)> {
 
 fn do_parse(input: &str) -> IResult<&str, NameInfo> {
     lazy_static! {
-        static ref REVISION: Regex = Regex::new(r"^Rev [0-9]").unwrap();
-        static ref VERSION: Regex = Regex::new(r"^(v|Version )([0-9]?)+(\.([\w\.]?)+)?").unwrap();
+        static ref REVISION: Regex = Regex::new(r"^Rev ([0-9]+)").unwrap();
+        static ref VERSION: Regex = Regex::new(r"^(v|Version )(([0-9]?)+(\.([\w\.]?)+)?)").unwrap();
         static ref BETA: Regex = Regex::new(r"^Beta\s?([0-9]?)+").unwrap();
         static ref DISC: Regex = Regex::new(r"^Disc (([0-9]?)+)").unwrap();
     };
@@ -52,7 +51,10 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
         input = _input;
     }
     if region_code.is_none() {
-        return Err(NomErr::Error(("Could not find valid region string by the end of the name.", ErrorKind::Eof)));
+        return Err(NomErr::Error((
+            "Could not find valid region string by the end of the name.",
+            ErrorKind::Eof,
+        )));
     }
     let (input, flags) = many0(parens)(input)?;
     let (input, _) = complete(opt(tag("[b]")))(input)?;
@@ -74,20 +76,22 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
             "Unl" => {
                 is_unlicensed = true;
             }
-            _ if VERSION.is_match(flag) || REVISION.is_match(flag) => {
-                version = Some(String::from(flag));
+            _ => {
+                if let Some(caps) = VERSION.captures(flag) {
+                    version = caps.get(2).map(|ver| String::from(ver.as_str()));
+                } else if let Some(caps) = REVISION.captures(flag) {
+                    version = caps.get(1).map(|ver| String::from(ver.as_str()));
+                }
+                if BETA.is_match(flag) {
+                    status = DevelopmentStatus::Prerelease
+                }
+                if let Some(caps) = DISC.captures(flag) {
+                    part_number = caps.get(1).and_then(|i| i.as_str().parse::<i32>().ok());
+                }
             }
-            _ if BETA.is_match(flag) => status = DevelopmentStatus::Prerelease,
-            _ if DISC.is_match(flag) => {
-                part_number = DISC
-                    .captures(flag)
-                    .and_then(|caps| caps.get(1).map(|i| i.as_str().parse::<i32>().ok()))
-                    .unwrap_or(None);
-            }
-            _ => continue
         }
     }
-    
+
     trim_right_mut(&mut entry_title);
     let mut release_title = entry_title.clone();
     move_article(&mut release_title, &ARTICLES);
@@ -109,8 +113,9 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
 }
 
 fn nointro_parser<'a>(input: &str) -> Result<NameInfo> {
-    let value = do_parse(input).map(|(_, value)| value)
-        .map_err(|_| ParseError::BadFileNameError(NamingConvention::NoIntro, String::from(input)))?;
+    let value = do_parse(input).map(|(_, value)| value).map_err(|_| {
+        ParseError::BadFileNameError(NamingConvention::NoIntro, String::from(input))
+    })?;
     Ok(value)
 }
 

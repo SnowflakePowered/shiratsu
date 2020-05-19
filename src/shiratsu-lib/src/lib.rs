@@ -85,9 +85,10 @@ mod tests {
 
     #[test]
     fn nointro_filename_parses_end() {
-        let parsed = NameInfo::try_from_nointro("Cube CD 20, The (40) - Testing (Europe)").unwrap();
+        let parsed = NameInfo::try_from_nointro("Cube CD 20, The (40) - Testing (Europe) (Rev 10)").unwrap();
         assert_eq!("Cube CD 20, The (40) - Testing", parsed.entry_title());
         assert_eq!("The Cube CD 20 (40): Testing", parsed.release_title());
+        assert_eq!(Some("10"), parsed.version());
     }
 
     #[test]
@@ -106,10 +107,19 @@ mod tests {
 
     #[test]
     fn tosec_filename_parses_end() {
-        let parsed = NameInfo::try_from_tosec("Cube CD 20, The (40) - Testing (demo) (2020)(SomePublisher)").unwrap();
+        let parsed = NameInfo::try_from_tosec("Cube CD 20, The (40) - Testing (demo) (2020)(SomePublisher)(v1.203)").unwrap();
         assert_eq!("Cube CD 20, The (40) - Testing", parsed.entry_title());
         assert_eq!("The Cube CD 20 (40): Testing", parsed.release_title());
         assert_eq!(&[Region::Unknown], parsed.region());
+        assert_eq!(Some("1.203"), parsed.version());
+    }
+    #[test]
+    fn tosec_filename_parses_end_rev() {
+        let parsed = NameInfo::try_from_tosec("Cube CD 20, The (40) - Testing Rev 1 (demo) (2020)(SomePublisher)").unwrap();
+        assert_eq!("Cube CD 20, The (40) - Testing", parsed.entry_title());
+        assert_eq!("The Cube CD 20 (40): Testing", parsed.release_title());
+        assert_eq!(&[Region::Unknown], parsed.region());
+        assert_eq!(Some("1"), parsed.version());
     }
 }
 
