@@ -5,11 +5,13 @@ use shiratsu_lib::{
     error::ShiratsuError,
     parse::*,
     parse::{nointro::*, redump::*, tosec::*},
+    stone::StonePlatforms,
 };
+
 use slog::{error, info, o, Drain};
 
 use std::env;
-use std::fs::{File, OpenOptions};
+use std::fs::{File, OpenOptions, create_dir};
 use std::io::{self, BufRead, BufReader, ErrorKind, Seek, SeekFrom};
 use std::path::Path;
 use std::result::Result;
@@ -110,12 +112,38 @@ lazy_static! {
                                             .template("{prefix:.bold.dim} {spinner} {wide_msg}");
 }
 
+fn create_folders() -> Result<(), AppError> {
+    let mut current_dir = env::current_dir()?;
+    current_dir.push("dats");
+    println!("Creating folder structure in {}", "dats".cyan());
+    if !current_dir.exists() {
+        println!(" {} Created directory {}", "✓".green(), style(current_dir.display()).cyan());
+        create_dir(&current_dir)?;
+    }
+    for platform_id in StonePlatforms::get().ids() {
+        current_dir.push(platform_id.as_ref());
+        if !current_dir.exists() {
+            create_dir(&current_dir)?;
+            println!(" {} Created directory {}", "✓".green(), style(current_dir.display()).cyan());
+
+        }
+        current_dir.pop();
+    }
+    println!(" {} -- Created required folder structure", "✓ Success".green());
+    Ok(())
+}
+
 fn run_app() -> Result<(), AppError> {
     let args = env::args().skip(1).take(1).next();
     let save_path = args.ok_or(AppError::IOError(io::Error::new(
         ErrorKind::NotFound,
         "No save path was specified.",
     )))?;
+
+    if save_path == "makefolders" {
+        return create_folders();
+    }
+
     let save_path = Path::new(&save_path);
 
     if save_path.exists() {

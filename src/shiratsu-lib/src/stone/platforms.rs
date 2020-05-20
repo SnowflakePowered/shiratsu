@@ -46,6 +46,10 @@ impl StonePlatforms {
         &STONE.0
     }
 
+    pub fn ids(&self) -> Vec<&PlatformId> {
+        self.platform_info.keys().collect()
+    }
+
     pub fn version() -> &'static str {
         &STONE.1
     }
