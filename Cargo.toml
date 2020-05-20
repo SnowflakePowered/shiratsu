@@ -28,5 +28,8 @@ slog-stdlog = "4"
 slog-scope = "4"
 log = "0.4"
 
+# progress
 indicatif = "0.14.0"
+colored = "1.9"
+console = "0.11"
 lazy_static = "1.4"

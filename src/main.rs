@@ -1,3 +1,6 @@
+mod database;
+mod ingest;
+
 use shiratsu_lib::{
     error::ShiratsuError,
     parse::*,
@@ -11,9 +14,10 @@ use std::io::{self, BufRead, BufReader, ErrorKind, Seek, SeekFrom};
 use std::path::Path;
 use std::result::Result;
 
-mod database;
-mod ingest;
 use database::{DatabaseError, ShiratsuDatabase};
+
+use colored::*;
+use console::style;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use lazy_static::lazy_static;
 use rusqlite::backup::Progress;
@@ -98,11 +102,11 @@ lazy_static! {
     static ref SAVE_PB: ProgressBar = ProgressBar::hidden();
     static ref PB_STYLE: ProgressStyle = ProgressStyle::default_spinner()
                                             // .tick_strings(&["⠁ ","⠂ ", "⠄ ", "⡀ ", "⢀ ", "⠠ ", "⠐ ", "⠈ ", ""])
-                                            .tick_strings(&["⠋", "⠙", "⠸", "⠴", "⠦", "⠇", "✓"])
+                                            .tick_strings(&["⠋", "⠙", "⠸", "⠴", "⠦", "⠇", &format!("{}", "✓".green())])
                                             .template("{prefix:.bold.dim} {spinner} [{pos}/{len}] {wide_msg}");
     static ref SAVE_PB_STYLE: ProgressStyle = ProgressStyle::default_spinner()
                                             // .tick_strings(&["⠁ ","⠂ ", "⠄ ", "⡀ ", "⢀ ", "⠠ ", "⠐ ", "⠈ ", ""])
-                                            .tick_strings(&["⠋", "⠙", "⠸", "⠴", "⠦", "⠇", "✓"])
+                                            .tick_strings(&["⠋", "⠙", "⠸", "⠴", "⠦", "⠇", &format!("{}", "✓".green())])
                                             .template("{prefix:.bold.dim} {spinner} {wide_msg}");
 }
 
@@ -111,14 +115,13 @@ fn run_app() -> Result<(), AppError> {
     let save_path = args.ok_or(AppError::IOError(io::Error::new(
         ErrorKind::NotFound,
         "No save path was specified.",
-    )))?
-    ;
+    )))?;
     let save_path = Path::new(&save_path);
-    
+
     if save_path.exists() {
         eprintln!(
-            "[ERROR] Specified save path {} already exists!",
-            save_path.display()
+            "Specified save path {} already exists!",
+            style(save_path.display()).cyan()
         );
         return Err(AppError::IOError(io::Error::new(
             ErrorKind::AlreadyExists,
@@ -127,7 +130,10 @@ fn run_app() -> Result<(), AppError> {
         // return
     }
     let root = setup_logging(format!("{}.log", save_path.display()));
-    println!("Generating Shiragame database at {}", save_path.display());
+    println!(
+        "Generating Shiragame database at {}",
+        style(save_path.display()).cyan(),
+    );
     info!(
         root,
         "Generating Shiragame database at {save_path}",
@@ -173,7 +179,7 @@ fn run_app() -> Result<(), AppError> {
             pb.finish_with_message(&format!(
                 "[{}] Finished processing {}, added {} entries.",
                 platform_id.as_ref(),
-                dir.path().display(),
+                style(dir.path().display()).cyan(),
                 entries.len()
             ))
         }
@@ -182,17 +188,18 @@ fn run_app() -> Result<(), AppError> {
     match db.save(save_path, Some(process_duration)) {
         Ok((uuid, time)) => {
             SAVE_PB.finish_with_message(&format!(
-                "Saved Shiragame database {} ({} at {}) ",
-                save_path.display(),
-                uuid,
-                time
+                "{} -- Saved Shiragame database {} ({} at {}) ",
+                style("Success").green(),
+                style(save_path.display()).cyan(),
+                style(uuid).green().bold(),
+                style(time).green()
             ));
             Ok(())
         }
         Err(err) => {
             eprintln!(
-                "[ERROR] Could not save Shiragame database to {}, does it already exist?",
-                save_path.display()
+                "Could not save Shiragame database to {}, does it already exist?",
+                style(save_path.display()).cyan()
             );
             error!(
                 root,
@@ -210,7 +217,7 @@ fn main() {
     std::process::exit(match run_app() {
         Ok(_) => 0,
         Err(err) => {
-            eprintln!("[ERROR] Finished with {}", err);
+            eprintln!("{} -- {}", style(" ✘ Error").red(), err);
             1
         }
     });
