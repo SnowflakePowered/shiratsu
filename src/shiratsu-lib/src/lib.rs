@@ -1,10 +1,3 @@
-extern crate lazy_static_include;
-extern crate lazy_static;
-
-extern crate serde;
-extern crate serde_json;
-extern crate phf;
-
 pub mod stone;
 pub mod region;
 mod util;

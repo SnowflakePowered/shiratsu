@@ -9,6 +9,24 @@ edition = "2018"
 [workspace]
 
 [dependencies]
+
+# shiratsu core
 shiratsu-lib = { path = "./src/shiratsu-lib" }
+
+# shiragame database creation
 rusqlite = { version = "0.23.1", features = ["backup", "bundled"] }
 uuid = { version = "0.8", features = ["v4"] }
+
+# ingest
+walkdir = "2"
+
+# logging
+slog = "2"
+slog-async = "2"
+slog-term = "2"
+slog-stdlog = "4"
+slog-scope = "4"
+log = "0.4"
+
+indicatif = "0.14.0"
+lazy_static = "1.4"

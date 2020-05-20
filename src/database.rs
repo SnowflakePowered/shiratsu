@@ -24,6 +24,15 @@ pub enum DatabaseError {
     SqliteError(rusqlite::Error),
 }
 
+impl std::fmt::Display for DatabaseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DatabaseError::IOError(err) => write!(f, "Database IO Error: {}", err),
+            DatabaseError::SqliteError(err) => write!(f, "SQLite Error: {}", err),
+        }
+    }
+}
+
 impl From<rusqlite::Error> for DatabaseError {
     fn from(err: rusqlite::Error) -> Self {
         DatabaseError::SqliteError(err)
@@ -56,8 +65,8 @@ impl ShiratsuDatabase {
         mut self,
         path: T,
         step_calback: Option<fn(_: Progress)>,
-    ) -> Result<()> {
-        write_meta_table(&mut self.memory_connection)?;
+    ) -> Result<(String, String)> {
+        let res = write_meta_table(&mut self.memory_connection)?;
         let path = path.as_ref();
 
         if path.exists() {
@@ -69,7 +78,7 @@ impl ShiratsuDatabase {
         let mut target = Connection::open(path)?;
         let backup = Backup::new(&self.memory_connection, &mut target)?;
         backup.run_to_completion(5, Duration::new(0, 0), step_calback)?;
-        Ok(())
+        Ok(res)
     }
 }
 
@@ -81,7 +90,7 @@ fn get_unix_time_string() -> String {
         .to_string()
 }
 
-fn write_meta_table(conn: &mut Connection) -> SqliteResult<()> {
+fn write_meta_table(conn: &mut Connection) -> SqliteResult<(String, String)> {
     let tx = conn.transaction()?;
     tx.execute(
         "CREATE TABLE shiragame (
@@ -94,17 +103,20 @@ fn write_meta_table(conn: &mut Connection) -> SqliteResult<()> {
     )",
         params! {},
     )?;
+    let uuid = Uuid::new_v4().to_string();
+    let time = get_unix_time_string();
     tx.execute_named("INSERT INTO shiragame (shiragame, schema_version, stone_version, generated, release, aggregator)
                                         VALUES(:shiragame, :schema_version, :stone_version, :generated, :release, :aggregator)",
                     named_params! {
                         ":shiragame": "shiragame",
                         ":schema_version": "2.0.0",
                         ":stone_version": StonePlatforms::version(),
-                        ":generated": get_unix_time_string(),
-                        ":release": Uuid::new_v4().to_string(),
+                        ":generated": time,
+                        ":release": uuid,
                         ":aggregator": "shiratsu"
                     })?;
-    tx.commit()
+    tx.commit()?;
+    Ok((uuid, time))
 }
 
 fn create_database(conn: &mut Connection) -> SqliteResult<()> {
