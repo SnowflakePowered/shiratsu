@@ -38,7 +38,11 @@ impl TryFrom<Game> for GameEntry {
 }
 
 impl From<Rom> for RomEntry {
-    fn from(rom: Rom) -> Self {
+    fn from(mut rom: Rom) -> Self {
+        rom.md5.make_ascii_lowercase();
+        rom.crc.make_ascii_lowercase();
+        rom.sha1.make_ascii_lowercase();
+
         RomEntry {
             md5: Some(rom.md5),
             sha1: Some(rom.sha1),

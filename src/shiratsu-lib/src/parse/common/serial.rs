@@ -13,7 +13,7 @@ impl Serial {
 
     pub fn as_normalized<'a>(&'a self, ruleset: &PlatformId) -> Cow<'a, Serial> {
         match ruleset.as_ref() {
-            "SONY_PSX" | "SONY_PS2" => rule_sony_psx_sony_ps2(self),
+            "SONY_PSX" | "SONY_PS2" | "SONY_PS3" | "SONY_PSP" => rule_sony(self),
             "NINTENDO_GCN" => rule_nintendo_gcn(self),
            _ => Cow::Borrowed(self)
         }
@@ -34,10 +34,10 @@ fn rule_nintendo_gcn<'a>(serial: &'a Serial) -> Cow<'a, Serial> {
     }
 }
 
-fn rule_sony_psx_sony_ps2<'a>(serial: &'a Serial) -> Cow<'a, Serial> {
+fn rule_sony<'a>(serial: &'a Serial) -> Cow<'a, Serial> {
     lazy_static! {
-        static ref VERIFY_RULE: Regex = Regex::new(r"^[a-zA-Z]+[-]\d+$").unwrap();
-        static ref REWRITE_RULE: Regex = Regex::new(r"^(?P<code>[a-zA-Z]+)[-_ ](?P<number>\d+)([-_ ]\w+)*$").unwrap();
+        static ref VERIFY_RULE: Regex = Regex::new(r"^[a-zA-Z]+[-]\d+(\/\w+)?$").unwrap();
+        static ref REWRITE_RULE: Regex = Regex::new(r"^(?P<code>[a-zA-Z]+)[-_ ](?P<number>\d+)([-_ \/]\w+)*$").unwrap();
     }
     let serial_str = serial.as_ref();
     

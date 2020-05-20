@@ -100,9 +100,9 @@ Each row of the `rom` table describes a single *dump entry* with the following s
 | ----------- | ----------------------------------------------------------------------------------------------------------- | ----------- |
 | `file_name` | The *canonical filename* assigned to this *dump* by the *cataloguing organization*.                         | REQUIRED    |
 | `mimetype`  | The Stone mimetype of the *format* of this file the *dump entry* refers to.                                 | REQUIRED    |
-| `md5`       | The MD5 hash of the file this *dump entry* refers to.                                                       | RECOMMENDED |
-| `crc`       | The CRC32 hash of the file this *dump entry* refers to.                                                     | RECOMMENDED |
-| `sha1`      | The SHA1 hash of the file this *dump entry* refers to.                                                      | RECOMMENDED |
+| `md5`       | The MD5 hash of the file this *dump entry* refers to, in lowercase.                                         | RECOMMENDED |
+| `crc`       | The CRC32 hash of the file this *dump entry* refers to, in lowercase.                                       | RECOMMENDED |
+| `sha1`      | The SHA1 hash of the file this *dump entry* refers to, in lowercase.                                        | RECOMMENDED |
 | `size`      | The size of the file this *dump entry* refers to in bytes.                                                  | REQUIRED    |
 | `game_id`   | Refers to the *game entry* this *dump entry* belongs to. There MUST be a row in `game` with the same value. | REQUIRED    |
 
@@ -122,12 +122,14 @@ Each row of the `serial` table describes a serial number with the following sche
 
 Serial numbers are normalized according to the following normalization rules, which are defined by a combination of a *platform ID*, a **verification pattern** that when matching the entire serial, applies the rule, and the **rewrite rule** that applies. If no normalization rule matches, the normalized serial MUST be identical to the serial number as it was published by the data source. 
 
-| Platform ID               | Verification Pattern            | Rewrite Rule                                   | Example                       |
-| ------------------------- | ------------------------------- | ---------------------------------------------- | ----------------------------- |
-| `SONY_PSX` and `SONY_PS2` | `^[a-zA-Z]+[-]\d+`              | `s/^([a-zA-Z]+)[-_ ](\d+)([-_ ]\w+)*$/\1-\2/g` | `SLUS 1234-GE` to `SLUS-1234` |
-| `NINTENDO_GCN`            | `^DL-DOL-([\w]{4})-[-\w\(\)]+$` | `s/^DL-DOL-([\w]{4})-[-\w\(\)]+$/\1/g`         | `DL-DOL-GC3E-0-USA` to `GC3E` |
+| Platform ID                                    | Verification Pattern            | Rewrite Rule                                     | Example                       |
+| ---------------------------------------------- | ------------------------------- | ------------------------------------------------ | ----------------------------- |
+| `SONY_PSX`, `SONY_PS2`, `SONY_PS3`, `SONY_PSP` | `^[a-zA-Z]+[-]\d+(\/\w+)?`      | `s/^([a-zA-Z]+)[-_ ](\d+)([-_ \/]\w+)*$/\1-\2/g` | `SLUS 1234-GE` to `SLUS-1234` |
+| `NINTENDO_GCN`                                 | `^DL-DOL-([\w]{4})-[-\w\(\)]+$` | `s/^DL-DOL-([\w]{4})-[-\w\(\)]+$/\1/g`           | `DL-DOL-GC3E-0-USA` to `GC3E` |
 
 Note that the `sed`-like expressions here are for brevity, and may be implemented differently (but equivalently) in shiratsu.
+
+Since there may be exceptions that these rewrite rules do not cover, the original serial number is always available in the `serial` column. Also note that the internal serial may not be consistent with the disc serial, so querying by serial is not necessarily consistent.
 
 ### The Shiragame meta table (`shiragame`)
 
