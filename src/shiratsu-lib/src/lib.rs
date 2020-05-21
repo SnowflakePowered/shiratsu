@@ -100,7 +100,7 @@ mod tests {
 
     #[test]
     fn tosec_filename_parses_end() {
-        let parsed = NameInfo::try_from_tosec("Cube CD 20, The (40) - Testing (demo) (2020)(SomePublisher)(v1.203)").unwrap();
+        let parsed = NameInfo::try_from_tosec("Cube CD 20, The (40) - Testing v1.203 (demo) (2020)(SomePublisher)").unwrap();
         assert_eq!("Cube CD 20, The (40) - Testing", parsed.entry_title());
         assert_eq!("The Cube CD 20 (40): Testing", parsed.release_title());
         assert_eq!(&[Region::Unknown], parsed.region());
