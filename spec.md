@@ -21,6 +21,10 @@ Unlike OpenVGDB, Shiragame does not aim to be an all-in-one database. Its primar
 
 In addition, while Shiragame was created primarily for use with [Snowflake](https://github.com/SnowflakePowered/snowflake), a conscience effort is taken to maintain a stable, documented API in the form of this document.
 
+### Why SQLite?
+
+Instead of using a markup format like JSON or custom binary formats, a Shiragame database is always distributed as a SQLite database, which carries a few advantages. Most importantly, a SQLite database is [stable and portable across many platforms](https://www.sqlite.org/onefile.html). It is quickly and easily queryable without needing to stream or load the entire file into memory from many programming languages, and without the need for custom or one-off binary parsers. For niche purposes such as low-memory environments or platforms without ergonomic bindings to SQLite, it can easily be transformed to another transport format via the schema as described in this document. 
+
 ## Schema and Format
 
 Shiragame is REQUIRED to be distributed as an SQLite database with the following tables.
