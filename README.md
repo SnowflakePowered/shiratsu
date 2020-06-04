@@ -4,13 +4,25 @@ Second-generation aggregator for [shiragame 2.0](https://github.com/SnowflakePow
 
 **The Shiragame games database is [available here.](https://github.com/SnowflakePowered/shiragame)**
 
+## Installation
+shiratsu does not come with a binary release. You can download a source tarball and [build from source](#Building), or install from cargo.
+
+
+```bash
+$ cargo install shiratsu
+```
+
 ## Usage
 
-1. Create the folder structure
+1. Add your DATs to the `unsorted` folder. You may provide your own `sortrules.yml` as needed, or shiratsu will use its internal sorting rules. Sorting rules are provided as [Unix-like globs](https://docs.rs/glob/0.3.0/glob/).
    ```bash
-   $ shiratsu makefolders
+   $ mkdir unsorted
+   $ unzip "No-Intro Love Pack (Standard) (*).zip" -d unsorted
    ``` 
-2. Add DAT in the respective folder for their platform. Currently only supports TOSEC, No-Intro, and Redump dats.
+2. Sort your DATs by running `sort`
+   ```bash
+   $ shiratsu sort
+   ``` 
 3. Create the database
     ```bash
     $ shiratsu database.db

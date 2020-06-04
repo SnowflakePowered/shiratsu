@@ -1,69 +1,39 @@
 mod database;
 mod ingest;
+mod sortrules;
 
 use shiratsu_lib::{
-    error::ShiratsuError,
     parse::*,
     parse::{nointro::*, redump::*, tosec::*},
     stone::StonePlatforms,
 };
 
+use anyhow::Result;
+
 use slog::{error, info, o, Drain};
 
+use std::borrow::Cow;
 use std::env;
-use std::fs::{File, OpenOptions, create_dir};
+use std::fs::{create_dir, File, OpenOptions};
 use std::io::{self, BufRead, BufReader, ErrorKind, Seek, SeekFrom};
 use std::path::Path;
-use std::result::Result;
 
 use database::{DatabaseError, ShiratsuDatabase};
 
 use colored::*;
 use console::style;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
-use lazy_static::lazy_static;
 use rusqlite::backup::Progress;
 
-#[derive(Debug)]
-enum AppError {
-    IOError(std::io::Error),
-    ShiratsuError(ShiratsuError),
-    DatabaseError(DatabaseError),
-}
+use lazy_static::lazy_static;
+use lazy_static_include::{
+    lazy_static_include_str, lazy_static_include_str_impl, lazy_static_include_str_inner,
+};
 
-impl From<std::io::Error> for AppError {
-    fn from(err: std::io::Error) -> Self {
-        AppError::IOError(err)
-    }
-}
+use glob::glob_with;
+use glob::MatchOptions;
 
-impl From<ShiratsuError> for AppError {
-    fn from(err: ShiratsuError) -> Self {
-        AppError::ShiratsuError(err)
-    }
-}
-
-impl From<DatabaseError> for AppError {
-    fn from(err: DatabaseError) -> Self {
-        AppError::DatabaseError(err)
-    }
-}
-
-impl std::error::Error for AppError {}
-
-impl std::fmt::Display for AppError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AppError::IOError(err) => write!(f, "IO: {}", err),
-            AppError::ShiratsuError(err) => write!(f, "Shiratsu: {}", err),
-            AppError::DatabaseError(err) => write!(f, "Database: {}", err),
-        }
-    }
-}
-
-fn get_entries<R: BufRead + Seek>(
-    mut reader: R,
-) -> Result<Option<(Vec<GameEntry>, &'static str)>, AppError> {
+fn get_entries<R: BufRead + Seek>(mut reader: R) -> Result<Option<(Vec<GameEntry>, &'static str)>> {
     if let Ok(entries) = GameEntry::try_from_nointro_buf(reader.by_ref()) {
         return Ok(Some((entries, "No-Intro")));
     }
@@ -112,50 +82,73 @@ lazy_static! {
                                             .template("{prefix:.bold.dim} {spinner} {wide_msg}");
 }
 
-fn create_folders() -> Result<(), AppError> {
+lazy_static_include_str!(SORTING_RULES, "sortrules.yml");
+
+fn create_folders() -> Result<()> {
     let mut current_dir = env::current_dir()?;
     current_dir.push("dats");
     println!("Creating folder structure in {}", "dats".cyan());
     if !current_dir.exists() {
-        println!(" {} Created directory {}", "✓".green(), style(current_dir.display()).cyan());
+        println!(
+            " {} Created directory {}",
+            "✓".green(),
+            style(current_dir.display()).cyan()
+        );
         create_dir(&current_dir)?;
     }
     for platform_id in StonePlatforms::get().ids() {
         current_dir.push(platform_id.as_ref());
         if !current_dir.exists() {
             create_dir(&current_dir)?;
-            println!(" {} Created directory {}", "✓".green(), style(current_dir.display()).cyan());
-
+            println!(
+                " {} Created directory {}",
+                "✓".green(),
+                style(current_dir.display()).cyan()
+            );
+        } else {
+            println!(
+                " {} Directory {} already exists",
+                "✓".green(),
+                style(current_dir.display()).cyan()
+            );
         }
         current_dir.pop();
     }
-    println!(" {} -- Created required folder structure", "✓ Success".green());
+    current_dir.pop();
+    current_dir.push("unsorted");
+    if !current_dir.exists() {
+        create_dir(&current_dir)?;
+        println!(
+            " {} Created unsorted directory {}",
+            "✓".green(),
+            style(current_dir.display()).cyan()
+        );
+    } else {
+        println!(
+            " {} Unsorted directory {} already exists",
+            "✓".green(),
+            style(current_dir.display()).cyan()
+        );
+    }
+    println!(
+        " {} -- Created required folder structure",
+        "✓ Success".green()
+    );
     Ok(())
 }
 
-fn run_app() -> Result<(), AppError> {
-    let args = env::args().skip(1).take(1).next();
-    let save_path = args.ok_or(AppError::IOError(io::Error::new(
-        ErrorKind::NotFound,
-        "No save path was specified.",
-    )))?;
-
-    if save_path == "makefolders" {
-        return create_folders();
-    }
-
-    let save_path = Path::new(&save_path);
+fn create_db<S: AsRef<str>>(save_path: S) -> Result<()> {
+    let save_path = Path::new(save_path.as_ref());
 
     if save_path.exists() {
         eprintln!(
             "Specified save path {} already exists!",
             style(save_path.display()).cyan()
         );
-        return Err(AppError::IOError(io::Error::new(
+        return Err(anyhow::Error::new(io::Error::new(
             ErrorKind::AlreadyExists,
             "The specified path already exists.",
         )));
-        // return
     }
     let root = setup_logging(format!("{}.log", save_path.display()));
     println!(
@@ -235,12 +228,96 @@ fn run_app() -> Result<(), AppError> {
                 save_path = save_path.display()
             );
             Err(match err {
-                DatabaseError::IOError(err) => AppError::IOError(err),
-                _ => AppError::DatabaseError(err),
+                DatabaseError::IOError(err) => anyhow::Error::new(err),
+                DatabaseError::SqliteError(err) => anyhow::Error::new(err),
             })
         }
     }
 }
+
+fn sort_dats() -> Result<()> {
+    let rules = std::fs::read_to_string("sortrules.yml")
+        .map_or_else(|_| Cow::Borrowed(*SORTING_RULES), |s| Cow::Owned(s));
+    let sort_rules_src;
+
+    match &rules {
+        Cow::Borrowed(_) => {
+            sort_rules_src = "internal sorting rules";
+            println!("Loading {}", style(sort_rules_src).cyan())
+        }
+        Cow::Owned(_) => {
+            sort_rules_src = "sortrules.yml";
+            println!(
+                "Loading sorting rules from {}",
+                style("sortrules.yml").cyan()
+            )
+        }
+    }
+
+    let rules = sortrules::load_map(rules)?;
+
+    println!(
+        " {} Loaded sorting rules from {}",
+        "✓".green(),
+        sort_rules_src.cyan(),
+    );
+
+    create_folders()?;
+    let mut current_dir = env::current_dir()?;
+    current_dir.push("dats");
+
+    let options = MatchOptions {
+        case_sensitive: false,
+        require_literal_separator: false,
+        require_literal_leading_dot: false,
+    };
+    let mut count: usize = 0;
+
+    for (platform_id, rules) in rules.iter() {
+        current_dir.push(platform_id.as_ref());
+        for path in rules
+            .iter()
+            .flat_map(|rule| glob_with(rule, options))
+            .flat_map(|rule| rule)
+            .flat_map(|result| result)
+        {
+            if let Some(filename) = path.file_name() {
+                let path = std::fs::canonicalize(&path)?;
+                current_dir.push(filename);
+                std::fs::rename(&path, &current_dir)?;
+                println!(
+                    " {} Sorted {:#?} as {}",
+                    "✓".green(),
+                    style(filename).cyan(),
+                    platform_id.as_ref()
+                );
+                count += 1;
+                current_dir.pop();
+            }
+        }
+        current_dir.pop();
+    }
+    println!(
+        " {} -- Sorted {} DATs",
+        "✓ Success".green(),
+        style(count).cyan()
+    );
+    Ok(())
+}
+
+fn run_app() -> Result<()> {
+    let args = env::args().skip(1).take(1).next();
+    let command = args.ok_or(io::Error::new(
+        ErrorKind::NotFound,
+        "No save path was specified.",
+    ))?;
+
+    match command.as_str() {
+        "sort" => sort_dats(),
+        save_path => create_db(save_path),
+    }
+}
+
 fn main() {
     std::process::exit(match run_app() {
         Ok(_) => 0,

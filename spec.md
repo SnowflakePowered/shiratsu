@@ -159,6 +159,7 @@ The following changes to the schema do not incur an API breakage, and the MINOR 
 
 * Adding a new column or table.
 * Changing an existing **normalization rule** for serial numbers.
+* Editing the internal sorting rules.
 * Any sufficiently small change to the schema as decided by the project maintainers.
 
 The following changes to the schema do not incur an API breakage, and the PATCH version number MUST be incremented.
