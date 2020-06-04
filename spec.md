@@ -204,7 +204,7 @@ The name given to a *game entry* by a *cataloguing organization*, following a *n
 * **cataloguing organization**
 A group that maintains databases of *game entries* and the *dump entries* belonging to the distribution thereof.
 * **naming convention**
-The method of assigning names to *game entries* followed by the *cataloguing organization* that catalogues such games. The Shiragame schema does not restrict the naming convention of files. shiratsu however knows only now to handle the following naming conventions.
+The method of assigning names to *game entries* followed by the *cataloguing organization* that catalogues such games. The Shiragame schema does not restrict the naming convention of files. However, shiratsu knows only how to handle the following naming conventions.
   * [The TOSEC Naming Convention (2015-03-23)](https://www.tosecdev.org/tosec-naming-convention), used by the TOSEC cataloguing organization. 
   * [The Official No-Intro Convention (2007-10-30)](https://datomatic.no-intro.org/stuff/The%20Official%20No-Intro%20Convention%20(20071030).pdf), used by No-Intro and Redump cataloguing organizations, with the following amendments.
    
