@@ -50,7 +50,7 @@ Each row of the `game` table is REQUIRED to describe a single *game entry*.
 | `source`            | The name of the *cataloguing organization* that provided the source data.                                                              | REQUIRED |
 
 †as ascertained from the `entry_title`, in accordance with the *naming convention* used by the source data.
-\* see [release name derivation](#release-name-derivation) on how this name is derived.
+\* See [release title derivation](#release-title-derivation) on how this name is derived.
 
 The `game_id` value MUST NOT be saved or persisted anywhere outside of a query. It SHOULD NOT be used for anything except to refer to other tables that relate
 to a game entry, and SHALL NOT carry any meaning across different releases of the Shiragame database. It MUST NOT be used as a canonical identifier for a 
