@@ -56,9 +56,7 @@ NEC_TGCD:
 NINTENDO_3DS: 
   - "Nintendo - Nintendo 3DS (Decrypted) (*).dat"
   - "Nintendo - Nintendo 3DS (Encrypted) (*).dat"
-  - "Nintendo - Nintendo 3DS (Digital) (CDN) (CDN) (*).dat"
   - "Nintendo - Nintendo 3DS (Digital) (CDN) (CIA) (*).dat"
-  - "Nintendo - Nintendo 3DS (Digital) (CDN) (Console) (*).dat"
   - "Nintendo - Nintendo 3DS (Digital) (Updates and DLC) (Decrypted) (*).dat"
   - "Nintendo - Nintendo 3DS (Digital) (Updates and DLC) (Encrypted) (*).dat"
 NINTENDO_DSI: 
@@ -86,7 +84,6 @@ NINTENDO_GCN:
 NINTENDO_N3DS: 
   - "Nintendo - New Nintendo 3DS (Decrypted) (*).dat"
   - "Nintendo - New Nintendo 3DS (Encrypted) (*).dat"
-  - "Nintendo - New Nintendo 3DS (Digital) (*).dat"
 NINTENDO_N64: 
   - "Nintendo - Nintendo 64 (BigEndian) (*).dat"
   - "Nintendo - Nintendo 64 (ByteSwapped) (*).dat"
@@ -103,8 +100,6 @@ NINTENDO_NES:
   - "Nintendo Famicom & Entertainment System - * (TOSEC-*).dat"
 NINTENDO_NSW: 
   - "Nintendo - Nintendo Switch (*).dat"
-  - "Nintendo - Nintendo Switch (Digital) (CDN) (*).dat"
-  - "Nintendo - Nintendo Switch (Digital) (NSP) (*).dat"
   - "Nintendo - Nintendo Switch (Digital) (NSP) (*).dat"
 NINTENDO_SFT: 
   - "Nintendo - Sufami Turbo (*).dat"
@@ -118,12 +113,10 @@ NINTENDO_VB:
   - "Nintendo - Virtual Boy (*).dat"
   - "Nintendo Virtual Boy - * (TOSEC-*).dat"
 NINTENDO_WII: 
-  - "Nintendo - Wii (Digital) (CDN) (*).dat"
   - "Nintendo - Wii (Digital) (Split DLC) (WAD) (*).dat"
   - "Nintendo - Wii (Digital) (WAD) (*).dat"
 NINTENDO_WIIU: 
   - "Nintendo - Wii U (Digital) (*).dat"
-  - "Nintendo - Wii U (Digital) (CDN) (*).dat"
 PANASONIC_3DO: 
   - "3DO 3DO Interactive Multiplayer - * (TOSEC-*).dat"
 PHILIPS_CDI: 
@@ -165,7 +158,8 @@ SNK_NGPC:
   - "SNK Neo-Geo Pocket Color - * (TOSEC-*).dat"
 SONY_PS2: 
   - "Sony Playstation 2 - * (TOSEC-*).dat"
-SONY_PS3: []
+SONY_PS3: 
+  - "Sony - Playstation 3 (PSN) (Content) (*).dat"
 SONY_PS4: []
 SONY_PSP: 
   - "Sony - PlayStation Portable (*).dat"
@@ -175,7 +169,7 @@ SONY_PSP:
 SONY_PSV: 
   - "Sony - PlayStation Vita (BlackFinPSV) (*).dat"
   - "Sony - PlayStation Vita (NoNpDrm) (*).dat"
-  - "Sony - PlayStation Vita (PSVGameSD) (*).dat"
+  - "Sony - PlayStation Vita (PSVgameSD) (*).dat"
   - "Sony - PlayStation Vita (VPK) (*).dat"
   - "Sony - PlayStation Vita (PSN) (Decrypted) (*).dat"
   - "Sony - PlayStation Vita (PSN) (Encrypted) (*).dat"
