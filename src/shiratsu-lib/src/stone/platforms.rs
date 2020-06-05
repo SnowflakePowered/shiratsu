@@ -7,7 +7,7 @@ use serde;
 use serde::Deserialize;
 use serde_json;
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::io;
 
@@ -141,8 +141,8 @@ pub struct PlatformInfo {
 
     // #[serde(rename(deserialize = "MaximumInputs"))]
     // maximum_inputs: i32,
-    // #[serde(rename(deserialize = "BiosFiles"))]
-    // bios_files: Option<HashMap<String, Vec<String>>>,
+    #[serde(rename(deserialize = "BiosFiles"))]
+    bios_files: Option<HashMap<String, HashSet<String>>>,
     // #[serde(rename(deserialize = "FriendlyName"))]
     // friendly_name: String,
     // #[serde(rename(deserialize = "Metadata"))]
@@ -166,6 +166,13 @@ impl PlatformInfo {
     pub fn friendly_name(&self) -> Vec<&str> {
         self.file_types.values().map(|s| s.as_str()).collect()
     }
+    pub fn is_bios_md5(&self, hash: &str) -> bool {
+        if let Some(bios_files) = &self.bios_files {
+            bios_files.values().any(|v| v.contains(hash))
+        } else {
+            false
+        }
+    }
 }
 
 fn load_platform_info() -> Result<(StonePlatforms, String)> {
@@ -182,9 +189,18 @@ fn load_platform_info() -> Result<(StonePlatforms, String)> {
     for (_id, platform) in value.iter_mut() {
         let file_type_clone = platform.file_types.clone();
         for (ext, mime) in file_type_clone.into_iter() {
+            if ext == "BIOS" {
+                // Skip BIOS mimetype
+                continue;
+            }
             // Duplicating the mimetypes once is cheap enough to easily support
             // dotless extensions.
-            platform.file_types.insert(String::from(&ext[1..]), mime);
+            platform.file_types.insert(String::from(&ext[1..]), mime.clone());
+
+            // Duplicate mimetypes twice for uppercase support, so we don't have to
+            // unnecesarily duplicate a string for to_lowercase.
+            platform.file_types.insert(ext[1..].to_ascii_uppercase(), mime.clone());
+            platform.file_types.insert(ext.to_ascii_uppercase(), mime.clone());
         }
     }
     Ok((StonePlatforms::new(value), version))

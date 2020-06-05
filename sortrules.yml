@@ -1,4 +1,4 @@
- ARCADE_MAME: []
+ARCADE_MAME: []
 ATARI_2600: 
   - "Atari - 2608 (*).dat"
   - "Atari 2600 & VCS - * (TOSEC-*).dat"
@@ -11,7 +11,10 @@ ATARI_7800:
 ATARI_JAGUAR: 
   - "Atari - Jaguar (J64) (*).dat"
   - "Atari - Jaguar (ROM) (*).dat"
-  - "Atari Jaguar - * (TOSEC-*).dat"
+  - "Atari Jaguar - Games - [???] (TOSEC-*).dat"
+  - "Atari Jaguar - Applications - [???] (TOSEC-*).dat"
+  - "Atari Jaguar - Demos - [???] (TOSEC-*).dat"
+  - "Atari Jaguar - Firmware (TOSEC-*).dat"
 ATARI_JAGUAR_CD: 
   - "Atari Jaguar CD - * (TOSEC-*).dat"
 ATARI_LYNX: 
@@ -38,8 +41,7 @@ MAGNAVOX_O2:
 MATTEL_INT: 
   - "Mattel - Intellivision (*).dat"
   - "Mattel Intellivision - * (TOSEC-*)"
-MICROSOFT_X360: 
-  - "Microsoft - XBOX 360 (Digital) (*).dat"
+MICROSOFT_X360: []
 MICROSOFT_XBO: []
 MICROSOFT_XBOX: []
 NEC_PCFX: 
@@ -99,7 +101,7 @@ NINTENDO_NES:
   - "Nintendo - Nintendo Entertainment System (*).dat"
   - "Nintendo Famicom & Entertainment System - * (TOSEC-*).dat"
 NINTENDO_NSW: 
-  - "Nintendo - Nintendo Switch (*).dat"
+  - "Nintendo - Nintendo Switch ([0-9]*).dat"
   - "Nintendo - Nintendo Switch (Digital) (NSP) (*).dat"
 NINTENDO_SFT: 
   - "Nintendo - Sufami Turbo (*).dat"
@@ -107,7 +109,7 @@ NINTENDO_SNES:
   - "Nintendo - Super Nintendo Entertainment System (Combined) (*).dat"
   - "Nintendo - Super Nintendo Entertainment System (Split) (*).dat"
   - "Nintendo Super Famicom & Super Entertainment System - * (TOSEC-*).dat"
-NINTENDO_STV: 
+NINTENDO_BS: 
   - "Nintendo - Satellaview (*).dat"
 NINTENDO_VB: 
   - "Nintendo - Virtual Boy (*).dat"
@@ -115,8 +117,7 @@ NINTENDO_VB:
 NINTENDO_WII: 
   - "Nintendo - Wii (Digital) (Split DLC) (WAD) (*).dat"
   - "Nintendo - Wii (Digital) (WAD) (*).dat"
-NINTENDO_WIIU: 
-  - "Nintendo - Wii U (Digital) (*).dat"
+NINTENDO_WIIU: []
 PANASONIC_3DO: 
   - "3DO 3DO Interactive Multiplayer - * (TOSEC-*).dat"
 PHILIPS_CDI: 
@@ -159,6 +160,7 @@ SNK_NGPC:
 SONY_PS2: 
   - "Sony Playstation 2 - * (TOSEC-*).dat"
 SONY_PS3: 
+  - "WIP Sony - PlayStation 3 (PSN) (Decrypted) (*).dat"
   - "Sony - Playstation 3 (PSN) (Content) (*).dat"
 SONY_PS4: []
 SONY_PSP: 
@@ -168,8 +170,8 @@ SONY_PSP:
   - "Sony - PlayStation Portable (PSX2PSP) (Encrypted) (*).dat"
 SONY_PSV: 
   - "Sony - PlayStation Vita (BlackFinPSV) (*).dat"
-  - "Sony - PlayStation Vita (NoNpDrm) (*).dat"
   - "Sony - PlayStation Vita (PSVgameSD) (*).dat"
+  - "Sony - PlayStation Vita (NoNpDrm) (*).dat"
   - "Sony - PlayStation Vita (VPK) (*).dat"
   - "Sony - PlayStation Vita (PSN) (Decrypted) (*).dat"
   - "Sony - PlayStation Vita (PSN) (Encrypted) (*).dat"

@@ -36,8 +36,8 @@ fn rule_nintendo_gcn<'a>(serial: &'a Serial) -> Cow<'a, Serial> {
 
 fn rule_sony<'a>(serial: &'a Serial) -> Cow<'a, Serial> {
     lazy_static! {
-        static ref VERIFY_RULE: Regex = Regex::new(r"^[a-zA-Z]+[-]\d+(\/\w+)?$").unwrap();
-        static ref REWRITE_RULE: Regex = Regex::new(r"^(?P<code>[a-zA-Z]+)[-_ ](?P<number>\d+)([-_ \/]\w+)*$").unwrap();
+        static ref VERIFY_RULE: Regex = Regex::new(r"^[a-zA-Z]+[-]\d+(/\w+)?$").unwrap();
+        static ref REWRITE_RULE: Regex = Regex::new(r"^(?P<code>[a-zA-Z]+)[-_ ](?P<number>\d+)([-_ /]\w+)*$").unwrap();
     }
     let serial_str = serial.as_ref();
     

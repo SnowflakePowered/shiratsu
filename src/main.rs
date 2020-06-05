@@ -17,6 +17,7 @@ use std::env;
 use std::fs::{create_dir, File, OpenOptions};
 use std::io::{self, BufRead, BufReader, ErrorKind, Seek, SeekFrom};
 use std::path::Path;
+use std::time::Instant;
 
 use database::{DatabaseError, ShiratsuDatabase};
 
@@ -138,6 +139,7 @@ fn create_folders() -> Result<()> {
 }
 
 fn create_db<S: AsRef<str>>(save_path: S) -> Result<()> {
+    let now = Instant::now();
     let save_path = Path::new(save_path.as_ref());
 
     if save_path.exists() {
@@ -209,11 +211,12 @@ fn create_db<S: AsRef<str>>(save_path: S) -> Result<()> {
     match db.save(save_path, Some(process_duration)) {
         Ok((uuid, time)) => {
             SAVE_PB.finish_with_message(&format!(
-                "{} -- Saved Shiragame database {} ({} at {}) ",
+                "{} -- Saved Shiragame database {} ({} at {}) in {} seconds",
                 style("Success").green(),
                 style(save_path.display()).cyan(),
                 style(uuid).green().bold(),
-                style(time).green()
+                style(time).green(),
+                style(now.elapsed().as_secs()).cyan(),
             ));
             Ok(())
         }
@@ -236,6 +239,7 @@ fn create_db<S: AsRef<str>>(save_path: S) -> Result<()> {
 }
 
 fn sort_dats() -> Result<()> {
+    let now = Instant::now();
     let rules = std::fs::read_to_string("sortrules.yml")
         .map_or_else(|_| Cow::Borrowed(*SORTING_RULES), |s| Cow::Owned(s));
     let sort_rules_src;
@@ -298,9 +302,10 @@ fn sort_dats() -> Result<()> {
         current_dir.pop();
     }
     println!(
-        " {} -- Sorted {} DATs",
+        " {} -- Sorted {} DATs in {} seconds",
         "✓ Success".green(),
-        style(count).cyan()
+        style(count).cyan(),
+        style(now.elapsed().as_secs()).cyan(),
     );
     Ok(())
 }

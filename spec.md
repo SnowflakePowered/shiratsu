@@ -1,7 +1,7 @@
 # Shiragame database specification
 
 **Schema Version:** `2.0.0`
-**Stone Version:** `^9.2.0`
+**Stone Version:** `^10.0.0`
 
 This document defines the schema and semantics of the Shiragame games database. 
 

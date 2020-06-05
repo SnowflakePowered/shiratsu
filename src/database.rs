@@ -211,6 +211,7 @@ fn insert_entry(
     })?;
 
     let game_id = tx.last_insert_rowid();
+    
     for rom in entry.rom_entries().iter() {
         tx.execute_named(
             r#"
