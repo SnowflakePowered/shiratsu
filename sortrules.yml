@@ -19,13 +19,13 @@ ATARI_7800:
 ATARI_JAGUAR: 
   - "Atari - Jaguar (J64) (*).dat"
   - "Atari - Jaguar (ROM) (*).dat"
-  - "Atari Jaguar - Games - [*] (TOSEC-*).dat"
-  - "Atari Jaguar - Applications - [???] (TOSEC-*).dat"
-  - "Atari Jaguar - Demos - [???] (TOSEC-*).dat"
+  - "Atari Jaguar - Games - [[]*[]] (TOSEC-*).dat"
+  - "Atari Jaguar - Applications - [[]???[]] (TOSEC-*).dat"
+  - "Atari Jaguar - Demos - [[]???[]] (TOSEC-*).dat"
   - "Atari Jaguar - Firmware (TOSEC-*).dat"
 ATARI_JAGUAR_CD: 
   - "Atari Jaguar CD - Games (TOSEC-*).dat"
-  - "Atari Jaguar CD - Homebrew - Games - [???] (TOSEC-*).dat"
+  - "Atari Jaguar CD - Homebrew - Games - [[]???[]] (TOSEC-*).dat"
 ATARI_LYNX: 
   - "Atari - Lynx (*).dat"
   - "Atari Lynx - Applications (TOSEC-*).dat"
@@ -52,9 +52,9 @@ FUJITSU_FMT:
   - "Fujitsu FM Towns - CD - Compilations (TOSEC-*).dat"
   - "Fujitsu FM Towns - CD - Homebrew - * (TOSEC-*).dat"
   - "Fujitsu FM Towns - Firmware (TOSEC-*).dat"
-  - "Fujitsu FM Towns - Games - [???] (TOSEC-*).dat"
-  - "Fujitsu FM Towns - Applications - [???] (TOSEC-*).dat"
-  - "Fujitsu FM Towns - Operating Systems - [???] (TOSEC-*).dat"
+  - "Fujitsu FM Towns - Games - [[]???[]] (TOSEC-*).dat"
+  - "Fujitsu FM Towns - Applications - [[]???[]] (TOSEC-*).dat"
+  - "Fujitsu FM Towns - Operating Systems - [[]???[]] (TOSEC-*).dat"
 GCE_VECTREX: 
   - "GCE - Vectrex (*).dat"
   - "GCE Vectrex - Demos - * (TOSEC-*).dat"
@@ -70,9 +70,9 @@ MAGNAVOX_O2:
 MATTEL_INT: 
   - "Mattel - Intellivision (*).dat"
   - "Mattel Intellivision - Applications (TOSEC-*)"
-  - "Mattel Intellivision - Demos - [*] (TOSEC-*)"
-  - "Mattel Intellivision - Games - [*] (TOSEC-*)"
-  - "Mattel Intellivision - Firmware - [*] (TOSEC-*)"
+  - "Mattel Intellivision - Demos - [[]*[]] (TOSEC-*)"
+  - "Mattel Intellivision - Games - [[]*[]] (TOSEC-*)"
+  - "Mattel Intellivision - Firmware - [[]*[]] (TOSEC-*)"
   - "Mattel Intellivision - Educational (TOSEC-*)"
 MICROSOFT_X360: []
 MICROSOFT_XBO: []
@@ -96,8 +96,8 @@ NEC_TGCD:
   - "NEC PC-Engine CD & TurboGrafx-16 CD - Applications (TOSEC-*).dat"
   - "NEC PC-Engine CD & TurboGrafx-16 CD - Compilations (TOSEC-*).dat"
   - "NEC PC-Engine CD & TurboGrafx-16 CD - Educational (TOSEC-*).dat"
-  - "NEC PC-Engine CD & TurboGrafx-16 CD - Samplers [???] (TOSEC-*).dat"
-  - "NEC PC-Engine CD & TurboGrafx-16 CD - Games [???] (TOSEC-*).dat"
+  - "NEC PC-Engine CD & TurboGrafx-16 CD - Samplers [[]???[]] (TOSEC-*).dat"
+  - "NEC PC-Engine CD & TurboGrafx-16 CD - Games [[]???[]] (TOSEC-*).dat"
   - "NEC PC-Engine CD & TurboGrafx-16 CD - Homebrew - Games (TOSEC-*).dat"
 NINTENDO_3DS: 
   - "Nintendo - Nintendo 3DS (Digital) ([0-9]*).dat"
@@ -165,9 +165,9 @@ NINTENDO_NDS:
   - "Nintendo - Nintendo DS (Download Play) (*).dat"
 NINTENDO_NES: 
   - "Nintendo - Nintendo Entertainment System (*).dat"
-  - "Nintendo Famicom & Entertainment System - Applications - [???] (TOSEC-*).dat"
-  - "Nintendo Famicom & Entertainment System - Demos - [???] (TOSEC-*).dat"
-  - "Nintendo Famicom & Entertainment System - Games - [???] (TOSEC-*).dat"
+  - "Nintendo Famicom & Entertainment System - Applications - [[]???[]] (TOSEC-*).dat"
+  - "Nintendo Famicom & Entertainment System - Demos - [[]???[]] (TOSEC-*).dat"
+  - "Nintendo Famicom & Entertainment System - Games - [[]???[]] (TOSEC-*).dat"
   - "Nintendo Famicom & Entertainment System - Educational (TOSEC-*).dat"
   - "Nintendo Famicom & Entertainment System - Firmware (TOSEC-*).dat"
 NINTENDO_NSW: 
@@ -197,8 +197,8 @@ NINTENDO_WIIU:
   - "Nintendo - Wii U (Digital) ([0-9]*).dat"
 PANASONIC_3DO: 
   - "3DO 3DO Interactive Multiplayer - Homebrew - * (TOSEC-*).dat"
-  - "3DO 3DO Interactive Multiplayer - Applications - [???] (TOSEC-*).dat"
-  - "3DO 3DO Interactive Multiplayer - Coverdiscs - [???] (TOSEC-*).dat"
+  - "3DO 3DO Interactive Multiplayer - Applications - [[]???[]] (TOSEC-*).dat"
+  - "3DO 3DO Interactive Multiplayer - Coverdiscs - [[]???[]] (TOSEC-*).dat"
   - "3DO 3DO Interactive Multiplayer - Games (TOSEC-*).dat"
   - "3DO 3DO Interactive Multiplayer - Educational (TOSEC-*).dat"
   - "3DO 3DO Interactive Multiplayer - Firmware (TOSEC-*).dat"
@@ -216,14 +216,14 @@ SEGA_32X:
   - "Sega 32X - Demos (TOSEC-*).dat"
   - "Sega 32X - Firmware (TOSEC-*).dat"
 SEGA_32X_CD: 
-  - "Sega 32X - CD - Games - [???] (TOSEC-*).dat"
+  - "Sega 32X - CD - Games - [[]???[]] (TOSEC-*).dat"
 SEGA_CD: 
   - "Sega Mega-CD & Sega CD - Applications (TOSEC-*).dat"
   - "Sega Mega-CD & Sega CD - Firmware (TOSEC-*).dat"
   - "Sega Mega-CD & Sega CD - CD - Applications (TOSEC-*).dat"
-  - "Sega Mega-CD & Sega CD - CD - Educational - [???] (TOSEC-*).dat"
-  - "Sega Mega-CD & Sega CD - CD - Games - [???] (TOSEC-*).dat"
-  - "Sega Mega-CD & Sega CD - CD - Samplers - [???] (TOSEC-*).dat"
+  - "Sega Mega-CD & Sega CD - CD - Educational - [[]???[]] (TOSEC-*).dat"
+  - "Sega Mega-CD & Sega CD - CD - Games - [[]???[]] (TOSEC-*).dat"
+  - "Sega Mega-CD & Sega CD - CD - Samplers - [[]???[]] (TOSEC-*).dat"
 SEGA_DC: 
   - "Sega Dreamcast - Applications (TOSEC-*).dat"
   - "Sega Dreamcast - Firmware (TOSEC-*).dat"
@@ -233,11 +233,11 @@ SEGA_DC:
   - "Sega Dreamcast - Various Unverified Dumps (TOSEC-*).dat"
 SEGA_GEN: 
   - "Sega - Mega Drive - Genesis (*).dat"
-  - "Sega Mega Drive & Genesis - Applications - [*] (TOSEC-*).dat"
+  - "Sega Mega Drive & Genesis - Applications - [[]*[]] (TOSEC-*).dat"
   - "Sega Mega Drive & Genesis - Demos (TOSEC-*).dat"
   - "Sega Mega Drive & Genesis - Educational (TOSEC-*).dat"
   - "Sega Mega Drive & Genesis - Firmware (TOSEC-*).dat"
-  - "Sega Mega Drive & Genesis - Games - [*] (TOSEC-*).dat"
+  - "Sega Mega Drive & Genesis - Games - [[]*[]] (TOSEC-*).dat"
   - "Sega Mega Drive & Genesis - Compilations (TOSEC-*).dat"
 SEGA_GG: 
   - "Sega - Game Gear (*).dat"
@@ -269,8 +269,8 @@ SNK_NG: []
 SNK_NGCD: 
   - "SNK Neo-Geo CD - Demos (TOSEC-*).dat"
   - "SNK Neo-Geo CD - Firmware (TOSEC-*).dat"
-  - "SNK Neo-Geo CD - Games - [*] (TOSEC-*).dat"
-  - "SNK Neo-Geo CD - Samplers - [*] (TOSEC-*).dat"
+  - "SNK Neo-Geo CD - Games - [[]*[]] (TOSEC-*).dat"
+  - "SNK Neo-Geo CD - Samplers - [[]*[]] (TOSEC-*).dat"
 SNK_NGP: 
   - "SNK - Neo Geo Pocket (*).dat"
   - "SNK Neo-Geo Pocket - * (TOSEC-*).dat"
@@ -297,8 +297,8 @@ SONY_PSV:
   - "WIP Sony - PlayStation Vita (PSN) (Decrypted) (*).dat"
   - "Sony - PlayStation Vita (PSN) (Encrypted) (*).dat"
 SONY_PSX: 
-  - "Sony PlayStation - Games - [???] (TOSEC-*).dat"
-  - "Sony PlayStation - Demos - [???] (TOSEC-*).dat"
-  - "Sony PlayStation - Samplers - [???] (TOSEC-*).dat"
+  - "Sony PlayStation - Games - [[]???[]] (TOSEC-*).dat"
+  - "Sony PlayStation - Demos - [[]???[]] (TOSEC-*).dat"
+  - "Sony PlayStation - Samplers - [[]???[]] (TOSEC-*).dat"
   - "Sony PlayStation - Applications (TOSEC-*).dat"
   - "Sony PlayStation - Firmware (TOSEC-*).dat"
