@@ -110,6 +110,7 @@ NINTENDO_DSI:
   - "Nintendo - Nintendo DSi (Decrypted) (*).dat"
   - "Nintendo - Nintendo DSi (Encrypted) (*).dat"
   - "Nintendo - Nintendo DSi (Download Play) (*).dat"
+  - "WIP Nintendo - Nintendo DSi (Digital) (*).dat"
 NINTENDO_FDS: 
   - "Nintendo - Family Computer Disk System (FDS) (*).dat"
   - "Nintendo - Family Computer Disk System (FDSStickBIN) (*).dat"
@@ -293,6 +294,7 @@ SONY_PSV:
   - "Sony - PlayStation Vita (NoNpDrm) (*).dat"
   - "Sony - PlayStation Vita (VPK) (*).dat"
   - "Sony - PlayStation Vita (PSN) (Decrypted) (*).dat"
+  - "WIP Sony - PlayStation Vita (PSN) (Decrypted) (*).dat"
   - "Sony - PlayStation Vita (PSN) (Encrypted) (*).dat"
 SONY_PSX: 
   - "Sony PlayStation - Games - [???] (TOSEC-*).dat"
