@@ -1,16 +1,17 @@
 mod database;
 mod ingest;
+mod log;
 mod sortrules;
 
 use shiratsu_lib::{
     parse::*,
     parse::{nointro::*, redump::*, tosec::*},
-    stone::StonePlatforms,
+    stone::{PlatformId, StonePlatforms},
 };
 
 use anyhow::Result;
 
-use slog::{error, info, o, Drain};
+use slog::{o, Drain, Logger};
 
 use std::borrow::Cow;
 use std::env;
@@ -21,15 +22,11 @@ use std::time::Instant;
 
 use database::{DatabaseError, ShiratsuDatabase};
 
-use colored::*;
 use console::style;
-use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
-use rusqlite::backup::Progress;
+use indicatif::ProgressBar;
 
 use lazy_static::lazy_static;
-use lazy_static_include::{
-    lazy_static_include_str, lazy_static_include_str_impl, lazy_static_include_str_inner,
-};
+use lazy_static_include::*;
 
 use glob::glob_with;
 use glob::MatchOptions;
@@ -71,47 +68,61 @@ fn setup_logging<T: AsRef<Path>>(log_path: T) -> slog::Logger {
     // slog_scope::set_global_logger(root)
 }
 
-lazy_static! {
-    static ref SAVE_PB: ProgressBar = ProgressBar::hidden();
-    static ref PB_STYLE: ProgressStyle = ProgressStyle::default_spinner()
-                                            // .tick_strings(&["⠁ ","⠂ ", "⠄ ", "⡀ ", "⢀ ", "⠠ ", "⠐ ", "⠈ ", ""])
-                                            .tick_strings(&["⠋", "⠙", "⠸", "⠴", "⠦", "⠇", &format!("{}", "✓".green())])
-                                            .template("{prefix:.bold.dim} {spinner} [{pos}/{len}] {wide_msg}");
-    static ref SAVE_PB_STYLE: ProgressStyle = ProgressStyle::default_spinner()
-                                            // .tick_strings(&["⠁ ","⠂ ", "⠄ ", "⡀ ", "⢀ ", "⠠ ", "⠐ ", "⠈ ", ""])
-                                            .tick_strings(&["⠋", "⠙", "⠸", "⠴", "⠦", "⠇", &format!("{}", "✓".green())])
-                                            .template("{prefix:.bold.dim} {spinner} {wide_msg}");
-}
-
 lazy_static_include_str!(SORTING_RULES, "sortrules.yml");
 
-fn create_folders() -> Result<()> {
+pub enum Event<'a> {
+    CreatingFolderStructure,
+    CreatedDirectory(&'a Path),
+    DirectoryAlreadyExists(&'a Path),
+    CreatedUnsortedDirectory(&'a Path),
+    UnsortedDirectoryAlreadyExists(&'a Path),
+    CreateFoldersSuccess,
+    DatabaseSavePathAlreadyExists(&'a Path),
+    GeneratingDatabase(&'a Path, &'a Logger),
+    FoundDatFile(
+        &'a ProgressBar,
+        &'a Path,
+        u64,
+        &'a PlatformId,
+        &'a str,
+        &'a Logger,
+    ),
+    ProcessEntry(
+        &'a ProgressBar,
+        &'a PlatformId,
+        &'a Path,
+        &'a str,
+        &'a Logger,
+    ),
+    ProcessEntrySuccess(&'a ProgressBar),
+    DatProcessingSuccess(&'a ProgressBar, &'a PlatformId, &'a Path, usize, &'a Logger),
+    DbSaveSuccess(&'a Path, &'a String, &'a String, u64),
+    DbSaveError(&'a Path, &'a Logger),
+    LoadInternalSortingRules,
+    LoadExternalSortingRules,
+    LoadedSortingRules(&'a str),
+    SortedFile(&'a std::ffi::OsStr, &'a PlatformId),
+    SortingSuccess(usize, u64),
+}
+
+fn create_folders<F>(event_fn: F) -> Result<()>
+where
+    F: Fn(Event) -> (),
+{
     let mut current_dir = env::current_dir()?;
     current_dir.push("dats");
-    println!("Creating folder structure in {}", "dats".cyan());
+    event_fn(Event::CreatingFolderStructure);
     if !current_dir.exists() {
-        println!(
-            " {} Created directory {}",
-            "✓".green(),
-            style(current_dir.display()).cyan()
-        );
         create_dir(&current_dir)?;
+        event_fn(Event::CreatedDirectory(&current_dir));
     }
     for platform_id in StonePlatforms::get().ids() {
         current_dir.push(platform_id.as_ref());
         if !current_dir.exists() {
             create_dir(&current_dir)?;
-            println!(
-                " {} Created directory {}",
-                "✓".green(),
-                style(current_dir.display()).cyan()
-            );
+            event_fn(Event::CreatedDirectory(&current_dir));
         } else {
-            println!(
-                " {} Directory {} already exists",
-                "✓".green(),
-                style(current_dir.display()).cyan()
-            );
+            event_fn(Event::DirectoryAlreadyExists(&current_dir));
         }
         current_dir.pop();
     }
@@ -119,117 +130,81 @@ fn create_folders() -> Result<()> {
     current_dir.push("unsorted");
     if !current_dir.exists() {
         create_dir(&current_dir)?;
-        println!(
-            " {} Created unsorted directory {}",
-            "✓".green(),
-            style(current_dir.display()).cyan()
-        );
+        event_fn(Event::CreatedUnsortedDirectory(&current_dir));
     } else {
-        println!(
-            " {} Unsorted directory {} already exists",
-            "✓".green(),
-            style(current_dir.display()).cyan()
-        );
+        event_fn(Event::UnsortedDirectoryAlreadyExists(&current_dir));
     }
-    println!(
-        " {} -- Created required folder structure",
-        "✓ Success".green()
-    );
+    event_fn(Event::CreateFoldersSuccess);
+
     Ok(())
 }
 
-fn create_db<S: AsRef<str>>(save_path: S) -> Result<()> {
+fn create_db<S: AsRef<str>, F>(save_path: S, event_fn: F) -> Result<()>
+where
+    F: Fn(Event) -> (),
+{
     let now = Instant::now();
     let save_path = Path::new(save_path.as_ref());
 
     if save_path.exists() {
-        eprintln!(
-            "Specified save path {} already exists!",
-            style(save_path.display()).cyan()
-        );
+        event_fn(Event::DatabaseSavePathAlreadyExists(&save_path));
         return Err(anyhow::Error::new(io::Error::new(
             ErrorKind::AlreadyExists,
             "The specified path already exists.",
         )));
     }
     let root = setup_logging(format!("{}.log", save_path.display()));
-    println!(
-        "Generating Shiragame database at {}",
-        style(save_path.display()).cyan(),
-    );
-    info!(
-        root,
-        "Generating Shiragame database at {save_path}",
-        save_path = save_path.display()
-    );
+    event_fn(Event::GeneratingDatabase(&save_path, &root));
+
     let mut db = ShiratsuDatabase::new().unwrap();
     for (platform_id, dir) in ingest::get_paths("dats").into_iter() {
         let reader = BufReader::new(File::open(dir.path())?);
         if let Ok(Some((entries, source))) = get_entries(reader) {
             let pb = ProgressBar::new(entries.len() as u64);
-            pb.set_style(PB_STYLE.clone());
-            pb.set_message(&format!("{}", dir.path().display()));
-            pb.set_draw_delta(entries.len() as u64 / 100);
-            info!(
-                root,
-                "Found {} DAT File at {} ({})",
-                source = source,
-                path = dir.path().display(),
-                platform_id = platform_id.as_ref()
-            );
+            event_fn(Event::FoundDatFile(
+                &pb,
+                dir.path(),
+                entries.len() as u64,
+                platform_id,
+                source,
+                &root,
+            ));
+
             for game in entries.iter() {
-                info!(
-                    root,
-                    "Adding game entry \"{}\" ({})",
-                    entry_name = game.entry_name(),
-                    platform_id = platform_id.as_ref(),
-                );
-                pb.set_message(&format!(
-                    "[{}] {}: {}",
-                    platform_id.as_ref(),
-                    dir.path().display(),
-                    game.entry_name()
+                event_fn(Event::ProcessEntry(
+                    &pb,
+                    platform_id,
+                    dir.path(),
+                    game.entry_name(),
+                    &root,
                 ));
                 db.add_entry(game, platform_id).unwrap();
-                pb.inc(1);
+                event_fn(Event::ProcessEntrySuccess(&pb));
             }
-            info!(
-                root,
-                "Finished processing {}, added {} entries.",
-                path = dir.path().display(),
-                count = entries.len()
-            );
-            pb.finish_with_message(&format!(
-                "[{}] Finished processing {}, added {} entries.",
-                platform_id.as_ref(),
-                style(dir.path().display()).cyan(),
-                entries.len()
-            ))
+
+            event_fn(Event::DatProcessingSuccess(
+                &pb,
+                platform_id,
+                dir.path(),
+                entries.len(),
+                &root,
+            ));
         }
     }
 
-    match db.save(save_path, Some(process_duration)) {
+    match db.save(save_path, Some(log::process_duration)) {
         Ok((uuid, time)) => {
-            SAVE_PB.finish_with_message(&format!(
-                "{} -- Saved Shiragame database {} ({} at {}) in {} seconds",
-                style("Success").green(),
-                style(save_path.display()).cyan(),
-                style(uuid).green().bold(),
-                style(time).green(),
-                style(now.elapsed().as_secs()).cyan(),
+            event_fn(Event::DbSaveSuccess(
+                &save_path,
+                &uuid,
+                &time,
+                now.elapsed().as_secs(),
             ));
             Ok(())
         }
         Err(err) => {
-            eprintln!(
-                "Could not save Shiragame database to {}, does it already exist?",
-                style(save_path.display()).cyan()
-            );
-            error!(
-                root,
-                "Could not save Shiragame database to {save_path}, does it already exist?",
-                save_path = save_path.display()
-            );
+            event_fn(Event::DbSaveError(&save_path, &root));
+
             Err(match err {
                 DatabaseError::IOError(err) => anyhow::Error::new(err),
                 DatabaseError::SqliteError(err) => anyhow::Error::new(err),
@@ -238,7 +213,10 @@ fn create_db<S: AsRef<str>>(save_path: S) -> Result<()> {
     }
 }
 
-fn sort_dats() -> Result<()> {
+fn sort_dats<F>(event_fn: F) -> Result<()>
+where
+    F: Fn(Event) -> (),
+{
     let now = Instant::now();
     let rules = std::fs::read_to_string("sortrules.yml")
         .map_or_else(|_| Cow::Borrowed(*SORTING_RULES), |s| Cow::Owned(s));
@@ -247,26 +225,19 @@ fn sort_dats() -> Result<()> {
     match &rules {
         Cow::Borrowed(_) => {
             sort_rules_src = "internal sorting rules";
-            println!("Loading {}", style(sort_rules_src).cyan())
+            event_fn(Event::LoadInternalSortingRules);
         }
         Cow::Owned(_) => {
             sort_rules_src = "sortrules.yml";
-            println!(
-                "Loading sorting rules from {}",
-                style("sortrules.yml").cyan()
-            )
+            event_fn(Event::LoadExternalSortingRules);
         }
     }
 
     let rules = sortrules::load_map(rules)?;
 
-    println!(
-        " {} Loaded sorting rules from {}",
-        "✓".green(),
-        sort_rules_src.cyan(),
-    );
+    event_fn(Event::LoadedSortingRules(&sort_rules_src));
 
-    create_folders()?;
+    create_folders(&event_fn)?;
     let mut current_dir = env::current_dir()?;
     current_dir.push("dats");
 
@@ -289,28 +260,21 @@ fn sort_dats() -> Result<()> {
                 let path = std::fs::canonicalize(&path)?;
                 current_dir.push(filename);
                 std::fs::rename(&path, &current_dir)?;
-                println!(
-                    " {} Sorted {:#?} as {}",
-                    "✓".green(),
-                    style(filename).cyan(),
-                    platform_id.as_ref()
-                );
+                event_fn(Event::SortedFile(filename, platform_id));
                 count += 1;
                 current_dir.pop();
             }
         }
         current_dir.pop();
     }
-    println!(
-        " {} -- Sorted {} DATs in {} seconds",
-        "✓ Success".green(),
-        style(count).cyan(),
-        style(now.elapsed().as_secs()).cyan(),
-    );
+    event_fn(Event::SortingSuccess(count, now.elapsed().as_secs()));
     Ok(())
 }
 
-fn run_app() -> Result<()> {
+fn run_app<F>(event_fn: F) -> Result<()>
+where
+    F: Fn(Event) -> (),
+{
     let args = env::args().skip(1).take(1).next();
     let command = args.ok_or(io::Error::new(
         ErrorKind::NotFound,
@@ -318,26 +282,17 @@ fn run_app() -> Result<()> {
     ))?;
 
     match command.as_str() {
-        "sort" => sort_dats(),
-        save_path => create_db(save_path),
+        "sort" => sort_dats(event_fn),
+        save_path => create_db(save_path, event_fn),
     }
 }
 
 fn main() {
-    std::process::exit(match run_app() {
+    std::process::exit(match run_app(log::print_event) {
         Ok(_) => 0,
         Err(err) => {
             eprintln!("{} -- {}", style(" ✘ Error").red(), err);
             1
         }
     });
-}
-
-pub fn process_duration(p: Progress) {
-    if SAVE_PB.is_hidden() {
-        SAVE_PB.set_draw_target(ProgressDrawTarget::stderr());
-        SAVE_PB.set_style(SAVE_PB_STYLE.clone());
-        SAVE_PB.set_length(p.pagecount as u64);
-    }
-    SAVE_PB.set_position((p.pagecount - p.remaining) as u64);
 }
