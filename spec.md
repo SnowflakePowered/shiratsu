@@ -19,7 +19,7 @@ For definitions of "*platform*" and "*format*", please refer to the Stone specif
 
 Unlike OpenVGDB, Shiragame does not aim to be an all-in-one database. Its primary purpose is to provide an efficient method to identify and verify that a given file is a known *dump* that is part of a game distribution, and to identify the game such a *dump* is part of. Shiragame does not aim to catalogue information outside of what can be ascertained from the *game entry*'s *canonical name*. Once a searchable title is obtained from a *dump*, other tools may be used to scrape more information, such as cover arts and descriptions. Shiragame however, is only meant for the first step of identification.
 
-In addition, while Shiragame was created primarily for use with [Snowflake](https://github.com/SnowflakePowered/snowflake), a conscience effort is taken to maintain a stable, documented API in the form of this document.
+In addition, while Shiragame was created primarily for use with [Snowflake](https://github.com/SnowflakePowered/snowflake), a conscious effort is taken to maintain a stable, documented API in the form of this document.
 
 ### Why SQLite?
 
