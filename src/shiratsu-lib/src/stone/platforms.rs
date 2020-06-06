@@ -189,8 +189,8 @@ fn load_platform_info() -> Result<(StonePlatforms, String)> {
     for (_id, platform) in value.iter_mut() {
         let file_type_clone = platform.file_types.clone();
         for (ext, mime) in file_type_clone.into_iter() {
-            if ext == "BIOS" {
-                // Skip BIOS mimetype
+            if ext == "BIOS" || ext == "RSRC" {
+                // Skip BIOS or RSRC mimetype
                 continue;
             }
             // Duplicating the mimetypes once is cheap enough to easily support
