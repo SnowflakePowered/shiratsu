@@ -104,7 +104,8 @@ pub enum Event<'a> {
         &'a Logger,
     ),
     ParseEntryError(
-        &'a ParseError
+        &'a ParseError,
+        &'a Logger
     ),
     ProcessEntrySuccess(&'a ProgressBar),
     DatProcessingSuccess(&'a ProgressBar, &'a PlatformId, &'a Path, usize, &'a Logger),
@@ -115,7 +116,7 @@ pub enum Event<'a> {
     LoadedSortingRules(&'a str),
     SortedFile(&'a std::ffi::OsStr, &'a PlatformId),
     SortingSuccess(usize, u64),
-    NoEntriesFound(&'a OsStr)
+    NoEntriesFound(&'a OsStr, &'a Logger)
 }
 
 fn create_folders<F>(event_fn: F) -> Result<()>
@@ -198,7 +199,7 @@ where
                             event_fn(Event::ProcessEntrySuccess(&pb));
                         }
                         Err(err) => {
-                            parse_errors.push(Event::ParseEntryError(err))
+                            parse_errors.push(Event::ParseEntryError(err, &root))
                         }
                     }
                 }
@@ -215,7 +216,7 @@ where
                     event_fn(error);
                 }
             }
-            Ok(None) => event_fn(Event::NoEntriesFound(dir.file_name())),
+            Ok(None) => event_fn(Event::NoEntriesFound(dir.file_name(), &root)),
             Err(err) => return Err(err),
         }
     }
