@@ -36,7 +36,10 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
     };
     let (input, has_bios) = opt(tag("[BIOS] "))(input)?;
     let mut region_code: Option<Vec<Region>> = None;
-    let (input, title) = take_till(|c| c == '(')(input)?;
+    // Odekake Lester - Lelele no Le (^^; is an SNES game that is
+    // perfectly valid according to the naming convention, but
+    // effectively impossible to parse.
+    let (input, title) = alt((tag("Odekake Lester - Lelele no Le (^^; "), take_till(|c| c == '(')))(input)?;
     let mut entry_title = String::from(title);
     let mut input = input;
     while region_code.is_none() && input.len() > 0 {
