@@ -89,6 +89,14 @@ mod tests {
     }
 
     #[test]
+    fn nointro_filename_parses_odekake() {
+        let parsed = NameInfo::try_from_nointro("Odekake Lester - Lelele no Le (^^; (Japan)").unwrap();
+        assert_eq!("Odekake Lester - Lelele no Le (^^;", parsed.entry_title());
+        assert_eq!("Odekake Lester: Lelele no Le (^^;", parsed.release_title());
+        assert_eq!(&[Region::Japan], parsed.region());
+    }
+
+    #[test]
     fn nointro_filename_parses_end() {
         let parsed = NameInfo::try_from_nointro("Cube CD 20, The (40) - Testing (Europe) (Rev 10)").unwrap();
         assert_eq!("Cube CD 20, The (40) - Testing", parsed.entry_title());
