@@ -20,4 +20,5 @@ quick-xml = { version = "0.18", features = [ "serialize" ] }
 nom = { version = "6.0.0-alpha1", features = ["regexp"] }
 indexmap = "1.3"
 regex = "1"
+fancy-regex = "0.3" # tosec lies.
 array_iterator = "0.2"
