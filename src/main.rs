@@ -9,7 +9,7 @@ use shiratsu_lib::{
     stone::{PlatformId, StonePlatforms},
 };
 
-use anyhow::Result;
+use anyhow::{anyhow, Error, Result};
 
 use slog::{o, Drain, Logger};
 
@@ -18,7 +18,7 @@ use std::env;
 use std::fs::{create_dir, File, OpenOptions};
 use std::io::{self, BufRead, BufReader, ErrorKind, Seek, SeekFrom};
 use std::path::Path;
-use std::time::Instant;
+use std::{ffi::OsStr, time::Instant};
 
 use database::{DatabaseError, ShiratsuDatabase};
 
@@ -31,19 +31,28 @@ use lazy_static_include::*;
 use glob::glob_with;
 use glob::MatchOptions;
 
-fn get_entries<R: BufRead + Seek>(mut reader: R) -> Result<Option<(Vec<GameEntry>, &'static str)>> {
-    if let Ok(entries) = GameEntry::try_from_nointro_buf(reader.by_ref()) {
-        return Ok(Some((entries, "No-Intro")));
+type ParseResult<T> = std::result::Result<T, shiratsu_lib::parse::ParseError>;
+
+fn get_entries<R: BufRead + Seek>(mut reader: R) -> Result<Option<(Vec<ParseResult<GameEntry>>, &'static str)>> {
+    reader.seek(SeekFrom::Start(0))?;
+    match GameEntry::try_from_nointro_buf(reader.by_ref()) {
+        Ok(entries) => return Ok(Some((entries, "No-Intro"))),
+        Err(ParseError::HeaderMismatchError(_, _)) => {}
+        Err(err) => return Err(Error::new(err)),
     }
     reader.seek(SeekFrom::Start(0))?;
-    if let Ok(entries) = GameEntry::try_from_redump_buf(reader.by_ref()) {
-        return Ok(Some((entries, "Redump")));
-    };
+    match GameEntry::try_from_redump_buf(reader.by_ref()) {
+        Ok(entries) => return Ok(Some((entries, "Redump"))),
+        Err(ParseError::HeaderMismatchError(_, _)) => {}
+        Err(err) => return Err(Error::new(err)),
+    }
     reader.seek(SeekFrom::Start(0))?;
-    if let Ok(entries) = GameEntry::try_from_tosec_buf(reader.by_ref()) {
-        return Ok(Some((entries, "TOSEC")));
-    };
-    Ok(None)
+    match GameEntry::try_from_tosec_buf(reader.by_ref()) {
+        Ok(entries) => return Ok(Some((entries, "TOSEC"))),
+        Err(ParseError::HeaderMismatchError(_, _)) => {}
+        Err(err) => return Err(Error::new(err)),
+    }
+    Err(anyhow!("Did not match any known cataloguing organization."))
 }
 
 fn setup_logging<T: AsRef<Path>>(log_path: T) -> slog::Logger {
@@ -94,6 +103,9 @@ pub enum Event<'a> {
         &'a str,
         &'a Logger,
     ),
+    ParseEntryError(
+        &'a ParseError
+    ),
     ProcessEntrySuccess(&'a ProgressBar),
     DatProcessingSuccess(&'a ProgressBar, &'a PlatformId, &'a Path, usize, &'a Logger),
     DbSaveSuccess(&'a Path, &'a String, &'a String, u64),
@@ -103,6 +115,7 @@ pub enum Event<'a> {
     LoadedSortingRules(&'a str),
     SortedFile(&'a std::ffi::OsStr, &'a PlatformId),
     SortingSuccess(usize, u64),
+    NoEntriesFound(&'a OsStr)
 }
 
 fn create_folders<F>(event_fn: F) -> Result<()>
@@ -145,7 +158,6 @@ where
 {
     let now = Instant::now();
     let save_path = Path::new(save_path.as_ref());
-
     if save_path.exists() {
         event_fn(Event::DatabaseSavePathAlreadyExists(&save_path));
         return Err(anyhow::Error::new(io::Error::new(
@@ -158,37 +170,53 @@ where
 
     let mut db = ShiratsuDatabase::new().unwrap();
     for (platform_id, dir) in ingest::get_paths("dats").into_iter() {
+        let mut parse_errors = Vec::new();
         let reader = BufReader::new(File::open(dir.path())?);
-        if let Ok(Some((entries, source))) = get_entries(reader) {
-            let pb = ProgressBar::new(entries.len() as u64);
-            event_fn(Event::FoundDatFile(
-                &pb,
-                dir.path(),
-                entries.len() as u64,
-                platform_id,
-                source,
-                &root,
-            ));
+        match get_entries(reader) {
+            Ok(Some((entries, source))) => {
+                let pb = ProgressBar::new(entries.len() as u64);
+                event_fn(Event::FoundDatFile(
+                    &pb,
+                    dir.path(),
+                    entries.len() as u64,
+                    platform_id,
+                    source,
+                    &root,
+                ));
 
-            for game in entries.iter() {
-                event_fn(Event::ProcessEntry(
+                for game in entries.iter() {
+                    match game {
+                        Ok(game) => {
+                            event_fn(Event::ProcessEntry(
+                                &pb,
+                                platform_id,
+                                dir.path(),
+                                game.entry_name(),
+                                &root,
+                            ));
+                            db.add_entry(game, platform_id).unwrap();
+                            event_fn(Event::ProcessEntrySuccess(&pb));
+                        }
+                        Err(err) => {
+                            parse_errors.push(Event::ParseEntryError(err))
+                        }
+                    }
+                }
+
+                event_fn(Event::DatProcessingSuccess(
                     &pb,
                     platform_id,
                     dir.path(),
-                    game.entry_name(),
+                    entries.len(),
                     &root,
                 ));
-                db.add_entry(game, platform_id).unwrap();
-                event_fn(Event::ProcessEntrySuccess(&pb));
-            }
 
-            event_fn(Event::DatProcessingSuccess(
-                &pb,
-                platform_id,
-                dir.path(),
-                entries.len(),
-                &root,
-            ));
+                for error in parse_errors.into_iter() {
+                    event_fn(error);
+                }
+            }
+            Ok(None) => event_fn(Event::NoEntriesFound(dir.file_name())),
+            Err(err) => return Err(err),
         }
     }
 

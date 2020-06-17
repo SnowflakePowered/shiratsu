@@ -5,6 +5,7 @@ use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use lazy_static::lazy_static;
 use rusqlite::backup::Progress;
 use slog::{error, info};
+use shiratsu_lib::parse::ParseError;
 
 lazy_static! {
     static ref SAVE_PB: ProgressBar = ProgressBar::hidden();
@@ -23,10 +24,11 @@ pub fn process_duration(p: Progress) {
         SAVE_PB.set_draw_target(ProgressDrawTarget::stderr());
         SAVE_PB.set_style(SAVE_PB_STYLE.clone());
         SAVE_PB.set_length(p.pagecount as u64);
+        let percent = (p.pagecount - p.remaining) / p.pagecount;
+        SAVE_PB.set_message(&format!("Saving... {}%", percent))
     }
     SAVE_PB.set_position((p.pagecount - p.remaining) as u64);
 }
-
 
 pub fn print_event(e: Event) {
     match e {
@@ -162,6 +164,30 @@ pub fn print_event(e: Event) {
                 style(count).cyan(),
                 style(now).cyan(),
             );
+        }
+        Event::NoEntriesFound(filename) => {
+            eprintln!(
+                " {} -- No Entries found for DAT {:#?}",
+                "! Warning".yellow(),
+                style(filename).cyan(),
+            );
+        }
+        Event::ParseEntryError(err) => {
+            match err {
+                ParseError::BadFileNameError(convention, filename) => {
+                    eprintln!(
+                        " {} -- Could not parse {} under the {:?} naming convention",
+                        "! Warning".yellow(),
+                        style(filename).cyan(),
+                        style(convention).cyan()
+                    );
+                }
+                _ => eprintln!(
+                    " {} -- Entry failed to parse: {:?}",
+                    "! Warning".yellow(),
+                    style(err).cyan(),
+                )
+            }
         }
     }
 }

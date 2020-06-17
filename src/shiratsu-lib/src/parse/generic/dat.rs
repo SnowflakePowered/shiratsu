@@ -9,7 +9,7 @@ use super::super::*;
 #[derive(Debug, Deserialize, PartialEq)]
 struct Rom {
     name: String,
-    size: u32,
+    size: i64,
     crc: String,
     md5: String,
     sha1: String,
@@ -60,37 +60,37 @@ wrap_error! {
     }
 }
 
-fn parse_unchecked(f: &str) -> Result<Vec<GameEntry>> {
-    parse_dat_unchecked::<Game, GenericParserError>(f)?
+fn parse_unchecked(f: &str) -> Result<Vec<Result<GameEntry>>> {
+    Ok(parse_dat_unchecked::<Game, GenericParserError>(f)?
         .game
         .into_iter()
         .map(|g| g.try_into())
-        .collect()
+        .collect())
 }
 
-fn parse_unchecked_buf<R: std::io::BufRead>(f: R) -> Result<Vec<GameEntry>> {
-    parse_dat_unchecked_buf::<R, Game, GenericParserError>(f)?
+fn parse_unchecked_buf<R: std::io::BufRead>(f: R) -> Result<Vec<Result<GameEntry>>> {
+    Ok(parse_dat_unchecked_buf::<R, Game, GenericParserError>(f)?
         .game
         .into_iter()
         .map(|g| g.try_into())
-        .collect()
+        .collect())
 }
 
 /// Provides methods that parse an XML .dat files from [TOSEC](https://www.tosecdev.org/)
 pub trait FromGeneric {
 
     /// Parses the contents of a generic DAT XML
-    fn try_from_str(dat: &str) -> Result<Vec<GameEntry>>;
+    fn try_from_str(dat: &str) -> Result<Vec<Result<GameEntry>>>;
 
     /// Parses the contents of a generic DAT xml
-    fn try_from_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<GameEntry>>;
+    fn try_from_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<Result<GameEntry>>>;
 }
 
 impl FromGeneric for GameEntry {
-    fn try_from_str(dat: &str) -> Result<Vec<GameEntry>> {
+    fn try_from_str(dat: &str) -> Result<Vec<Result<GameEntry>>> {
         parse_unchecked(dat)
     }
-    fn try_from_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<GameEntry>> {
+    fn try_from_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<Result<GameEntry>>> {
         parse_unchecked_buf(buf)
     }
 }

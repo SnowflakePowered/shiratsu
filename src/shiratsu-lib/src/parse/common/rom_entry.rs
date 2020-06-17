@@ -9,7 +9,7 @@ pub struct RomEntry {
     /// The canonical file name of the ROM
     pub(in super::super) file_name: String,
     /// The size of the ROM
-    pub(in super::super) size: u32,
+    pub(in super::super) size: i64,
 }
 
 /// Describes a single file that is a part of a GameEntry
@@ -31,7 +31,7 @@ impl RomEntry {
         &self.file_name
     }
     /// The size of the ROM
-    pub fn size(&self) -> u32 {
+    pub fn size(&self) -> i64 {
         self.size
     }
 }

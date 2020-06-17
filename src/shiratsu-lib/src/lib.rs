@@ -62,6 +62,11 @@ mod tests {
     fn nointro_region_parses() {
         assert_eq!(Region::from_region_string("USA, Europe"), vec![Region::UnitedStates, Region::Europe]);
     }
+
+    #[test]
+    fn nointro_region_parses_many() {
+        assert_eq!(Region::try_from_nointro_region("Japan, Europe, Australia, New Zealand").unwrap(), vec![Region::Japan, Region::Europe, Region::Australia, Region::NewZealand]);
+    }
     
     #[test]
     fn tosec_region_parses() {
@@ -74,6 +79,13 @@ mod tests {
         let parsed = NameInfo::try_from_nointro("Cube CD 20, The (40) - Testing (Europe) (Unl)").unwrap();
         assert_eq!("Cube CD 20, The (40) - Testing", parsed.entry_title());
         assert_eq!("The Cube CD 20 (40): Testing", parsed.release_title());
+    }
+
+    #[test]
+    fn nointro_filename_parses_2() {
+        let parsed = NameInfo::try_from_nointro("Star Jacker (Japan, Europe, Australia, New Zealand) (Rev 1)").unwrap();
+        assert_eq!("Star Jacker", parsed.entry_title());
+        assert_eq!(&[Region::Japan, Region::Europe, Region::Australia, Region::NewZealand], parsed.region());
     }
 
     #[test]
@@ -96,6 +108,44 @@ mod tests {
         assert_eq!("Cube CD 20, The (40) - Testing", parsed.entry_title());
         assert_eq!("The Cube CD 20 (40): Testing", parsed.release_title());
         assert_eq!(&[Region::UnitedStates], parsed.region());
+    }
+
+
+    #[test]
+    fn tosec_filename_parses_2() {
+        let parsed = NameInfo::try_from_tosec("2600 Digital Clock - Demo 1 (demo)(1997-10-03)(Cracknell, Chris 'Crackers')(NTSC)(PD)").unwrap();
+        assert_eq!("2600 Digital Clock - Demo 1", parsed.entry_title());
+        assert_eq!("2600 Digital Clock: Demo 1", parsed.release_title());
+        assert_eq!(&[Region::Unknown], parsed.region());
+    }
+
+    
+    #[test]
+    fn tosec_filename_parses_3() {
+        let parsed = NameInfo::try_from_tosec("2600 Digital Clock - Demo 1 (demo-playable)(1997-10-03)(Cracknell, Chris 'Crackers')(NTSC)(PD)").unwrap();
+        assert_eq!("2600 Digital Clock - Demo 1", parsed.entry_title());
+        assert_eq!("2600 Digital Clock: Demo 1", parsed.release_title());
+        assert_eq!(&[Region::Unknown], parsed.region());
+    }
+
+    #[test]
+    fn tosec_filename_parses_4() {
+        let parsed = NameInfo::try_from_tosec("Bombsawa (Jumpman Selected levels)(19XX)(-)(PD)").unwrap();
+        assert_eq!("Bombsawa (Jumpman Selected levels)", parsed.entry_title());
+        assert_eq!(&[Region::Unknown], parsed.region());
+    }
+
+    #[test]
+    fn tosec_filename_parses_5() {
+        let parsed = NameInfo::try_from_tosec("Motocross & Pole Position (Starsoft - JVP)(PAL)[b1][possible unknown mode]").unwrap();
+        assert_eq!("Motocross & Pole Position", parsed.entry_title());
+        assert_eq!(&[Region::Unknown], parsed.region());
+    }
+    #[test]
+    fn tosec_filename_parses_6() {
+        let parsed = NameInfo::try_from_tosec("256 Color Demo (1997)(Schick, Bastian)(PD)[a]").unwrap();
+        assert_eq!("256 Color Demo", parsed.entry_title());
+        assert_eq!(&[Region::Unknown], parsed.region());
     }
 
     #[test]

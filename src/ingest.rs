@@ -34,7 +34,6 @@ pub fn get_paths<T: AsRef<Path>>(root_path: T) -> Vec<(&'static PlatformId, DirE
             .to_str()
             .and_then::<&PlatformId, _>(|s| s.try_into().ok())
             .unwrap();
-
         for dat in WalkDir::new(entry.path())
             .min_depth(1)
             .into_iter()

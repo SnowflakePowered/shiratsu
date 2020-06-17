@@ -43,7 +43,7 @@ static TOSEC_REGION: phf::Map<&'static str, Region> = phf_map! {
     "CN" => Region::China,
     "CS" => Region::Serbia,
     "CY" => Region::Cyprus,
-    "CZ" => Region::CzechRepublic,
+    "CZ" => Region::Czechia,
     "DE" => Region::Germany,
     "DK" => Region::Denmark,
     "EE" => Region::Estonia,
@@ -96,7 +96,7 @@ static TOSEC_REGION: phf::Map<&'static str, Region> = phf_map! {
     "VN" => Region::Vietnam,
     "YU" => Region::Yugoslavia,
     "ZA" => Region::SouthAfrica,
-    "ZZ" => Region::Unknown
+    "ZZ" => Region::Unknown,
 };
 
 static GOODTOOLS_REGION: phf::Map<&'static str, Region> = phf_map! {
@@ -126,6 +126,7 @@ static GOODTOOLS_REGION: phf::Map<&'static str, Region> = phf_map! {
 
 static NOINTRO_REGION: phf::Map<&'static str, Region> = phf_map! {
     "Australia" => Region::Australia,
+    "Argentina" => Region::Argentina,
     "Brazil" => Region::Brazil,
     "Canada" => Region::Canada,
     "China" => Region::China,
@@ -145,6 +146,7 @@ static NOINTRO_REGION: phf::Map<&'static str, Region> = phf_map! {
     "Sweden" => Region::Sweden,
     "USA" => Region::UnitedStates,
     "UK" => Region::UnitedKingdom,
+    "United Kingdom" => Region::UnitedKingdom,
     "Asia" => Region::Asia,
     "Poland" => Region::Poland,
     "Portugal" => Region::Portugal,
@@ -162,7 +164,8 @@ static NOINTRO_REGION: phf::Map<&'static str, Region> = phf_map! {
     "Chile" => Region::Chile,
     "Serbia" => Region::Serbia,
     "Cyprus" => Region::Cyprus,
-    "Czech Republic" => Region::CzechRepublic,
+    "Czech Republic" => Region::Czechia,
+    "Czechia" => Region::Czechia,
     "Estonia" => Region::Estonia,
     "Egypt" => Region::Egypt,
     "Croatia" => Region::Croatia,
@@ -203,6 +206,7 @@ pub enum Region {
     UnitedArabEmirates,
     Albania,
     Asia,
+    Argentina,
     Austria,
     Australia,
     Bosnia,
@@ -215,7 +219,7 @@ pub enum Region {
     China,
     Serbia,
     Cyprus,
-    CzechRepublic,
+    Czechia,
     Germany,
     Denmark,
     Estonia,
@@ -348,7 +352,7 @@ fn from_goodtools_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
 fn from_nointro_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
     let mut regions = IndexSet::<Region>::new();
     for region_code in region_str.as_ref().split(", ") {
-        if !region_code.chars().all(|c| char::is_ascii_alphabetic(&c)) {
+        if !region_code.chars().all(|c| char::is_ascii_alphabetic(&c) || c == ' ') {
             return Err(RegionError::InvalidFormat(RegionFormat::NoIntro));
         }
 
@@ -362,6 +366,14 @@ fn from_nointro_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
                 regions.insert(Region::Denmark);
                 regions.insert(Region::Norway);
                 regions.insert(Region::Sweden);
+            }
+            "Latin America" => {
+                regions.insert(Region::Mexico);
+                regions.insert(Region::Brazil);
+                regions.insert(Region::Argentina);
+                regions.insert(Region::Chile);
+                regions.insert(Region::Peru);
+                regions.insert(Region::Argentina);
             }
             _ => match NOINTRO_REGION.get(region_code) {
                 Some(&region) => {
@@ -435,7 +447,7 @@ impl From<&Region> for &str {
             Region::China => "CN",
             Region::Serbia => "CS",
             Region::Cyprus => "CY",
-            Region::CzechRepublic => "CZ",
+            Region::Czechia => "CZ",
             Region::Germany => "DE",
             Region::Denmark => "DK",
             Region::Estonia => "EE",
@@ -488,6 +500,7 @@ impl From<&Region> for &str {
             Region::Vietnam => "VN",
             Region::Yugoslavia => "YU",
             Region::SouthAfrica => "ZA",
+            Region::Argentina => "AR",
             Region::Unknown => "ZZ",
         }
     }

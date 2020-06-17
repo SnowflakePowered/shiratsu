@@ -34,7 +34,7 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
         static ref BETA: Regex = Regex::new(r"^Beta\s?([0-9]?)+").unwrap();
         static ref DISC: Regex = Regex::new(r"^Disc (([0-9]?)+)").unwrap();
     };
-    let (input, _) = opt(tag("[BIOS]"))(input)?;
+    let (input, has_bios) = opt(tag("[BIOS] "))(input)?;
     let mut region_code: Option<Vec<Region>> = None;
     let (input, title) = take_till(|c| c == '(')(input)?;
     let mut entry_title = String::from(title);
@@ -93,7 +93,11 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
     }
 
     trim_right_mut(&mut entry_title);
+    
     let mut release_title = entry_title.clone();
+    if has_bios.is_some() {
+        release_title.push_str(" BIOS")
+    }
     move_article(&mut release_title, &ARTICLES);
     replace_hyphen(&mut release_title);
     Ok((
