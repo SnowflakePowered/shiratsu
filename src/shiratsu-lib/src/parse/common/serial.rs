@@ -13,10 +13,23 @@ impl Serial {
 
     pub fn as_normalized<'a>(&'a self, ruleset: &PlatformId) -> Cow<'a, Serial> {
         match ruleset.as_ref() {
-            "SONY_PSX" | "SONY_PS2" | "SONY_PS3" | "SONY_PSP" => rule_sony(self),
+            "SONY_PSX" | "SONY_PS2" | "SONY_PS3" | "SONY_PS4" |"SONY_PSP" | "SONY_PSV" => rule_sony(self),
             "NINTENDO_GCN" => rule_nintendo_gcn(self),
+            "NINTENDO_WII" => rule_nintendo_wii(self),
+            "NINTENDO_WIIU" => rule_nintendo_wiiu(self),
+            "NINTENDO_3DS" => rule_nintendo_3ds(self),
            _ => Cow::Borrowed(self)
         }
+    }
+}
+
+fn rule_nintendo<'a>(regex: &Regex, serial: &'a Serial) -> Cow<'a, Serial> {
+    let serial_str = serial.as_ref();
+
+    if regex.is_match(serial_str) {
+        Cow::Owned(Serial::new(String::from(&serial_str[7..11])))
+    } else {
+        Cow::Borrowed(serial)
     }
 }
 
@@ -25,13 +38,29 @@ fn rule_nintendo_gcn<'a>(serial: &'a Serial) -> Cow<'a, Serial> {
         static ref VERIFY_RULE: Regex = Regex::new(r"^DL-DOL-([\w]{4})-[-\w\(\)]+$").unwrap();
     }
 
-    let serial_str = serial.as_ref();
+    rule_nintendo(&VERIFY_RULE, serial)
+}
 
-    if VERIFY_RULE.is_match(serial_str) {
-        Cow::Owned(Serial::new(String::from(&serial_str[7..11])))
-    } else {
-        Cow::Borrowed(serial)
+
+fn rule_nintendo_wii<'a>(serial: &'a Serial) -> Cow<'a, Serial> {
+    lazy_static! {
+        static ref VERIFY_RULE: Regex = Regex::new(r"^RVL-([\w]{4})-[-\w\(\)]+$").unwrap();
     }
+    rule_nintendo(&VERIFY_RULE, serial)
+}
+
+fn rule_nintendo_wiiu<'a>(serial: &'a Serial) -> Cow<'a, Serial> {
+    lazy_static! {
+        static ref VERIFY_RULE: Regex = Regex::new(r"^WUP-P-([\w]{4})-[-\w\(\)]+$").unwrap();
+    }
+    rule_nintendo(&VERIFY_RULE, serial)
+}
+
+fn rule_nintendo_3ds<'a>(serial: &'a Serial) -> Cow<'a, Serial> {
+    lazy_static! {
+        static ref VERIFY_RULE: Regex = Regex::new(r"^CTR-P-([\w]{4})-[-\w\(\)]+$").unwrap();
+    }
+    rule_nintendo(&VERIFY_RULE, serial)
 }
 
 fn rule_sony<'a>(serial: &'a Serial) -> Cow<'a, Serial> {
