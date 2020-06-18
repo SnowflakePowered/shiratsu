@@ -73,13 +73,20 @@ pub fn print_event(e: Event) {
                 style(p.display()).cyan(),
             )
         }
-        Event::FoundDatFile(pb, p, len, platform_id, source, root) => {
+        Event::FoundDatFile(pb, p, len, platform_id, source, root, filelog) => {
             info!(
                 root,
                 "Found {} DAT File at {} ({})",
                 source = source,
                 path = p.display(),
                 platform_id = platform_id.as_ref()
+            );
+
+            info!(
+                filelog,
+                "{}: {}",
+                platform_id = platform_id.as_ref(),
+                path = p.display(),
             );
 
             pb.set_style(PB_STYLE.clone());

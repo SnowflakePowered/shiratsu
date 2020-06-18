@@ -33,7 +33,9 @@ use glob::MatchOptions;
 
 type ParseResult<T> = std::result::Result<T, shiratsu_lib::parse::ParseError>;
 
-fn get_entries<R: BufRead + Seek>(mut reader: R) -> Result<Option<(Vec<ParseResult<GameEntry>>, &'static str)>> {
+fn get_entries<R: BufRead + Seek>(
+    mut reader: R,
+) -> Result<Option<(Vec<ParseResult<GameEntry>>, &'static str)>> {
     reader.seek(SeekFrom::Start(0))?;
     match GameEntry::try_from_nointro_buf(reader.by_ref()) {
         Ok(entries) => return Ok(Some((entries, "No-Intro"))),
@@ -55,7 +57,7 @@ fn get_entries<R: BufRead + Seek>(mut reader: R) -> Result<Option<(Vec<ParseResu
     Err(anyhow!("Did not match any known cataloguing organization."))
 }
 
-fn setup_logging<T: AsRef<Path>>(log_path: T) -> slog::Logger {
+fn setup_logging<T: AsRef<Path>>(log_path: T, file_log_path: T) -> (slog::Logger, slog::Logger) {
     let file = OpenOptions::new()
         .create(true)
         .write(true)
@@ -73,8 +75,24 @@ fn setup_logging<T: AsRef<Path>>(log_path: T) -> slog::Logger {
         .fuse();
 
     // let drain = Duplicate(term_drain, file_drain).fuse();
-    slog::Logger::root(file_drain, o!())
-    // slog_scope::set_global_logger(root)
+    let logger = slog::Logger::root(file_drain, o!());
+
+    let file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(file_log_path)
+        .unwrap();
+    let file_decorator = slog_term::PlainDecorator::new(file);
+
+    let file_drain = slog_term::CompactFormat::new(file_decorator).build().fuse();
+    let file_drain = slog_async::Async::new(file_drain)
+        .chan_size(2048)
+        .overflow_strategy(slog_async::OverflowStrategy::Block)
+        .build()
+        .fuse();
+    let file_logger = slog::Logger::root(file_drain, o!());
+    (logger, file_logger)
 }
 
 lazy_static_include_str!(SORTING_RULES, "sortrules.yml");
@@ -95,6 +113,7 @@ pub enum Event<'a> {
         &'a PlatformId,
         &'a str,
         &'a Logger,
+        &'a Logger,
     ),
     ProcessEntry(
         &'a ProgressBar,
@@ -103,10 +122,7 @@ pub enum Event<'a> {
         &'a str,
         &'a Logger,
     ),
-    ParseEntryError(
-        &'a ParseError,
-        &'a Logger
-    ),
+    ParseEntryError(&'a ParseError, &'a Logger),
     ProcessEntrySuccess(&'a ProgressBar),
     DatProcessingSuccess(&'a ProgressBar, &'a PlatformId, &'a Path, usize, &'a Logger),
     DbSaveSuccess(&'a Path, &'a String, &'a String, u64),
@@ -116,7 +132,7 @@ pub enum Event<'a> {
     LoadedSortingRules(&'a str),
     SortedFile(&'a std::ffi::OsStr, &'a PlatformId),
     SortingSuccess(usize, u64),
-    NoEntriesFound(&'a OsStr, &'a Logger)
+    NoEntriesFound(&'a OsStr, &'a Logger),
 }
 
 fn create_folders<F>(event_fn: F) -> Result<()>
@@ -166,7 +182,7 @@ where
             "The specified path already exists.",
         )));
     }
-    let root = setup_logging(format!("{}.log", save_path.display()));
+    let (root, filelog) = setup_logging(format!("{}.log", save_path.display()), format!("{}.inputs.log", save_path.display()));
     event_fn(Event::GeneratingDatabase(&save_path, &root));
 
     let mut db = ShiratsuDatabase::new().unwrap();
@@ -183,6 +199,7 @@ where
                     platform_id,
                     source,
                     &root,
+                    &filelog,
                 ));
 
                 for game in entries.iter() {
@@ -198,9 +215,7 @@ where
                             db.add_entry(game, platform_id).unwrap();
                             event_fn(Event::ProcessEntrySuccess(&pb));
                         }
-                        Err(err) => {
-                            parse_errors.push(Event::ParseEntryError(err, &root))
-                        }
+                        Err(err) => parse_errors.push(Event::ParseEntryError(err, &root)),
                     }
                 }
 
