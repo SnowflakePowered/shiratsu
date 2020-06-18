@@ -205,12 +205,24 @@ The name given to a *game entry* by a *cataloguing organization*, following a *n
 A group that maintains databases of *game entries* and the *dump entries* belonging to the distribution thereof.
 * **naming convention**
 The method of assigning names to *game entries* followed by the *cataloguing organization* that catalogues such games. The Shiragame schema does not restrict the naming convention of files. However, shiratsu knows only how to handle the following naming conventions.
-  * [The TOSEC Naming Convention (2015-03-23)](https://www.tosecdev.org/tosec-naming-convention), used by the TOSEC cataloguing organization. 
+  * [The TOSEC Naming Convention (2015-03-23)](https://www.tosecdev.org/tosec-naming-convention), used by the TOSEC cataloguing organization, with the following "wobbly exceptions"
+    * `(demo)` MAY appear without a following space.
+      * Motivating example: `2600 Digital Clock - Demo 1 (demo)(1997-10-03)(Cracknell, Chris 'Crackers')(NTSC)(PD)` 
+    * Upper cased `X` MAY be used as a placeholder in dates, e.g. `19XX`.
+      * Motivating example: `Defender Vector (19XX)(-)[h][Defender][b1]`
+    * The date tag SHALL NOT be mandatory, **if and only if** the title does **not** end with a closing parenthesis.
+      * Motivating example: `Motocross & Pole Position (Starsoft - JVP)(PAL)[b1][possible unknown mode]`  
+    * If the title ends with a closing parenthesis, it MAY omit the preceding space before the date tag. In addition, if the space is omitted, the entire substring prior to the date tag MUST be taken as the title.
+      * Motivating example: `Bombsawa (Jumpman Selected levels)(19XX)(-)(PD)`, the title is taken as "Bombsawa (Jumpman Selected levels)"
+     
+    Any of these "wobbly exceptions" MAY be removed without incurring a breaking change in the schema version. This will probably 
+    happen as TOSEC cleans up these inconsistencies.
   * [The Official No-Intro Convention (2007-10-30)](https://datomatic.no-intro.org/stuff/The%20Official%20No-Intro%20Convention%20(20071030).pdf), used by No-Intro and Redump cataloguing organizations, with the following amendments.
-   
     * Before the `[b]` Status flag, the flag (Disc X), where X is a number from 0-9 MAY appear.
     * The (Version) flag MAY appear after the (Unl) License flag.
-
+    * A full list of regions is available in [`regions.rs`](https://github.com/SnowflakePowered/shiratsu/blob/5c2d03d62f8f65b55c58eb53e9e71999fa5eab45/src/shiratsu-lib/src/region.rs#L127)
+    * Note: While a strict reading of the naming convention does not prohibit unbalanced parentheses in the title, the only known case is [Odekake Lester - Lelele no Le (^^; (Japan)](https://datomatic.no-intro.org/?page=show_record&s=49&n=1853). Parsing unbalanced parentheses consistently across input strings is a very difficult problem, and so shiratsu hard codes *Odekake Lester* as a special case and does not normally accept unbalanced parenthesis in titles. Should there be another instance of this issue in the feature, that SHALL be considered a bug on part of shiratsu.
+   
     These amendments are used by names given by Redump
 * **dump**
 Any file that is part of a *game distribution* that identifies such a file by its *dump entry*.

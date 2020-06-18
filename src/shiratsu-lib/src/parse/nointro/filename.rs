@@ -38,15 +38,20 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
     let mut region_code: Option<Vec<Region>> = None;
     // Odekake Lester - Lelele no Le (^^; is an SNES game that is
     // perfectly valid according to the naming convention, but
-    // effectively impossible to parse.
+    // effectively impossible to parse without hacky workarounds. 
+    // We're just going to hard code this case.
     let (input, title) = alt((tag("Odekake Lester - Lelele no Le (^^; "), take_till(|c| c == '(')))(input)?;
     let mut entry_title = String::from(title);
     let mut input = input;
+
+    // Greedily take from input until a region tag is found.
+    // anything not a region tag is considered part of the title.
     while region_code.is_none() && input.len() > 0 {
         let (_input, (l, region_candidate, r)) = alt((parens_with, take_until_parens))(input)?;
         if let Ok(region) = Region::try_from_nointro_region(region_candidate) {
             region_code = Some(region)
         } else {
+            // push remnants
             entry_title.push_str(l);
             entry_title.push_str(region_candidate);
             entry_title.push_str(r);
