@@ -1,6 +1,6 @@
 ARCADE_MAME: []
 ATARI_2600: 
-  - "Atari - 2608 (*).dat"
+  - "Atari - 2600 (*).dat"
   - "Atari 2600 & VCS - Applications (TOSEC-*).dat"
   - "Atari 2600 & VCS - Demos (TOSEC-*).dat"
   - "Atari 2600 & VCS - Educational (TOSEC-*).dat"
@@ -92,7 +92,7 @@ NEC_PCFX:
 NEC_SGFX: 
   - "NEC - PC Engine - SuperGrafx (*).dat"
   - "NEC SuperGrafx - Games (TOSEC-*).dat"
-  - "NEC - PC Engine SuperGrafx (*)"
+  - "NEC - PC Engine SuperGrafx (*).dat"
 NEC_TG16: 
   - "NEC - PC Engine - TurboGrafx 16 (*).dat"
   - "NEC PC-Engine & TurboGrafx-16 - Samplers (TOSEC-*).dat"
@@ -307,6 +307,8 @@ SONY_PS3:
   - "Sony - PlayStation 3 - Datfile*.dat"
 SONY_PS4: 
   - "Sony - PlayStation 4 - Datfile*.dat"
+  - "Sony - PlayStation 4 (PSN) (Content) (Merged) (*).dat"
+  - "Sony - PlayStation 4 (PSN) (Updates) (Merged) (*).dat"
 SONY_PSP: 
   - "Sony - PlayStation Portable ([0-9]*).dat"
   - "Sony - PlayStation Portable (PSN) (Decrypted) (*).dat"

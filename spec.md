@@ -124,19 +124,22 @@ Each row of the `serial` table describes a serial number with the following sche
 
 #### Normalization Rules
 
-Serial numbers are normalized according to the following normalization rules, which are defined by a combination of a *platform ID*, a **verification pattern** that when matching the entire serial, applies the rule, and the **rewrite rule** that applies. If no normalization rule matches, the normalized serial MUST be identical to the serial number as it was published by the data source. 
+Serial numbers are normalized according to the following normalization rules, which are defined by a combination of a *platform ID*, a **verification pattern** that matches the serial, and the **rewrite rule** that is used to normalize the serial using the verification rule. If no normalization rule matches, the normalized serial MUST be identical to the serial number as it was published by the data source. Platforms can have multiple rules applied, but rules for the same system must be mutually exclusive.
 
-| Platform ID                                                | Verification Pattern            | Rewrite Rule                                     | Example                       |
-| ---------------------------------------------------------- | ------------------------------- | ------------------------------------------------ | ----------------------------- |
-| `SONY_PSX`, `SONY_PS2`, `SONY_PS3`, `SONY_PSP`, `SONY_PSV` | `^[a-zA-Z]+[-]\d+(\/\w+)?`      | `s/^([a-zA-Z]+)[-_ ](\d+)([-_ \/]\w+)*$/\1-\2/g` | `SLUS 1234-GE` to `SLUS-1234` |
-| `NINTENDO_GCN`                                             | `^DL-DOL-([\w]{4})-[-\w\(\)]+$` | `s/^DL-DOL-([\w]{4})-[-\w\(\)]+$/\1/g`           | `DL-DOL-GC3E-0-USA` to `GC3E` |
-| `NINTENDO_WII`                                             | `^RVL-([\w]{4})-[-\w\(\)]+$`    | `s/^RVL-([\w]{4})-[-\w\(\)]+$/\1/g`              | `RVL-R4QP-EUR` to `R4QP`      |
-| `NINTENDO_WIIU`                                            | `^WUP-P-([\w]{4})-[-\w\(\)]+$`  | `s/^WUP-P-([\w]{4})-[-\w\(\)]+$/\1/g`            | `WUP-P-AMKP-EUR-0` to `AMKP`  |
-| `NINTENDO_3DS`                                             | `^CTR-P-([\w]{4})-[-\w\(\)]+$`  | `s/^CTR-P-([\w]{4})-[-\w\(\)]+$/\1/g`            | `CTR-P-BSGJ` to `BSGJ`        |
+| Platform ID                                                                        | Verification Pattern                                          | Rewrite Rule    | Example                       |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------- | ----------------------------- |
+| `SONY_PSX`, `SONY_PS2`, `SONY_PS3`, `SONY_PSP`, `SONY_PSV`                         | `^(?P<code>[a-zA-Z]+)[-_ ](?P<number>\d+)([#-_ /]*(\w?|$))*$` | `$code-$number` | `SLUS 1234-GE` to `SLUS-1234` |
+| `NINTENDO_GCN`                                                                     | `^DL-DOL-(?P<code>[\w]{4})-[-\w\(\)]+$`                       | `$code`         | `DL-DOL-GC3E-0-USA` to `GC3E` |
+| `NINTENDO_WII`                                                                     | `^RVL-(?P<code>[\w]{4})-[-\w\(\)]+$`                          | `$code`         | `RVL-R4QP-EUR` to `R4QP`      |
+| `NINTENDO_WIIU`                                                                    | `^WUP-(P|N|M|T|U|B)-(?P<code>[\w]{4})-[-\w\(\)]+$`            | `$code`         | `WUP-P-AMKP-EUR-0` to `AMKP`  |
+| `NINTENDO_3DS`                                                                     | `^CTR-(P|M|N|T|U|B)-(?P<code>[\w]{4})(-[-\w\(\)]+)*$`         | `$code`         | `CTR-P-BSGJ` to `BSGJ`        |
+| `NINTENDO_NSW`                                                                     | `^LA-H-(?P<code>[\w]{5})(-[-\w\(\)]+)*$`                      | `$code`         | `LA-H-BABBD` to `BABBD`       |
+| `SEGA_GEN`, `SEGA_CD`, `SEGA_DC`, `SEGA_GG`, `SEGA_SAT`, `SEGA_32X`, `SEGA_32X_CD` | `^(?P<pre>[\d\w]+)-(?P<code>[\d\w]+)(-[\d.]+)$`               | `$pre-$number`  | `T-114033-00` to `T-114033`   |
+| `SEGA_GEN`, `SEGA_CD`, `SEGA_DC`, `SEGA_GG`, `SEGA_SAT`, `SEGA_32X`, `SEGA_32X_CD` | `^(?P<pre>MK|T|GS)(?P<code>[\d\w]+)(-[\d.]+)?$`               | `$pre-$number`  | `MK81086-50` to `MK-81086`    |
+| `SEGA_GEN`, `SEGA_CD`, `SEGA_DC`, `SEGA_GG`, `SEGA_SAT`, `SEGA_32X`, `SEGA_32X_CD` | `^(?P<pre>0{2,3})(?P<code>[\d]+)(-\d{2}\w?)?$`                | `$pre$number`   | `00054503-00` to `00054503`   |
+| `NEC_TGCD`                                                                         | `^(?P<code>[\d\w]{4,5})[ -](?P<number>[\d\w]+)$`              | `$code$number`  | `NSCD 2011` to `NSCD2011`     |
 
-Note that the `sed`-like expressions here are for brevity, and may be implemented differently (but equivalently) in shiratsu.
-
-Since there may be exceptions that these rewrite rules do not cover, the original serial number is always available in the `serial` column. Also note that the internal serial may not be consistent with the disc serial, so querying by serial is not necessarily consistent.
+Since there may be exceptions that these rewrite rules do not cover, the original serial number is always available in the `serial` column. Also note that the internal serial may not be consistent with the media serial, so querying by serial is not necessarily consistent.
 
 ### The Shiragame meta table (`shiragame`)
 

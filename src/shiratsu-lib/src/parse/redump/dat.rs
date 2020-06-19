@@ -29,10 +29,13 @@ impl TryFrom<Game> for GameEntry {
         Ok(GameEntry {
             info: Some(NameInfo::try_from_nointro(&name).map(|n| n.into())?),
             entry_name: name,
-            serials: game.serial
-                .map(|s|  s.split(",")
-                    .map(|split| split.trim())
-                    .map(|s| Serial::new(String::from(s))).collect())
+            serials: game
+                .serial
+                .map(|s| {
+                    s.split(",")
+                        .map(|s| Serial::new(String::from(s.trim())))
+                        .collect()
+                })
                 .unwrap_or(vec![]),
             rom_entries: rom.into_iter().map(|r| r.into()).collect(),
             source: "Redump",
@@ -81,11 +84,13 @@ fn parse_unchecked(f: &str) -> Result<Vec<Result<GameEntry>>> {
 }
 
 fn parse_buf<R: std::io::BufRead>(f: R) -> Result<Vec<Result<GameEntry>>> {
-    Ok(parse_dat_buf::<R, Game, RedumpParserError>(f, Some("redump.org"))?
-        .game
-        .into_iter()
-        .map(|g| g.try_into())
-        .collect())
+    Ok(
+        parse_dat_buf::<R, Game, RedumpParserError>(f, Some("redump.org"))?
+            .game
+            .into_iter()
+            .map(|g| g.try_into())
+            .collect(),
+    )
 }
 
 fn parse_unchecked_buf<R: std::io::BufRead>(f: R) -> Result<Vec<Result<GameEntry>>> {
@@ -116,7 +121,8 @@ pub trait FromRedump {
 
     /// Parses the contents of a Redump XML DAT into a vector of `GameEntries`,
     /// ignoring the header.
-    fn try_unchecked_from_redump_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<Result<GameEntry>>>;
+    fn try_unchecked_from_redump_buf<R: std::io::BufRead>(buf: R)
+        -> Result<Vec<Result<GameEntry>>>;
 }
 
 impl FromRedump for GameEntry {
@@ -132,7 +138,9 @@ impl FromRedump for GameEntry {
         parse_buf(buf)
     }
 
-    fn try_unchecked_from_redump_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<Result<GameEntry>>> {
+    fn try_unchecked_from_redump_buf<R: std::io::BufRead>(
+        buf: R,
+    ) -> Result<Vec<Result<GameEntry>>> {
         parse_unchecked_buf(buf)
     }
 }

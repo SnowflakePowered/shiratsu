@@ -31,8 +31,14 @@ impl TryFrom<Game> for GameEntry {
         Ok(GameEntry {
             info: Some(NameInfo::try_from_nointro(&name).map(|n| n.into())?),
             entry_name: name,
-            serials: rom.iter().filter_map(|r| r.serial.clone())
-                .map(|s| Serial::new(s))
+            serials: rom
+                .iter()
+                .filter_map(|r| r.serial.clone())
+                .flat_map(|s| {
+                    s.split(",")
+                        .map(|s| Serial::new(String::from(s.trim())))
+                        .collect::<Vec<_>>()
+                })
                 .collect(),
             rom_entries: rom.into_iter().map(|r| r.into()).collect(),
             source: "No-Intro",
@@ -45,7 +51,7 @@ impl From<Rom> for RomEntry {
         rom.md5.make_ascii_lowercase();
         rom.crc.make_ascii_lowercase();
         rom.sha1.make_ascii_lowercase();
-        
+
         RomEntry {
             md5: Some(rom.md5),
             sha1: Some(rom.sha1),
@@ -80,11 +86,13 @@ fn parse_unchecked(f: &str) -> Result<Vec<Result<GameEntry>>> {
         .collect())
 }
 fn parse_buf<R: std::io::BufRead>(f: R) -> Result<Vec<Result<GameEntry>>> {
-    Ok(parse_dat_buf::<R, Game, NoIntroParserError>(f, Some("No-Intro"))?
-        .game
-        .into_iter()
-        .map(|g| g.try_into())
-        .collect())
+    Ok(
+        parse_dat_buf::<R, Game, NoIntroParserError>(f, Some("No-Intro"))?
+            .game
+            .into_iter()
+            .map(|g| g.try_into())
+            .collect(),
+    )
 }
 fn parse_unchecked_buf<R: std::io::BufRead>(f: R) -> Result<Vec<Result<GameEntry>>> {
     Ok(parse_dat_unchecked_buf::<R, Game, NoIntroParserError>(f)?
@@ -114,7 +122,9 @@ pub trait FromNoIntro {
 
     /// Parses the contents of a No-Intro XML DAT into a vector of `GameEntries`,
     /// ignoring the header element
-    fn try_unchecked_from_nointro_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<Result<GameEntry>>>;
+    fn try_unchecked_from_nointro_buf<R: std::io::BufRead>(
+        buf: R,
+    ) -> Result<Vec<Result<GameEntry>>>;
 }
 
 impl FromNoIntro for GameEntry {
@@ -127,7 +137,9 @@ impl FromNoIntro for GameEntry {
     fn try_from_nointro_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<Result<GameEntry>>> {
         parse_buf(buf)
     }
-    fn try_unchecked_from_nointro_buf<R: std::io::BufRead>(buf: R) -> Result<Vec<Result<GameEntry>>> {
+    fn try_unchecked_from_nointro_buf<R: std::io::BufRead>(
+        buf: R,
+    ) -> Result<Vec<Result<GameEntry>>> {
         parse_unchecked_buf(buf)
     }
 }
