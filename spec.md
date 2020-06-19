@@ -1,9 +1,9 @@
-# Shiragame database specification
+# shiragame database specification
 
 **Schema Version:** `2.0.0`
 **Stone Version:** `^10.0.0`
 
-This document defines the schema and semantics of the Shiragame games database. 
+This document defines the schema and semantics of the shiragame games database. 
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://tools.ietf.org/html/rfc2119).
 
@@ -11,23 +11,23 @@ Defined terms will be indicated in *italics* throughout the document. Their defi
 
 ## Preface
 
-Shiragame is a games database similar to [OpenVGDB](https://github.com/OpenVGDB/OpenVGDB), created primarily for use with [Snowflake](https://github.com/SnowflakePowered/snowflake), but is also intended to be widely applicable to many use cases involving emulation, game preservation, archival, and verification. Shiragame uses [Stone](https://stone.snowflakepowe.red/#/) *platform ID*s and mimetypes to facilitate precise identification of the gaming platform a *dump* belongs to, as well as the format of a *dump*. 
+shiragame is a games database similar to [OpenVGDB](https://github.com/OpenVGDB/OpenVGDB), created primarily for use with [Snowflake](https://github.com/SnowflakePowered/snowflake), but is also intended to be widely applicable to many use cases involving emulation, game preservation, archival, and verification. shiragame uses [Stone](https://stone.snowflakepowe.red/#/) *platform ID*s and mimetypes to facilitate precise identification of the gaming platform a *dump* belongs to, as well as the format of a *dump*. 
 
 For definitions of "*platform*" and "*format*", please refer to the Stone specification document.
 
 ### Rationale
 
-Unlike OpenVGDB, Shiragame does not aim to be an all-in-one database. Its primary purpose is to provide an efficient method to identify and verify that a given file is a known *dump* that is part of a game distribution, and to identify the game such a *dump* is part of. Shiragame does not aim to catalogue information outside of what can be ascertained from the *game entry*'s *canonical name*. Once a searchable title is obtained from a *dump*, other tools may be used to scrape more information, such as cover arts and descriptions. Shiragame however, is only meant for the first step of identification.
+Unlike OpenVGDB, shiragame does not aim to be an all-in-one database. Its primary purpose is to provide an efficient method to identify and verify that a given file is a known *dump* that is part of a game distribution, and to identify the game such a *dump* is part of. shiragame does not aim to catalogue information outside of what can be ascertained from the *game entry*'s *canonical name*. Once a searchable title is obtained from a *dump*, other tools may be used to scrape more information, such as cover arts and descriptions. shiragame however, is only meant for the first step of identification.
 
-In addition, while Shiragame was created primarily for use with [Snowflake](https://github.com/SnowflakePowered/snowflake), a conscious effort is taken to maintain a stable, documented API in the form of this document.
+In addition, while shiragame was created primarily for use with [Snowflake](https://github.com/SnowflakePowered/snowflake), a conscious effort is taken to maintain a stable, documented API in the form of this document.
 
 ### Why SQLite?
 
-Instead of using a markup format like JSON or custom binary formats, a Shiragame database is always distributed as a SQLite database, which carries a few advantages. Most importantly, a SQLite database is [stable and portable across many platforms](https://www.sqlite.org/onefile.html). It is quickly and easily queryable without needing to stream or load the entire file into memory from many programming languages, and without the need for custom or one-off binary parsers. For niche purposes such as low-memory environments or platforms without ergonomic bindings to SQLite, it can easily be transformed to another transport format via the schema as described in this document. 
+Instead of using a markup format like JSON or custom binary formats, a shiragame database is always distributed as a SQLite database, which carries a few advantages. Most importantly, a SQLite database is [stable and portable across many platforms](https://www.sqlite.org/onefile.html). It is quickly and easily queryable without needing to stream or load the entire file into memory from many programming languages, and without the need for custom or one-off binary parsers. For niche purposes such as low-memory environments or platforms without ergonomic bindings to SQLite, it can easily be transformed to another transport format via the schema as described in this document. 
 
 ## Schema and Format
 
-Shiragame is REQUIRED to be distributed as an SQLite database with the following tables.
+shiragame is REQUIRED to be distributed as an SQLite database with the following tables.
 
 ### The Game Entry table (`game`)
 
@@ -53,8 +53,8 @@ Each row of the `game` table is REQUIRED to describe a single *game entry*.
 \* See [release title derivation](#release-title-derivation) on how this name is derived.
 
 The `game_id` value MUST NOT be saved or persisted anywhere outside of a query. It SHOULD NOT be used for anything except to refer to other tables that relate
-to a game entry, and SHALL NOT carry any meaning across different releases of the Shiragame database. It MUST NOT be used as a canonical identifier for a 
-game entry, and MAY change without incurring API breakage across different releases of the Shiragame database. They MUST only be treated as opaque cursors by the
+to a game entry, and SHALL NOT carry any meaning across different releases of the shiragame database. It MUST NOT be used as a canonical identifier for a 
+game entry, and MAY change without incurring API breakage across different releases of the shiragame database. They MUST only be treated as opaque cursors by the
 client consumer.
 
 #### Release Title Derivation
@@ -141,9 +141,9 @@ Serial numbers are normalized according to the following normalization rules, wh
 
 Since there may be exceptions that these rewrite rules do not cover, the original serial number is always available in the `serial` column. Also note that the internal serial may not be consistent with the media serial, so querying by serial is not necessarily consistent.
 
-### The Shiragame meta table (`shiragame`)
+### The shiragame meta table (`shiragame`)
 
-Describes this release of the Shiragame database. This table MUST only contain one row, with the following schema.
+Describes this release of the shiragame database. This table MUST only contain one row, with the following schema.
 
 | Column           | Description                                                                                                      | Status   |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------- | -------- |
@@ -151,13 +151,13 @@ Describes this release of the Shiragame database. This table MUST only contain o
 | `schema_version` | The version of the schema used by this database.                                                                 | REQUIRED |
 | `stone_version`  | The version of the [Stone definitions file][stone.dist] used by this database, for *platform IDs* and mimetypes. | REQUIRED |
 | `generated`      | The time this release was created, expressed as a Unix timestamp (seconds since epoch).                          | REQUIRED |
-| `release`        | A version 4 UUID that identifies this Shiragame database.                                                        | REQUIRED |
-| `aggregator`     | The aggregator that generated this Shiragame database. In shiratsu's case, the string `shiratsu`.                | REQUIRED |
+| `release`        | A version 4 UUID that identifies this shiragame database.                                                        | REQUIRED |
+| `aggregator`     | The aggregator that generated this shiragame database. In shiratsu's case, the string `shiratsu`.                | REQUIRED |
 
 [stone.dist]: https://github.com/SnowflakePowered/stone/blob/master/dist/stone.dist.json
 
 ## Versioning
-Both the schema and the releases of the Shiragame database itself are versioned. As of schema version `^2.0.0`, The Shiragame schema is versioned with [Semantic Versioning](https://semver.org/). 
+Both the schema and the releases of the shiragame database itself are versioned. As of schema version `^2.0.0`, The shiragame schema is versioned with [Semantic Versioning](https://semver.org/). 
 
 The following changes to the schema incur an API breakage, and the MAJOR version number MUST be incremented.
 
@@ -177,22 +177,22 @@ The following changes to the schema do not incur an API breakage, and the PATCH 
 * Adding a new **normalization rule** for serial numbers.
 * Any sufficiently small change to the schema as decided by the project maintainers.
 
-As of schema 2, releases of the Shiragame database are versioned by the schema version of the released database, and the Unix timestamp of its generation, in the form `X.XXXXXX`. A release is also identified by its unique UUIDv4.
+As of schema 2, releases of the shiragame database are versioned by the schema version of the released database, and the Unix timestamp of its generation, in the form `X.XXXXXX`. A release is also identified by its unique UUIDv4.
 
-### Relationship of shiratsu version to Shiragame version
-Each MAJOR.MINOR version of the shiratsu application MUST generate a Shiragame database with the same MAJOR.MINOR schema version. Effectively, this means that Shiragame schema versions are tied to the shiratsu implementation. In the case where this document and shiratsu differ, it should be considered a bug in the specification.
+### Relationship of shiratsu version to shiragame version
+Each MAJOR.MINOR version of the shiratsu application MUST generate a shiragame database with the same MAJOR.MINOR schema version. Effectively, this means that shiragame schema versions are tied to the shiratsu implementation. In the case where this document and shiratsu differ, it should be considered a bug in the specification.
 
 ## Data Sources
-Currently, Shiragame sources data from DATs published by three *cataloguing organizations*.
+Currently, shiragame sources data from DATs published by three *cataloguing organizations*.
 
 * [No-Intro](https://www.no-intro.org/)
 * [Redump](http://redump.org/)
 * [TOSEC](https://www.tosecdev.org/)
 
-This MAY change in future releases of Shiragame.
+This MAY change in future releases of shiragame.
 
 ### Licensing
-The re-distribution of a release of the Shiragame database MUST be consistent with the licensing terms of the data sources used in the release. For all three data sources in use, re-distribution is common across the community and is not discouraged by the *cataloguing organizations* that publish the source DATs. However, since no license is clearly delimited for the re-distribution of said data, Shiragame is unable to provide a clear license for its distribution.
+The re-distribution of a release of the shiragame database MUST be consistent with the licensing terms of the data sources used in the release. For all three data sources in use, re-distribution is common across the community and is not discouraged by the *cataloguing organizations* that publish the source DATs. However, since no license is clearly delimited for the re-distribution of said data, shiragame is unable to provide a clear license for its distribution.
 
 **However**, this specification document, and the shiratsu application are distributed under the terms of the MIT license.
 
@@ -210,7 +210,7 @@ The name given to a *game entry* by a *cataloguing organization*, following a *n
 * **cataloguing organization**
 A group that maintains databases of *game entries* and the *dump entries* belonging to the distribution thereof.
 * **naming convention**
-The method of assigning names to *game entries* followed by the *cataloguing organization* that catalogues such games. The Shiragame schema does not restrict the naming convention of files. However, shiratsu knows only how to handle the following naming conventions.
+The method of assigning names to *game entries* followed by the *cataloguing organization* that catalogues such games. The shiragame schema does not restrict the naming convention of files. However, shiratsu knows only how to handle the following naming conventions.
   * [The TOSEC Naming Convention (2015-03-23)](https://www.tosecdev.org/tosec-naming-convention), used by the TOSEC cataloguing organization, with the following "wobbly exceptions"
     * `(demo)` MAY appear without a following space.
       * Motivating example: `2600 Digital Clock - Demo 1 (demo)(1997-10-03)(Cracknell, Chris 'Crackers')(NTSC)(PD)` 
