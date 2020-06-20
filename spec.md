@@ -131,11 +131,11 @@ Serial numbers are normalized according to the following normalization rules, wh
 | `SONY_PSX`, `SONY_PS2`, `SONY_PS3`, `SONY_PSP`, `SONY_PSV`                         | `^(?P<code>[a-zA-Z]+)[-_ ](?P<number>\d+)([#-_ /]*(\w?|$))*$` | `$code-$number` | `SLUS 1234-GE` to `SLUS-1234` |
 | `NINTENDO_GCN`                                                                     | `^DL-DOL-(?P<code>[\w]{4})-[-\w\(\)]+$`                       | `$code`         | `DL-DOL-GC3E-0-USA` to `GC3E` |
 | `NINTENDO_WII`                                                                     | `^RVL-(?P<code>[\w]{4})-[-\w\(\)]+$`                          | `$code`         | `RVL-R4QP-EUR` to `R4QP`      |
-| `NINTENDO_WIIU`                                                                    | `^WUP-(P|N|M|T|U|B)-(?P<code>[\w]{4})-[-\w\(\)]+$`            | `$code`         | `WUP-P-AMKP-EUR-0` to `AMKP`  |
-| `NINTENDO_3DS`                                                                     | `^CTR-(P|M|N|T|U|B)-(?P<code>[\w]{4})(-[-\w\(\)]+)*$`         | `$code`         | `CTR-P-BSGJ` to `BSGJ`        |
+| `NINTENDO_WIIU`                                                                    | `^WUP-(P\|N\|M\|T\|U\|B)-(?P<code>[\w]{4})-[-\w\(\)]+$`            | `$code`         | `WUP-P-AMKP-EUR-0` to `AMKP`  |
+| `NINTENDO_3DS`                                                                     | `^CTR-(P\|M\|N\|\T\|U\|B)-(?P<code>[\w]{4})(-[-\w\(\)]+)*$`         | `$code`         | `CTR-P-BSGJ` to `BSGJ`        |
 | `NINTENDO_NSW`                                                                     | `^LA-H-(?P<code>[\w]{5})(-[-\w\(\)]+)*$`                      | `$code`         | `LA-H-BABBD` to `BABBD`       |
 | `SEGA_GEN`, `SEGA_CD`, `SEGA_DC`, `SEGA_GG`, `SEGA_SAT`, `SEGA_32X`, `SEGA_32X_CD` | `^(?P<pre>[\d\w]+)-(?P<code>[\d\w]+)(-[\d.]+)$`               | `$pre-$number`  | `T-114033-00` to `T-114033`   |
-| `SEGA_GEN`, `SEGA_CD`, `SEGA_DC`, `SEGA_GG`, `SEGA_SAT`, `SEGA_32X`, `SEGA_32X_CD` | `^(?P<pre>MK|T|GS)(?P<code>[\d\w]+)(-[\d.]+)?$`               | `$pre-$number`  | `MK81086-50` to `MK-81086`    |
+| `SEGA_GEN`, `SEGA_CD`, `SEGA_DC`, `SEGA_GG`, `SEGA_SAT`, `SEGA_32X`, `SEGA_32X_CD` | `^(?P<pre>MK\|T\|GS)(?P<code>[\d\w]+)(-[\d.]+)?$`               | `$pre-$number`  | `MK81086-50` to `MK-81086`    |
 | `SEGA_GEN`, `SEGA_CD`, `SEGA_DC`, `SEGA_GG`, `SEGA_SAT`, `SEGA_32X`, `SEGA_32X_CD` | `^(?P<pre>0{2,3})(?P<code>[\d]+)(-\d{2}\w?)?$`                | `$pre$number`   | `00054503-00` to `00054503`   |
 | `NEC_TGCD`                                                                         | `^(?P<code>[\d\w]{4,5})[ -](?P<number>[\d\w]+)$`              | `$code$number`  | `NSCD 2011` to `NSCD2011`     |
 
