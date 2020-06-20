@@ -80,7 +80,7 @@ The release title is the name the *game entry* was sold or distributed under, wi
 2. All hyphens with spaces on both sides (matching the pattern ` - `) is removed, and at the index where the pattern begins, is replaces with a colon followed by a space (the pattern `: `). For example, "The Legend of Shiratsu - Wind of the City" becomes "The Legend of Shiratsu: Wind of the City".
 3. If the file is a BIOS, then the release title will end with ` BIOS`. 
 ### The Dump Entry table (`rom`)
-
+A *game entry* MAY have one or more *dump entries*.
 Each row of the `rom` table describes a single *dump entry* with the following schema.
 | Column      | Description                                                                                                 | Status      |
 | ----------- | ----------------------------------------------------------------------------------------------------------- | ----------- |
@@ -93,23 +93,6 @@ Each row of the `rom` table describes a single *dump entry* with the following s
 | `game_id`   | Refers to the *game entry* this *dump entry* belongs to. There MUST be a row in `game` with the same value. | REQUIRED    |
 
 One or more of `md5`, `crc`, `sha1` MUST be populated. It is RECOMMENDED, but not REQUIRED, for all three to be populated.
-
-
-### The Dump Entry table (`rom`)
-
-A *game entry* MAY have one or more *dump entries*.
-Each row of the `rom` table describes a single *dump entry* with the following schema.
-
-| Column      | Description                                                                                                 | Status      |
-| ----------- | ----------------------------------------------------------------------------------------------------------- | ----------- |
-| `file_name` | The *canonical filename* assigned to this *dump* by the *cataloguing organization*.                         | REQUIRED    |
-| `mimetype`  | The Stone mimetype of the *format* of this file the *dump entry* refers to.                                 | REQUIRED    |
-| `md5`       | The MD5 hash of the file this *dump entry* refers to, in lowercase.                                         | RECOMMENDED |
-| `crc`       | The CRC32 hash of the file this *dump entry* refers to, in lowercase.                                       | RECOMMENDED |
-| `sha1`      | The SHA1 hash of the file this *dump entry* refers to, in lowercase.                                        | RECOMMENDED |
-| `size`      | The size of the file this *dump entry* refers to in bytes.                                                  | REQUIRED    |
-| `game_id`   | Refers to the *game entry* this *dump entry* belongs to. There MUST be a row in `game` with the same value. | REQUIRED    |
-
 
 ### The Serial Number table (`serial`)
 
