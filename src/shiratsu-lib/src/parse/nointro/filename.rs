@@ -6,7 +6,7 @@ use regex::Regex;
 
 use nom::{
     branch::alt,
-    bytes::complete::{is_not, tag, take_till},
+    bytes::complete::{is_not, tag, take_till, take_while_m_n},
     character::complete::char,
     combinator::{complete, opt},
     error::ErrorKind,
@@ -27,6 +27,16 @@ fn take_until_parens(input: &str) -> IResult<&str, (&str, &str, &str)> {
     tuple((tag(""), take_till(|c| c == '('), tag("")))(input)
 }
 
+fn is_digit(c: char) -> bool {
+    c.is_digit(10) || c == 'z'
+}
+
+fn take_tag(input: &str) -> IResult<&str, ()>  {
+    let (input, _) = take_while_m_n(4, 4, is_digit)(input)?;
+    let (input, _) = tag(" - ")(input)?;
+    return Ok((input, ()))
+}
+
 fn do_parse(input: &str) -> IResult<&str, NameInfo> {
     lazy_static! {
         static ref REVISION: Regex = Regex::new(r"^Rev ([0-9]+)").unwrap();
@@ -35,12 +45,20 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
         static ref DISC: Regex = Regex::new(r"^Disc (([0-9]?)+)").unwrap();
     };
     let (input, has_bios) = opt(tag("[BIOS] "))(input)?;
+    let (input, _) = opt(take_tag)(input)?;
+
     let mut region_code: Option<Vec<Region>> = None;
-    // Odekake Lester - Lelele no Le (^^; is an SNES game that is
-    // perfectly valid according to the naming convention, but
-    // effectively impossible to parse without hacky workarounds. 
-    // We're just going to hard code this case.
-    let (input, title) = alt((tag("Odekake Lester - Lelele no Le (^^; "), take_till(|c| c == '(')))(input)?;
+    let (input, title) = alt((
+        // Odekake Lester - Lelele no Le (^^; is an SNES game that is
+        // perfectly valid according to the naming convention, but
+        // effectively impossible to parse without hacky workarounds. 
+        // We're just going to hard code this case.
+            tag("Odekake Lester - Lelele no Le (^^; "), 
+        // Empty parenthesis hangs the parser, we're just going to hack around
+        // this one special case.
+            tag("void tRrLM(); Void Terrarium"), 
+            take_till(|c| c == '('))
+        )(input)?;
     let mut entry_title = String::from(title);
     let mut input = input;
 
