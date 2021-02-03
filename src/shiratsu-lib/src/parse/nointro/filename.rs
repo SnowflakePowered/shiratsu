@@ -77,10 +77,7 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
         input = _input;
     }
     if region_code.is_none() {
-        return Err(NomErr::Error((
-            "Could not find valid region string by the end of the name.",
-            ErrorKind::Eof,
-        )));
+        return Err(NomErr::Error(nom::error::Error::new(input, ErrorKind::Eof)));
     }
     let (input, flags) = many0(parens)(input)?;
     let (input, _) = complete(opt(tag("[b]")))(input)?;
