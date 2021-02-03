@@ -182,8 +182,9 @@ NINTENDO_NES:
   - "Nintendo Famicom & Entertainment System - Educational (TOSEC-*).dat"
   - "Nintendo Famicom & Entertainment System - Firmware (TOSEC-*).dat"
 NINTENDO_NSW: 
-  - "Nintendo - Nintendo Switch ([0-9]*).dat"
-  - "Nintendo - Nintendo Switch (Digital) (NSP) (*).dat"
+  - "Nintendo - Nintendo Switch (20[2-9][0-9][0-1][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]).dat"
+  - "Nintendo - Nintendo Switch (Digital) (NSP) (20[2-9][0-9][0-1][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]).dat"
+  - "Nintendo - Nintendo Switch (Digital) (CDN) (20[2-9][0-9][0-1][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]).dat"
 NINTENDO_SFT: 
   - "Nintendo - Sufami Turbo (*).dat"
 NINTENDO_SNES: 
