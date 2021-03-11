@@ -1,5 +1,3 @@
-#![macro_escape]
-
 use nom::{
     bytes::complete::tag,
     sequence::delimited,
