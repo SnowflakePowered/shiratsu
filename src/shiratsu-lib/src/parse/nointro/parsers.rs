@@ -23,6 +23,7 @@ use nom::multi::{many1, many_till};
 use nom::bytes::complete::take_while;
 use nom::character::is_alphanumeric;
 use nom::character::complete::anychar;
+use crate::parse::trim_right_mut;
 
 #[derive(Debug, Eq, PartialEq)]
 enum NoIntroToken<'a>
@@ -145,7 +146,9 @@ fn do_parse(input: &str) -> IResult<&str, Vec<NoIntroToken>>
     let mut tokens = Vec::new();
     let (input, (title, region))
         = many_till(anychar, parse_region_tag)(input)?;
-    tokens.push(NoIntroToken::Title(title.into_iter().collect()));
+    let mut title =title.into_iter().collect();
+    trim_right_mut(&mut title);
+    tokens.push(NoIntroToken::Title(title));
     tokens.push(region);
     Ok((input, tokens))
 }
@@ -162,8 +165,17 @@ mod tests
     {
         let (input, stuff) = do_parse("Odekake Lester - Lelele no Le (^^; (Japan)").unwrap();
         assert_eq!("", input);
-        assert_eq!(Some(&NoIntroToken::Title(String::from("Odekake Lester - Lelele no Le (^^; "))), stuff.first())
+        assert_eq!(Some(&NoIntroToken::Title(String::from("Odekake Lester - Lelele no Le (^^;"))), stuff.first())
     }
+
+    #[test]
+    fn parse_void()
+    {
+        let (input, stuff) = do_parse("void tRrLM(); Void Terrarium (Japan)").unwrap();
+        assert_eq!("", input);
+        assert_eq!(Some(&NoIntroToken::Title(String::from("void tRrLM(); Void Terrarium"))), stuff.first())
+    }
+    
     #[test]
     fn parse_disc_test()
     {
