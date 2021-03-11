@@ -4,6 +4,9 @@ use phf::phf_map;
 #[derive(Debug)]
 pub enum RegionError {
     InvalidFormat(RegionFormat),
+    BadRegionCode(RegionFormat, usize, usize),
+    UnknownRegion(RegionFormat, String),
+    NoRegions(RegionFormat),
 }
 
 impl std::error::Error for RegionError {}
@@ -282,6 +285,9 @@ impl Region {
     pub fn try_from_nointro_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Self>> {
         from_nointro_region(region_str)
     }
+    pub fn try_from_single_nointro_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Self>> {
+        from_nointro_region(region_str)
+    }
     pub fn try_from_goodtools_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Self>> {
         from_goodtools_region(region_str)
     }
@@ -339,6 +345,23 @@ fn from_goodtools_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
     }
 }
 
+fn from_single_nointro_region<T: AsRef<str>>(region_code: T) -> Result<Vec<Region>>
+{
+    match region_code.as_ref() {
+        "World" => Ok(vec![Region::UnitedStates, Region::Japan, Region::Europe]),
+        "Scandinavia" => Ok(vec![Region::Denmark, Region::Norway, Region::Sweden]),
+        "Latin America" => Ok(vec![Region::Mexico, Region::Brazil, Region::Argentina, Region::Chile, Region::Peru]),
+        _ => match NOINTRO_REGION.get(region_code.as_ref()) {
+            Some(&region) => {
+                Ok(vec![region])
+            }
+            None => Err(
+                RegionError::UnknownRegion(RegionFormat::NoIntro, String::from(region_code.as_ref()))
+            ),
+        },
+    }
+}
+
 /// Parse a valid No-Intro region string into a `Vec<Region>`.
 /// A valid region string is a comma + space separated list of valid country names.
 ///
@@ -352,9 +375,17 @@ fn from_goodtools_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
 /// - `region_str` The region string.
 fn from_nointro_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
     let mut regions = IndexSet::<Region>::new();
+
+    let mut region_count = 0;
+    let mut region_string_index = 0;
+
     for region_code in region_str.as_ref().split(", ") {
         if !region_code.chars().all(|c| char::is_ascii_alphabetic(&c) || c == ' ') {
-            return Err(RegionError::InvalidFormat(RegionFormat::NoIntro));
+            return Err(RegionError::BadRegionCode(
+                RegionFormat::NoIntro,
+                region_count,
+                region_string_index,
+            ));
         }
 
         match region_code {
@@ -375,17 +406,29 @@ fn from_nointro_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
                 regions.insert(Region::Chile);
                 regions.insert(Region::Peru);
                 regions.insert(Region::Argentina);
+
             }
             _ => match NOINTRO_REGION.get(region_code) {
                 Some(&region) => {
                     regions.insert(region);
                 }
-                None => return Err(RegionError::InvalidFormat(RegionFormat::NoIntro)),
+                None => return Err(
+                    RegionError::BadRegionCode(RegionFormat::NoIntro,
+                                               region_count, region_string_index)
+                ),
             },
         }
+
+        // If there was error we would have deleted..
+        region_count += 1;
+        region_string_index += region_code.len();
+        region_string_index += ", ".len();
     }
+
+    // invariant: Do not return RegionError::BadRegionCode because region_string_index will
+    // overflow.
     if regions.is_empty() {
-        Err(RegionError::InvalidFormat(RegionFormat::NoIntro))
+        Err(RegionError::NoRegions(RegionFormat::NoIntro))
     } else {
         Ok(regions.into_iter().collect::<Vec<Region>>())
     }

@@ -1,4 +1,5 @@
 use lazy_static::lazy_static;
+#[allow(unused_imports)]
 use lazy_static_include::{
     lazy_static_include_str, lazy_static_include_str_impl, lazy_static_include_str_inner,
 };

@@ -10,6 +10,9 @@ mod release_name;
 mod display;
 mod error;
 
+#[macro_use]
+pub(crate) mod parsers;
+
 pub use development_status::*;
 pub use naming_convention::*;
 pub use rom_entry::*;
@@ -19,3 +22,5 @@ pub use name_info::*;
 pub use display::*;
 pub use error::*;
 pub(in super) use release_name::*;
+
+
