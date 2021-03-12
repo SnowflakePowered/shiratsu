@@ -109,7 +109,7 @@ fn write_meta_table(conn: &mut Connection) -> SqliteResult<(String, String)> {
                                         VALUES(:shiragame, :schema_version, :stone_version, :generated, :release, :aggregator)",
                     named_params! {
                         ":shiragame": "shiragame",
-                        ":schema_version": "2.0.0",
+                        ":schema_version": "2.0.1",
                         ":stone_version": StonePlatforms::version(),
                         ":generated": time,
                         ":release": uuid,

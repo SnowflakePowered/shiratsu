@@ -1,6 +1,6 @@
 # shiragame database specification
 
-**Schema Version:** `2.0.0`
+**Schema Version:** `2.0.1`
 **Stone Version:** `^10.0.0`
 
 This document defines the schema and semantics of the shiragame games database. 
@@ -44,13 +44,16 @@ Each row of the `game` table is REQUIRED to describe a single *game entry*.
 | `part_number`       | If this *game entry* is multi-part, or is one part of multiple discs or tapes, the part number thereof.†                               | OPTIONAL |
 | `is_unlicensed`     | If this *game entry* is of an unlicensed release.†                                                                                     | REQUIRED |
 | `is_demo`           | If this *game entry* is a demonstration or sample release.†                                                                            | REQUIRED |
-| `version`           | If this *game entry* has a revision to an earlier released *game entry*, the revision or version number thereof.†                      | OPTIONAL |
+| `version`           | If this *game entry* has a revision to an earlier released *game entry*, the revision or version number thereof.†‡                      | OPTIONAL |
 | `status`            | The *development status* of this game.†                                                                                                | REQUIRED |
 | `naming_convention` | The *naming convention* used the `entry_name` conforms to.                                                                             | REQUIRED |
 | `source`            | The name of the *cataloguing organization* that provided the source data.                                                              | REQUIRED |
 
 †as ascertained from the `entry_title`, in accordance with the *naming convention* used by the source data.
+
 \* See [release title derivation](#release-title-derivation) on how this name is derived.
+
+‡ If multiple versions are listed in the filename, then `version` lists only the first version.
 
 The `game_id` value MUST NOT be saved or persisted anywhere outside of a query. It SHOULD NOT be used for anything except to refer to other tables that relate
 to a game entry, and SHALL NOT carry any meaning across different releases of the shiragame database. It MUST NOT be used as a canonical identifier for a 
@@ -166,7 +169,8 @@ As of schema 2, releases of the shiragame database are versioned by the schema v
 Each MAJOR.MINOR version of the shiratsu application MUST generate a shiragame database with the same MAJOR.MINOR schema version. Effectively, this means that shiragame schema versions are tied to the shiratsu implementation. In the case where this document and shiratsu differ, it should be considered a bug in the specification.
 
 ## Data Sources
-Currently, shiragame sources data from DATs published by three *cataloguing organizations*.
+Currently, shiragame sources data from Standard DATs published by three *cataloguing organizations*. 
+shiragame does not process Parent-Clone relationships.
 
 * [No-Intro](https://www.no-intro.org/)
 * [Redump](http://redump.org/)
