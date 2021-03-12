@@ -6,13 +6,6 @@ use nom::{
 };
 use nom::error::ParseError;
 
-#[derive(Debug, Eq, PartialEq)]
-pub(crate) enum FlagType
-{
-    Parenthesized,
-    Bracketed,
-}
-
 pub(crate) fn in_parens<'a, O, E: ParseError<&'a str>, P>(inner: P)
                                                           -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
     where P: Parser<&'a str, O, E>
@@ -48,5 +41,90 @@ mod tests
         let mut parser = in_brackets(tag("hello"));
         assert_eq!(parser("[hello]"), Ok(("", "hello")));
         assert_eq!(parser(""), Err(Err::Error(("", ErrorKind::Tag))));
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum FlagType
+{
+    /// The flag is parenthesized
+    Parenthesized,
+
+    /// The flag is bracketed with square brackets
+    Bracketed,
+}
+
+/// A parsed version
+#[derive(Debug, Eq, PartialEq)]
+pub struct Version<'a>
+{
+    /// The version prefix.
+    /// Usually 'v', 'Version', or 'Rev'
+    pub version_prefix: &'a str,
+
+    /// The major version if the version is of the form /[0-9]+\\.[a-zA-Z0-9-]/.
+    /// Otherwise, if the version is not dot-separated, the entire string.
+    pub major: &'a str,
+
+    /// If the version is dot separated, everything past the dot.
+    pub minor: Option<&'a str>,
+
+    /// A prefix that appears before the version, such as
+    /// (PS3 v1.40) would have prefix 'PS3'.
+    pub prefix: Option<&'a str>,
+
+    /// A suffix that appears after the version, such as
+    /// (v1.40 Alt) would have suffix 'Alt'.
+    pub suffix: Option<&'a str>,
+}
+
+impl <'a> From<&(&'a str, &'a str, Option<&'a str>, Option<&'a str>, Option<&'a str>)> for Version<'a>
+{
+    fn from(tuple: &(&'a str, &'a str, Option<&'a str>, Option<&'a str>, Option<&'a str>)) -> Self {
+        Version {
+            version_prefix: tuple.0,
+            major: tuple.1,
+            minor: tuple.2,
+            prefix: tuple.3,
+            suffix: tuple.4
+        }
+    }
+}
+
+/// A parsed language code.
+#[derive(Debug, Eq, PartialEq)]
+pub struct Language<'a>
+{
+    /// The language code
+    pub code: &'a str,
+
+    /// The language variant identifier,
+    /// appearing after the hyphen
+    pub variant: Option<&'a str>
+}
+
+impl <'a> From<&(&'a str, Option<&'a str>)> for Language<'a>
+{
+    fn from(tuple: &(&'a str, Option<&'a str>)) -> Self {
+        Language { code: tuple.0, variant: tuple.1 }
+    }
+}
+
+/// A parsed scene number
+#[derive(Debug, Eq, PartialEq)]
+pub struct SceneNumber<'a>
+{
+    /// The parsed scene number
+    pub number: &'a str,
+
+    /// The prefix before the number, such as 'x', 'z', or 'xB'
+    pub prefix: Option<&'a str>,
+}
+
+
+impl <'a> From<&(&'a str, Option<&'a str>)> for SceneNumber<'a>
+{
+    fn from(tuple: &(&'a str, Option<&'a str>)) -> Self {
+        SceneNumber { number: tuple.0, prefix: tuple.1 }
     }
 }

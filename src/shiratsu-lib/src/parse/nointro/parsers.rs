@@ -14,7 +14,7 @@ use nom::{multi::{many_till, many0, separated_list1},
 use crate::parse::{trim_right_mut,
                    NameInfo, DevelopmentStatus,
                    NamingConvention, move_article,
-                   replace_hyphen, ParseError};
+                   replace_hyphen};
 use nom::multi::separated_list0;
 
 /// A token in a NoIntro filename.
@@ -22,18 +22,21 @@ use nom::multi::separated_list0;
 /// The Tokenizer API is  lossless. The original filename is reconstructible
 /// from the information in the parsed tokens.
 #[derive(Debug, Eq, PartialEq)]
-enum NoIntroToken<'a>
+pub enum NoIntroToken<'a>
 {
+    /// The title of the game.
     Title(String),
+
+    /// A list of parsed regions.
     Region(Vec<Region>),
 
     /// An unspecified regular flag
     Flag(FlagType, &'a str),
 
-    /// The version
-    ///
-    /// Version(Tag, Major, Minor, Prefix, Suffix)
-    Version(Vec<(&'a str, &'a str, Option<&'a str>)>),
+    /// The parsed version.
+    /// Use Version::into to convert into a more
+    /// semantically useful struct.
+    Version(Vec<(&'a str, &'a str, Option<&'a str>, Option<&'a str>, Option<&'a str>)>),
     Beta(Option<&'a str>),
     Disc(&'a str),
 
@@ -72,17 +75,6 @@ fn parse_region_tag(input: &str) -> IResult<&str, NoIntroToken>
     Ok((input, NoIntroToken::Region(regions)))
 }
 
-macro_rules! nointro_parens_flag_parser {
-    ($fn_name:ident, $tag:literal) =>
-    {
-        fn $fn_name<'a>(input: &'a str) -> IResult<&'a str, NoIntroToken>
-        {
-            let (input, tag) = in_parens(tag($tag))(input)?;
-            Ok((input, NoIntroToken::Flag(FlagType::Parenthesized, tag)))
-        }
-    }
-}
-
 macro_rules! nointro_brackets_flag_parser {
     ($fn_name:ident,  $tag:literal) =>
     {
@@ -107,25 +99,28 @@ macro_rules! make_parens_tag {
 
 nointro_brackets_flag_parser!(parse_baddump_tag, "b");
 nointro_brackets_flag_parser!(parse_bios_tag, "BIOS");
-nointro_parens_flag_parser!(parse_prototype_tag, "Proto");
-nointro_parens_flag_parser!(parse_kiosk_tag, "Kiosk");
-nointro_parens_flag_parser!(parse_demo_tag, "Demo");
-nointro_parens_flag_parser!(parse_sample_tag, "Sample");
-nointro_parens_flag_parser!(parse_bonus_disc_tag, "Bonus Disc");
-nointro_parens_flag_parser!(parse_bonus_cd_tag, "Bonus CD");
-nointro_parens_flag_parser!(parse_disc_tag, "Disc");
-nointro_parens_flag_parser!(parse_update_tag, "Update");
-nointro_parens_flag_parser!(parse_dlc_tag, "DLC");
-nointro_parens_flag_parser!(parse_taikenban_tag, "Taikenban"); /* 体験版 == Demo */
-nointro_parens_flag_parser!(parse_tentoutaikenban_tag, "Tentou Taikenban"); /* 店頭体験版 == Kiosk */
-nointro_parens_flag_parser!(parse_unlicensed_tag, "Unl");
-nointro_parens_flag_parser!(parse_tool_tag, "Tool");
-nointro_parens_flag_parser!(parse_psp_the_best_tag, "PSP the Best");
-nointro_parens_flag_parser!(parse_psn_tag, "PSN");
-nointro_parens_flag_parser!(parse_eshop_tag, "eShop");
-nointro_parens_flag_parser!(parse_aftermarket_tag, "Aftermarket");
 
-fn parse_revision_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>)>
+// should be handled by parse_additional_tag
+// nointro_parens_flag_parser!(parse_prototype_tag, "Proto");
+// nointro_parens_flag_parser!(parse_kiosk_tag, "Kiosk");
+// nointro_parens_flag_parser!(parse_demo_tag, "Demo");
+// nointro_parens_flag_parser!(parse_sample_tag, "Sample");
+// nointro_parens_flag_parser!(parse_bonus_disc_tag, "Bonus Disc");
+// nointro_parens_flag_parser!(parse_bonus_cd_tag, "Bonus CD");
+// nointro_parens_flag_parser!(parse_disc_tag, "Disc");
+// nointro_parens_flag_parser!(parse_update_tag, "Update");
+// nointro_parens_flag_parser!(parse_dlc_tag, "DLC");
+// nointro_parens_flag_parser!(parse_taikenban_tag, "Taikenban"); /* 体験版 == Demo */
+// nointro_parens_flag_parser!(parse_tentoutaikenban_tag, "Tentou Taikenban"); /* 店頭体験版 == Kiosk */
+// nointro_parens_flag_parser!(parse_unlicensed_tag, "Unl");
+// nointro_parens_flag_parser!(parse_tool_tag, "Tool");
+// nointro_parens_flag_parser!(parse_psp_the_best_tag, "PSP the Best");
+// nointro_parens_flag_parser!(parse_psn_tag, "PSN");
+// nointro_parens_flag_parser!(parse_eshop_tag, "eShop");
+// nointro_parens_flag_parser!(parse_aftermarket_tag, "Aftermarket");
+
+fn parse_revision_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
+                                                         Option<&str>, Option<&str>)>
 {
     let (input, tag) = tag("Rev")(input)?;
     let (input, _) = char(' ')(input)?;
@@ -133,27 +128,46 @@ fn parse_revision_version(input: &str) -> IResult<&str, (&str, &str, Option<&str
     let (input, _) = opt(char('.'))(input)?;
     let (input, minor) = opt(alphanumeric1)(input)?;
 
-    Ok((input, (tag, major, minor)))
+    Ok((input, (tag, major, minor, None, None)))
 }
 
-fn parse_unprefixed_dot_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>)>
+fn parse_unprefixed_dot_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
+                                                               Option<&str>, Option<&str>)>
 {
     let (input, major) = digit1(input)?;
     let (input, _) = char('.')(input)?;
     let (input, minor) = digit1(input)?;
-    Ok((input, ("", major, Some(minor))))
+    Ok((input, ("", major, Some(minor), None, None)))
 }
 
-fn parse_single_prefixed_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>)>
+fn parse_single_prefixed_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
+                                                                Option<&str>, Option<&str>)>
 {
-    let (input, ver) = alt((tag("v"), tag("Version")))(input)?;
-    let (input, _) = opt(char(' '))(input)?;
+    // Easiest way to encode that 'Version' must be followed by a space is just
+    // to include it in the tag, but we don't want to include the space
+    // so we trim.
+    let (input, ver) = alt((tag("v"),
+                            tag("Version ")))
+        (input)?;
+
     let (input, major) = digit1(input)?;
     let (input, minor) = opt(preceded(char('.'),
                                       take_while(|c: char| c.is_alphanumeric()
                                                 || c == '.' || c == '-')))(input)?;
-    Ok((input,(ver, major, minor)))
+    let (input, suffix) = opt(preceded(char(' '), tag("Alt")))(input)?;
+
+    Ok((input,(ver.trim(), major, minor, None, suffix)))
 }
+
+fn parse_playstation_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
+                                                            Option<&str>, Option<&str>)>
+{
+    let (input, prefix) = alt((tag("PS3"), tag("PSP")))(input)?;
+    let (input, _) = char(' ')(input)?;
+    let (input, (ver, major, minor, _, _)) = parse_single_prefixed_version(input)?;
+    Ok((input, (ver, major, minor, Some(prefix), None)))
+}
+
 
 // todo: tag prefixes and suffixes ('Alt') and 'PS3 v...')
 // 4 digit versions can only appear AFTER a v... tag.
@@ -161,7 +175,10 @@ make_parens_tag!(parse_version_tag, parse_version_string);
 fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken>
 {
     let (input, vers1) =
-        alt((parse_single_prefixed_version, parse_revision_version,
+        alt((
+             parse_playstation_version,
+             parse_single_prefixed_version,
+             parse_revision_version,
              parse_unprefixed_dot_version))(input)?;
 
     let (input, _) = opt(alt((tag(", "), tag(","), tag(" "))))(input)?;
@@ -170,10 +187,11 @@ fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken>
         separated_list0(
             alt((tag(", "), tag(","), tag(" "))),
                 alt((
+                    parse_playstation_version,
                     parse_single_prefixed_version,
                     parse_revision_version,
                     take_while_m_n(4, 4, |c: char| c.is_ascii_digit())
-                        .map(|s| ("", s, None)
+                        .map(|s| ("", s, None, None, None)
                 )))
         )(input)?;
 
@@ -190,7 +208,7 @@ fn parse_beta(input: &str) -> IResult<&str, NoIntroToken>
     Ok((input, NoIntroToken::Beta(beta)))
 }
 
-make_parens_tag!(parse_disc_number_tag, parse_disc);
+make_parens_tag!(parse_disc_tag, parse_disc);
 fn parse_disc(input: &str) -> IResult<&str, NoIntroToken>
 {
     let (input, _) = tag("Disc")(input)?;
@@ -266,25 +284,25 @@ fn parse_language(input: &str) -> IResult<&str, NoIntroToken>
     Ok((input, NoIntroToken::Languages(languages)))
 }
 
-fn parse_additional_tag<'a>(input: &'a str) -> IResult<&'a str, NoIntroToken>
+fn parse_additional_tag(input: &str) -> IResult<&str, NoIntroToken>
 {
     let (input, tag) = in_parens(is_not(")"))(input)?;
     Ok((input, NoIntroToken::Flag(FlagType::Parenthesized, tag)))
 }
 
-fn parse_known_tag(input: &str) -> IResult<&str, NoIntroToken>
+fn parse_known_flags(input: &str) -> IResult<&str, NoIntroToken>
 {
     let (input, tag) = alt((
                                 parse_language_tag,
                                 parse_version_tag,
                                 parse_beta_tag,
-                                parse_disc_number_tag,
+                                parse_disc_tag,
                                 parse_additional_tag
     ))(input)?;
     Ok((input, tag))
 }
 
-fn do_parse(input: &str) -> IResult<&str, Vec<NoIntroToken>>
+pub(crate) fn do_parse(input: &str) -> IResult<&str, Vec<NoIntroToken>>
 {
     // We need this because of "FIFA 20 - Portuguese (Brazil) In-Game Commentary"
     fn parse_region_tag_and_ensure_end(input: &str) -> IResult<&str, NoIntroToken>
@@ -325,30 +343,20 @@ fn do_parse(input: &str) -> IResult<&str, Vec<NoIntroToken>>
     tokens.push(region);
 
     let (input, mut known_tags) = many0(
-        preceded(opt(char(' ')), parse_known_tag))(input)?;
+        preceded(opt(char(' ')), parse_known_flags))(input)?;
 
     tokens.append(&mut known_tags);
-
-    // let (input, mut other_tags) = many0(preceded(opt(char(' ')),
-    //                                              alt((
-    //                                                  // Beta and revision tags have been known to
-    //                                                  // show up after some additional tags
-    //                                                  parse_beta_tag,
-    //                                                  parse_revision_version
-    //                                                      .map(|c| NoIntroToken::Version(vec![c])),
-    //                                                  parse_additional_tag))))(input)?;
-    // tokens.append(&mut other_tags);
 
     // end with [b]
     let (input, bad_dump) = opt(preceded(opt(char(' ')),
                                          parse_baddump_tag))(input)?;
 
-    // make sure we are EOF.
-    let (input, _) = eof(input)?;
-
     if let Some(token) = bad_dump {
         tokens.push(token);
     }
+
+    // make sure we are EOF.
+    let (input, _) = eof(input)?;
 
     match input {
         "" => Ok((input, tokens)),
@@ -392,8 +400,8 @@ impl<'a> From<Vec<NoIntroToken<'a>>> for NameInfo
                 NoIntroToken::Flag(_, "Unl") => { name.is_unlicensed = true }
                 NoIntroToken::Version(versions) => {
                     match versions.first() {
-                        Some((_, major, None)) => { name.version = Some(major.to_string()) }
-                        Some((_, major, Some(minor))) => { name.version = Some(format!("{}.{}", major, minor)) }
+                        Some((_, major, None, _, _)) => { name.version = Some(major.to_string()) }
+                        Some((_, major, Some(minor), _, _)) => { name.version = Some(format!("{}.{}", major, minor)) }
                         _ => {}
                     }
                 }
@@ -414,13 +422,6 @@ impl<'a> From<Vec<NoIntroToken<'a>>> for NameInfo
         name.release_title = release_title;
         name
     }
-}
-
-pub fn nointro_parser<'a>(input: &str) -> Result<NameInfo, ParseError> {
-    let value = do_parse(input).map(|(_, value)| value).map_err(|_| {
-        ParseError::BadFileNameError(NamingConvention::NoIntro, input.to_string())
-    })?.into();
-    Ok(value)
 }
 
 #[cfg(test)]
@@ -499,46 +500,60 @@ mod tests
     fn parse_ver_test()
     {
         assert_eq!(parse_version_tag("(v10.XX)"),
-                   Ok(("", NoIntroToken::Version(vec![("v", "10", Some("XX"))]))));
+                   Ok(("", NoIntroToken::Version(vec![("v", "10", Some("XX"), None, None)]))));
         assert_eq!(parse_version_tag("(Version 10.5.6-10)"),
-                   Ok(("", NoIntroToken::Version(vec![("Version", "10", Some("5.6-10"))]))));
+                   Ok(("", NoIntroToken::Version(vec![("Version", "10", Some("5.6-10"), None, None)]))));
         assert_eq!(parse_version_tag("(Version 9)"),
-                   Ok(("", NoIntroToken::Version(vec![("Version", "9", None)]))));
+                   Ok(("", NoIntroToken::Version(vec![("Version", "9", None, None, None)]))));
         assert_eq!(parse_version_tag("(v1.0.0, v12342)"),
                    Ok(("", NoIntroToken::Version(vec![
-                       ("v", "1", Some("0.0")),
-                       ("v", "12342", None)
+                       ("v", "1", Some("0.0"), None, None),
+                       ("v", "12342", None, None, None)
                    ]))));
         assert_eq!(parse_version_tag("(Rev 10)"),
-                   Ok(("", NoIntroToken::Version(vec![("Rev", "10", None)]))));
+                   Ok(("", NoIntroToken::Version(vec![("Rev", "10", None, None, None)]))));
         assert_eq!(parse_version_tag("(Rev 10.08)"),
-                   Ok(("", NoIntroToken::Version(vec![("Rev", "10", Some("08"))]))));
+                   Ok(("", NoIntroToken::Version(vec![("Rev", "10", Some("08"), None, None)]))));
         assert_eq!(parse_version_tag("(Rev 5C21)"),
-                   Ok(("", NoIntroToken::Version(vec![("Rev", "5C21", None)]))));
+                   Ok(("", NoIntroToken::Version(vec![("Rev", "5C21", None, None, None)]))));
         assert_eq!(parse_version_tag("(0.01)"),
-                   Ok(("", NoIntroToken::Version(vec![("", "0", Some("01"))]))));
+                   Ok(("", NoIntroToken::Version(vec![("", "0", Some("01"), None, None)]))));
         assert_eq!(parse_version_tag("(v1.07 Rev 1)"),
                    Ok(("", NoIntroToken::Version(vec![
-                       ("v", "1", Some("07")),
-                       ("Rev", "1", None)
+                       ("v", "1", Some("07"), None, None),
+                       ("Rev", "1", None, None, None)
                    ]))));
         assert_eq!(parse_version_tag("(v1.07 1023)"),
                    Ok(("", NoIntroToken::Version(vec![
-                       ("v", "1", Some("07")),
-                       ("", "1023", None)
+                       ("v", "1", Some("07"), None, None),
+                       ("", "1023", None, None, None)
                    ]))));
         assert_eq!(parse_version_tag("(v1.07, 1023)"),
                    Ok(("", NoIntroToken::Version(vec![
-                       ("v", "1", Some("07")),
-                       ("", "1023", None)
+                       ("v", "1", Some("07"),None, None),
+                       ("", "1023", None, None, None)
                    ]))));
         assert_eq!(parse_version_tag("(v1.07, v1023)"),
                    Ok(("", NoIntroToken::Version(vec![
-                       ("v", "1", Some("07")),
-                       ("v", "1023", None)
+                       ("v", "1", Some("07"),None, None),
+                       ("v", "1023", None, None, None)
                    ]))));
         assert_eq!(parse_version_tag("(1984)"),
                    Err(nom::Err::Error(Error::new(")", ErrorKind::Char))));
+        assert_eq!(parse_version_tag("(v1.07, v1023)"),
+                   Ok(("", NoIntroToken::Version(vec![
+                       ("v", "1", Some("07"),None, None),
+                       ("v", "1023", None, None, None)
+                   ]))));
+        assert_eq!(parse_version_tag("(v1.07, v1023, PS3 v1.70, PSP v5.51, v60 Alt)"),
+                   Ok(("", NoIntroToken::Version(vec![
+                       ("v", "1", Some("07"),None, None),
+                       ("v", "1023", None, None, None),
+                       ("v", "1", Some("70"), Some("PS3"), None),
+                       ("v", "5", Some("51"), Some("PSP"), None),
+                       ("v", "60", None, None, Some("Alt"))
+                   ]))));
+        // (v1.01, )
         //v1.07 Rev 1
 
     }
@@ -578,6 +593,6 @@ mod tests
     #[test]
     fn parse_unl()
     {
-        assert_eq!(parse_unlicensed_tag("(Unl)"), Ok(("", NoIntroToken::Flag(FlagType::Parenthesized, "Unl"))))
+        assert_eq!(parse_additional_tag("(Unl)"), Ok(("", NoIntroToken::Flag(FlagType::Parenthesized, "Unl"))))
     }
 }

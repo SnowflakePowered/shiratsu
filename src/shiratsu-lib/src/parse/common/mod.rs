@@ -21,6 +21,7 @@ pub use serial::*;
 pub use name_info::*;
 pub use display::*;
 pub use error::*;
+pub use parsers::*;
 pub(in super) use release_name::*;
 
 

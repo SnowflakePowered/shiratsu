@@ -1,8 +1,15 @@
 [package]
 name = "shiratsu-lib"
 version = "0.1.0"
-authors = ["Ronny Chan <ronny6993@gmail.com>"]
+authors = ["Ronny Chan <ronny@ronnychan.ca>"]
 edition = "2018"
+repository = "https://github.com/SnowflakePowered/shiratsu"
+license = "MIT"
+
+[features]
+default = []
+
+legacy-parser = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]

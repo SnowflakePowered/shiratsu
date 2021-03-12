@@ -25,7 +25,6 @@ use database::{DatabaseError, ShiratsuDatabase};
 use console::style;
 use indicatif::ProgressBar;
 
-use lazy_static::lazy_static;
 use lazy_static_include::*;
 
 use glob::glob_with;
@@ -291,14 +290,15 @@ fn compare<F>(event_fn: F) -> Result<()>
                                 &root,
                             ));
 
+
                             let old_name = game.entry_name();
-                            if let Ok(res) = nointro::parsers::nointro_parser(old_name)
+
+                            if let Ok(res) = nointro::try_parse(old_name)
+                                .map(|res| res.into())
                             {
+
                                 if Some(&res) != game.info()
                                 {
-                                    if res.version().is_some() && game.info().unwrap().version().is_none() {
-                                        continue;
-                                    }
                                     eprintln!("========DIFF===========");
                                     eprintln!("{}", old_name);
                                     eprintln!("========LEFT===========");

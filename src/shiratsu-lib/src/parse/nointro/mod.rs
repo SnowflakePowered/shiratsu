@@ -1,7 +1,9 @@
 mod dat;
 mod filename;
-mod parser_old;
-pub mod parsers;
+mod legacy_parser;
+mod parsers;
 
 pub use dat::*;
 pub use filename::NoIntroNameable;
+pub use filename::try_parse;
+pub use parsers::NoIntroToken;
