@@ -211,7 +211,6 @@ The method of assigning names to *game entries* followed by the *cataloguing org
     * Before the `[b]` Status flag, the flag (Disc X), where X is a number from 0-9 MAY appear.
     * The (Version) flag MAY appear after the (Unl) License flag.
     * A full list of regions is available in [`regions.rs`](https://github.com/SnowflakePowered/shiratsu/blob/5c2d03d62f8f65b55c58eb53e9e71999fa5eab45/src/shiratsu-lib/src/region.rs#L127)
-    * Note: While a strict reading of the naming convention does not prohibit unbalanced parentheses, in the title, the only known case is [Odekake Lester - Lelele no Le (^^; (Japan)](https://datomatic.no-intro.org/?page=show_record&s=49&n=1853). Parsing unbalanced parentheses consistently across input strings is a very difficult problem, and so shiratsu hard codes *Odekake Lester* as a special case and does not normally accept unbalanced parenthesis in titles. Should there be another instance of this issue in the feature, that SHALL be considered a bug on part of shiratsu.
    
     These amendments are used by names given by Redump
 * **dump**

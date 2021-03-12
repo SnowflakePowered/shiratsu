@@ -15,6 +15,7 @@ use crate::parse::{trim_right_mut,
                    NameInfo, DevelopmentStatus,
                    NamingConvention, move_article,
                    replace_hyphen, ParseError};
+use nom::multi::separated_list0;
 
 /// A token in a NoIntro filename.
 ///
@@ -122,8 +123,9 @@ nointro_parens_flag_parser!(parse_tool_tag, "Tool");
 nointro_parens_flag_parser!(parse_psp_the_best_tag, "PSP the Best");
 nointro_parens_flag_parser!(parse_psn_tag, "PSN");
 nointro_parens_flag_parser!(parse_eshop_tag, "eShop");
+nointro_parens_flag_parser!(parse_aftermarket_tag, "Aftermarket");
 
-fn parse_revision(input: &str) -> IResult<&str, (&str, &str, Option<&str>)>
+fn parse_revision_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>)>
 {
     let (input, tag) = tag("Rev")(input)?;
     let (input, _) = char(' ')(input)?;
@@ -134,7 +136,7 @@ fn parse_revision(input: &str) -> IResult<&str, (&str, &str, Option<&str>)>
     Ok((input, (tag, major, minor)))
 }
 
-fn parse_atomic_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>)>
+fn parse_unprefixed_dot_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>)>
 {
     let (input, major) = digit1(input)?;
     let (input, _) = char('.')(input)?;
@@ -142,7 +144,7 @@ fn parse_atomic_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>)
     Ok((input, ("", major, Some(minor))))
 }
 
-fn parse_single_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>)>
+fn parse_single_prefixed_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>)>
 {
     let (input, ver) = alt((tag("v"), tag("Version")))(input)?;
     let (input, _) = opt(char(' '))(input)?;
@@ -153,20 +155,30 @@ fn parse_single_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>)
     Ok((input,(ver, major, minor)))
 }
 
-// todo: make this stricter
+// todo: tag prefixes and suffixes ('Alt') and 'PS3 v...')
+// 4 digit versions can only appear AFTER a v... tag.
 make_parens_tag!(parse_version_tag, parse_version_string);
 fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken>
 {
-    let (input, vers) =
-        alt((separated_list1(
-        alt((tag(", "), tag(","), tag(" "))),
-            alt((parse_single_version, parse_revision,
-                 take_while_m_n(4, 4, |c: char| c.is_ascii_digit())
-                     .map(|s| ("", s, None))
-            )))
-        , parse_atomic_version.map(|t| vec![t]))
-    )(input)?;
-    Ok((input, NoIntroToken::Version(vers)))
+    let (input, vers1) =
+        alt((parse_single_prefixed_version, parse_revision_version,
+             parse_unprefixed_dot_version))(input)?;
+
+    let (input, _) = opt(alt((tag(", "), tag(","), tag(" "))))(input)?;
+
+    let (input, mut nextvers) =
+        separated_list0(
+            alt((tag(", "), tag(","), tag(" "))),
+                alt((
+                    parse_single_prefixed_version,
+                    parse_revision_version,
+                    take_while_m_n(4, 4, |c: char| c.is_ascii_digit())
+                        .map(|s| ("", s, None)
+                )))
+        )(input)?;
+
+    nextvers.insert(0, vers1);
+    Ok((input, NoIntroToken::Version(nextvers)))
 }
 
 make_parens_tag!(parse_beta_tag, parse_beta);
@@ -254,7 +266,7 @@ fn parse_language(input: &str) -> IResult<&str, NoIntroToken>
     Ok((input, NoIntroToken::Languages(languages)))
 }
 
-fn parse_additional_tag(input: &str) -> IResult<&str, NoIntroToken>
+fn parse_additional_tag<'a>(input: &'a str) -> IResult<&'a str, NoIntroToken>
 {
     let (input, tag) = in_parens(is_not(")"))(input)?;
     Ok((input, NoIntroToken::Flag(FlagType::Parenthesized, tag)))
@@ -264,26 +276,11 @@ fn parse_known_tag(input: &str) -> IResult<&str, NoIntroToken>
 {
     let (input, tag) = alt((
                                 parse_language_tag,
-                                parse_prototype_tag,
-                                parse_kiosk_tag,
                                 parse_version_tag,
-                                parse_unlicensed_tag,
                                 parse_beta_tag,
-                                parse_disc_tag,
                                 parse_disc_number_tag,
-                                parse_dlc_tag,
-                                parse_update_tag,
-                                parse_demo_tag,
-                                parse_tentoutaikenban_tag,
-                                parse_taikenban_tag,
-                                parse_sample_tag,
-                                parse_bonus_disc_tag,
-                                parse_bonus_cd_tag,
-                                parse_psp_the_best_tag,
-                                parse_psn_tag,
-                                parse_eshop_tag,
-                                parse_tool_tag
-                            ))(input)?;
+                                parse_additional_tag
+    ))(input)?;
     Ok((input, tag))
 }
 
@@ -332,15 +329,15 @@ fn do_parse(input: &str) -> IResult<&str, Vec<NoIntroToken>>
 
     tokens.append(&mut known_tags);
 
-    let (input, mut other_tags) = many0(preceded(opt(char(' ')),
-                                                 alt((
-                                                     // Beta and revision tags have been known to
-                                                     // show up after some additional tags
-                                                     parse_beta_tag,
-                                                     parse_revision
-                                                         .map(|c| NoIntroToken::Version(vec![c])),
-                                                     parse_additional_tag))))(input)?;
-    tokens.append(&mut other_tags);
+    // let (input, mut other_tags) = many0(preceded(opt(char(' ')),
+    //                                              alt((
+    //                                                  // Beta and revision tags have been known to
+    //                                                  // show up after some additional tags
+    //                                                  parse_beta_tag,
+    //                                                  parse_revision_version
+    //                                                      .map(|c| NoIntroToken::Version(vec![c])),
+    //                                                  parse_additional_tag))))(input)?;
+    // tokens.append(&mut other_tags);
 
     // end with [b]
     let (input, bad_dump) = opt(preceded(opt(char(' ')),
@@ -525,6 +522,23 @@ mod tests
                        ("v", "1", Some("07")),
                        ("Rev", "1", None)
                    ]))));
+        assert_eq!(parse_version_tag("(v1.07 1023)"),
+                   Ok(("", NoIntroToken::Version(vec![
+                       ("v", "1", Some("07")),
+                       ("", "1023", None)
+                   ]))));
+        assert_eq!(parse_version_tag("(v1.07, 1023)"),
+                   Ok(("", NoIntroToken::Version(vec![
+                       ("v", "1", Some("07")),
+                       ("", "1023", None)
+                   ]))));
+        assert_eq!(parse_version_tag("(v1.07, v1023)"),
+                   Ok(("", NoIntroToken::Version(vec![
+                       ("v", "1", Some("07")),
+                       ("v", "1023", None)
+                   ]))));
+        assert_eq!(parse_version_tag("(1984)"),
+                   Err(nom::Err::Error(Error::new(")", ErrorKind::Char))));
         //v1.07 Rev 1
 
     }
