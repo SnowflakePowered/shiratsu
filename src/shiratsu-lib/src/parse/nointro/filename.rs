@@ -1,8 +1,7 @@
-use super::super::Result;
-use super::super::*;
-use super::legacy_parser::nointro_legacy_parser;
-use crate::parse::nointro::parsers::NoIntroToken;
-use crate::parse::nointro::parsers::do_parse;
+use crate::parse::{NameInfo, NamingConvention, ParseError, Result};
+use crate::parse::nointro::parsers::{NoIntroToken, do_parse};
+
+use super::legacy_parser::legacy_parser;
 
 pub trait NoIntroNameable {
     fn try_from_nointro(nointro: &str) -> Result<NameInfo>;
@@ -10,7 +9,7 @@ pub trait NoIntroNameable {
 
 impl NoIntroNameable for NameInfo {
     fn try_from_nointro(name: &str) -> Result<NameInfo> {
-        nointro_legacy_parser(name)
+        legacy_parser(name)
     }
 }
 

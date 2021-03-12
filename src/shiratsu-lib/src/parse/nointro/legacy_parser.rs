@@ -139,7 +139,7 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
     ))
 }
 
-pub(super) fn nointro_legacy_parser<'a>(input: &str) -> Result<NameInfo> {
+pub(super) fn legacy_parser<'a>(input: &str) -> Result<NameInfo> {
     let value = do_parse(input).map(|(_, value)| value).map_err(|_| {
         ParseError::BadFileNameError(NamingConvention::NoIntro, input.to_string())
     })?;
