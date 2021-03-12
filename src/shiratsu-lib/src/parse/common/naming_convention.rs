@@ -1,7 +1,7 @@
 
 
 /// Naming convention commonly used by DAT producers.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum NamingConvention {
     /// Not a known naming convention
     Unknown,

@@ -1,7 +1,7 @@
 use crate::region::Region;
 use super::*;
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct NameInfo {
     pub(in super::super) entry_title: String,
     pub(in super::super) release_title: String,
@@ -39,6 +39,7 @@ impl NameInfo {
     pub fn release_title(&self) -> &str {
         &self.release_title.as_str()
     }
+    /// The name of the release as it appears in the filename.
     pub fn entry_title(&self) -> &str {
         &self.entry_title.as_str()
     }

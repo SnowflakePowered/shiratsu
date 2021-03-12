@@ -6,6 +6,13 @@ use nom::{
 };
 use nom::error::ParseError;
 
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) enum FlagType
+{
+    Parenthesized,
+    Bracketed,
+}
+
 pub(crate) fn in_parens<'a, O, E: ParseError<&'a str>, P>(inner: P)
                                                           -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
     where P: Parser<&'a str, O, E>

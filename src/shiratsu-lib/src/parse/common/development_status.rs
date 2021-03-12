@@ -1,5 +1,5 @@
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 /// The development status of a release.
 pub enum DevelopmentStatus {
     /// A commercially released, or feature complete product, whether distributed gratis or not, 

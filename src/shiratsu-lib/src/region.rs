@@ -345,23 +345,6 @@ fn from_goodtools_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
     }
 }
 
-fn from_single_nointro_region<T: AsRef<str>>(region_code: T) -> Result<Vec<Region>>
-{
-    match region_code.as_ref() {
-        "World" => Ok(vec![Region::UnitedStates, Region::Japan, Region::Europe]),
-        "Scandinavia" => Ok(vec![Region::Denmark, Region::Norway, Region::Sweden]),
-        "Latin America" => Ok(vec![Region::Mexico, Region::Brazil, Region::Argentina, Region::Chile, Region::Peru]),
-        _ => match NOINTRO_REGION.get(region_code.as_ref()) {
-            Some(&region) => {
-                Ok(vec![region])
-            }
-            None => Err(
-                RegionError::UnknownRegion(RegionFormat::NoIntro, String::from(region_code.as_ref()))
-            ),
-        },
-    }
-}
-
 /// Parse a valid No-Intro region string into a `Vec<Region>`.
 /// A valid region string is a comma + space separated list of valid country names.
 ///
@@ -389,7 +372,7 @@ fn from_nointro_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
         }
 
         match region_code {
-            "World" => {
+            "World" | "World (guessed)" | "World (Guessed)" => {
                 regions.insert(Region::UnitedStates);
                 regions.insert(Region::Japan);
                 regions.insert(Region::Europe);
