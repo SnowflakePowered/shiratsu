@@ -36,7 +36,7 @@ pub enum NoIntroToken<'a>
     /// The parsed version.
     /// Use Version::into to convert into a more
     /// semantically useful struct.
-    Version(Vec<(&'a str, &'a str, Option<&'a str>, Option<&'a str>, Option<&'a str>)>),
+    Version(Vec<(&'a str, &'a str, Option<&'a str>, Option<&'a str>, Option<Vec<&'a str>>)>),
     Beta(Option<&'a str>),
     Disc(&'a str),
 
@@ -120,7 +120,7 @@ nointro_brackets_flag_parser!(parse_bios_tag, "BIOS");
 // nointro_parens_flag_parser!(parse_aftermarket_tag, "Aftermarket");
 
 fn parse_revision_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
-                                                         Option<&str>, Option<&str>)>
+                                                         Option<&str>, Option<Vec<&str>>)>
 {
     let (input, tag) = tag("Rev")(input)?;
     let (input, _) = char(' ')(input)?;
@@ -132,7 +132,7 @@ fn parse_revision_version(input: &str) -> IResult<&str, (&str, &str, Option<&str
 }
 
 fn parse_unprefixed_dot_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
-                                                               Option<&str>, Option<&str>)>
+                                                               Option<&str>, Option<Vec<&str>>)>
 {
     let (input, major) = digit1(input)?;
     let (input, _) = char('.')(input)?;
@@ -140,27 +140,79 @@ fn parse_unprefixed_dot_version(input: &str) -> IResult<&str, (&str, &str, Optio
     Ok((input, ("", major, Some(minor), None, None)))
 }
 
-fn parse_single_prefixed_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
-                                                                Option<&str>, Option<&str>)>
+
+fn parse_single_prefixed_version_with_full_tag(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
+                                                                Option<&str>, Option<Vec<&str>>)>
 {
-    // Easiest way to encode that 'Version' must be followed by a space is just
-    // to include it in the tag, but we don't want to include the space
-    // so we trim.
-    let (input, ver) = alt((tag("v"),
-                            tag("Version ")))
+    // Redump BIOS versions include date
+    fn parse_date(input: &str) -> IResult<&str, &str>
+    {
+        fn parse_date_check(input: &str) -> IResult<&str, (&str, &str, &str)> {
+            let (input, month) = take_while_m_n(2, 2, |c: char| c.is_ascii_digit())(input)?;
+            let (input, _) = char('/')(input)?;
+            let (input, day) = take_while_m_n(2, 2, |c: char| c.is_ascii_digit())(input)?;
+            let (input, _) = char('/')(input)?;
+            let (input, year) = take_while_m_n(2, 2, |c: char| c.is_ascii_digit())(input)?;
+            Ok((input, (month, day, year)))
+        }
+        let (input, _) = peek(parse_date_check)(input)?;
+        let (input, datestr) =  take_while_m_n(8, 8, |c: char| c.is_ascii_digit() || c == '/')(input)?;
+        Ok((input, datestr))
+    }
+
+    let (input, ver) = tag("Version")(input)?;
+    let (input, _) = char(' ')(input)?;
+
+    let (input, major) = digit1(input)?;
+    let (input, minor) = opt(preceded(char('.'),
+                                      take_while(|c: char| c.is_ascii_alphanumeric()
+                                          || c == '.' || c == '-')))(input)?;
+
+    let mut suffixes = Vec::new();
+
+    let (input, datestr) = opt(preceded(char(' '),parse_date))(input)?;
+
+    let (input, suffix) = opt(
+        preceded(char(' '),
+                 alt((
+                     tag("Alt"),
+                     take_while_m_n(1,1, |c: char| c.is_ascii_uppercase() && c.is_ascii_alphabetic()),
+                 ))
+        ))
         (input)?;
+
+    if datestr.is_none() && suffix.is_none() {
+        return Ok((input,(ver.trim(), major, minor, None, None)));
+    }
+
+    if let Some(datestr) = datestr {
+        suffixes.push(datestr);
+    }
+
+    if let Some(suffix) = suffix {
+        suffixes.push(suffix);
+    }
+
+    Ok((input,(ver.trim(), major, minor, None, Some(suffixes))))
+}
+
+fn parse_single_prefixed_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
+                                                                Option<&str>, Option<Vec<&str>>)>
+{
+    let (input, ver) = tag("v")(input)?;
 
     let (input, major) = digit1(input)?;
     let (input, minor) = opt(preceded(char('.'),
                                       take_while(|c: char| c.is_alphanumeric()
                                                 || c == '.' || c == '-')))(input)?;
-    let (input, suffix) = opt(preceded(char(' '), tag("Alt")))(input)?;
+    let (input, suffix) =
+        opt(preceded(char(' '), tag("Alt")))(input)?;
 
-    Ok((input,(ver.trim(), major, minor, None, suffix)))
+    Ok((input,(ver.trim(), major, minor, None, suffix.map(|x| vec![x]))))
 }
 
 fn parse_playstation_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
-                                                            Option<&str>, Option<&str>)>
+                                                            Option<&str>, Option<Vec<&str>>)>
 {
     let (input, prefix) = alt((tag("PS3"), tag("PSP")))(input)?;
     let (input, _) = char(' ')(input)?;
@@ -178,6 +230,7 @@ fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken>
         alt((
              parse_playstation_version,
              parse_single_prefixed_version,
+             parse_single_prefixed_version_with_full_tag,
              parse_revision_version,
              parse_unprefixed_dot_version))(input)?;
 
@@ -189,6 +242,7 @@ fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken>
                 alt((
                     parse_playstation_version,
                     parse_single_prefixed_version,
+                    parse_single_prefixed_version_with_full_tag,
                     parse_revision_version,
                     take_while_m_n(4, 4, |c: char| c.is_ascii_digit())
                         .map(|s| ("", s, None, None, None)
@@ -497,6 +551,29 @@ mod tests
     }
 
     #[test]
+    fn parse_redump_ver_test()
+    {
+        assert_eq!(parse_version_tag("(Version 5.0 04/15/10 E)"),
+                   Ok(("", NoIntroToken::Version(vec![
+                       ("Version", "5", Some("0"), None, Some(
+                           vec![
+                               "04/15/10",
+                               "E"
+                           ]
+                       ))
+                   ]))));
+        assert_eq!(parse_version_tag("(Version 4.5 05/25/00 A)"),
+                   Ok(("", NoIntroToken::Version(vec![
+                       ("Version", "4", Some("5"), None, Some(
+                           vec![
+                               "05/25/00",
+                               "A"
+                           ]
+                       ))
+                   ]))));
+    }
+
+    #[test]
     fn parse_ver_test()
     {
         assert_eq!(parse_version_tag("(v10.XX)"),
@@ -551,8 +628,29 @@ mod tests
                        ("v", "1023", None, None, None),
                        ("v", "1", Some("70"), Some("PS3"), None),
                        ("v", "5", Some("51"), Some("PSP"), None),
-                       ("v", "60", None, None, Some("Alt"))
+                       ("v", "60", None, None, Some(vec!["Alt"]))
                    ]))));
+
+        assert_eq!(parse_version_tag("(Version 5.0 04/15/10 E)"),
+                   Ok(("", NoIntroToken::Version(vec![
+                       ("Version", "5", Some("0"), None, Some(
+                           vec![
+                               "04/15/10",
+                               "E"
+                           ]
+                       ))
+                   ]))));
+        assert_eq!(parse_version_tag("(4.5 05/25/00 A)"),
+                   Ok(("", NoIntroToken::Version(vec![
+                       ("Version", "4", Some("5"), None, Some(
+                           vec![
+                               "05/25/00",
+                               "A"
+                           ]
+                       ))
+                   ]))));
+
+        //
         // (v1.01, )
         //v1.07 Rev 1
 
