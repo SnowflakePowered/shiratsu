@@ -1,16 +1,17 @@
 use crate::parse::common::parsers::*;
 use crate::parse::common::ARTICLES;
 use crate::region::{Region, RegionError};
-use nom::{multi::{many_till, many0, separated_list1},
-          sequence::preceded,
-          combinator::{opt, eof, peek},
-          branch::alt,
-          bytes::complete::{tag, is_not},
-          character::complete::{char, digit1, alpha1},
-          error::{Error, ErrorKind},
-          IResult, Slice, Parser,
-          bytes::complete::{take_while, take_while_m_n},
-          character::complete::{anychar, alphanumeric1}};
+use nom::{
+        multi::{many_till, many0, separated_list1},
+        sequence::preceded,
+        combinator::{opt, eof, peek},
+        branch::alt,
+        bytes::complete::{tag, is_not},
+        character::complete::{char, digit1, alpha1, anychar, alphanumeric1},
+        error::{Error, ErrorKind},
+        IResult, Slice, Parser,
+        bytes::complete::{take_while, take_while_m_n, take_till1},
+};
 use crate::parse::{trim_right_mut,
                    NameInfo, DevelopmentStatus,
                    NamingConvention, move_article,
@@ -38,7 +39,9 @@ pub enum NoIntroToken<'a>
     /// semantically useful struct.
     Version(Vec<(&'a str, &'a str, Option<&'a str>, Option<&'a str>, Option<Vec<&'a str>>)>),
     Beta(Option<&'a str>),
-    Disc(&'a str),
+
+    /// Part number
+    Part(&'a str, &'a str),
 
     /// A scene number with an optional type
     ///
@@ -119,113 +122,113 @@ nointro_brackets_flag_parser!(parse_bios_tag, "BIOS");
 // nointro_parens_flag_parser!(parse_eshop_tag, "eShop");
 // nointro_parens_flag_parser!(parse_aftermarket_tag, "Aftermarket");
 
-fn parse_revision_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
-                                                         Option<&str>, Option<Vec<&str>>)>
-{
-    let (input, tag) = tag("Rev")(input)?;
-    let (input, _) = char(' ')(input)?;
-    let (input, major) = alphanumeric1(input)?;
-    let (input, _) = opt(char('.'))(input)?;
-    let (input, minor) = opt(alphanumeric1)(input)?;
-
-    Ok((input, (tag, major, minor, None, None)))
-}
-
-fn parse_unprefixed_dot_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
-                                                               Option<&str>, Option<Vec<&str>>)>
-{
-    let (input, major) = digit1(input)?;
-    let (input, _) = char('.')(input)?;
-    let (input, minor) = digit1(input)?;
-    Ok((input, ("", major, Some(minor), None, None)))
-}
-
-
-fn parse_single_prefixed_version_with_full_tag(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
-                                                                Option<&str>, Option<Vec<&str>>)>
-{
-    // Redump BIOS versions include date
-    fn parse_date(input: &str) -> IResult<&str, &str>
-    {
-        fn parse_date_check(input: &str) -> IResult<&str, (&str, &str, &str)> {
-            let (input, month) = take_while_m_n(2, 2, |c: char| c.is_ascii_digit())(input)?;
-            let (input, _) = char('/')(input)?;
-            let (input, day) = take_while_m_n(2, 2, |c: char| c.is_ascii_digit())(input)?;
-            let (input, _) = char('/')(input)?;
-            let (input, year) = take_while_m_n(2, 2, |c: char| c.is_ascii_digit())(input)?;
-            Ok((input, (month, day, year)))
-        }
-        let (input, _) = peek(parse_date_check)(input)?;
-        let (input, datestr) =  take_while_m_n(8, 8, |c: char| c.is_ascii_digit() || c == '/')(input)?;
-        Ok((input, datestr))
-    }
-
-    let (input, ver) = tag("Version")(input)?;
-    let (input, _) = char(' ')(input)?;
-
-    let (input, major) = digit1(input)?;
-    let (input, minor) = opt(preceded(char('.'),
-                                      take_while(|c: char| c.is_ascii_alphanumeric()
-                                          || c == '.' || c == '-')))(input)?;
-
-    let mut suffixes = Vec::new();
-
-    let (input, datestr) = opt(preceded(char(' '),parse_date))(input)?;
-
-    let (input, suffix) = opt(
-        preceded(char(' '),
-                 alt((
-                     tag("Alt"),
-                     take_while_m_n(1,1, |c: char| c.is_ascii_uppercase() && c.is_ascii_alphabetic()),
-                 ))
-        ))
-        (input)?;
-
-    if datestr.is_none() && suffix.is_none() {
-        return Ok((input,(ver.trim(), major, minor, None, None)));
-    }
-
-    if let Some(datestr) = datestr {
-        suffixes.push(datestr);
-    }
-
-    if let Some(suffix) = suffix {
-        suffixes.push(suffix);
-    }
-
-    Ok((input,(ver.trim(), major, minor, None, Some(suffixes))))
-}
-
-fn parse_single_prefixed_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
-                                                                Option<&str>, Option<Vec<&str>>)>
-{
-    let (input, ver) = tag("v")(input)?;
-
-    let (input, major) = digit1(input)?;
-    let (input, minor) = opt(preceded(char('.'),
-                                      take_while(|c: char| c.is_alphanumeric()
-                                                || c == '.' || c == '-')))(input)?;
-    let (input, suffix) =
-        opt(preceded(char(' '), tag("Alt")))(input)?;
-
-    Ok((input,(ver.trim(), major, minor, None, suffix.map(|x| vec![x]))))
-}
-
-fn parse_playstation_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
-                                                            Option<&str>, Option<Vec<&str>>)>
-{
-    let (input, prefix) = alt((tag("PS3"), tag("PSP")))(input)?;
-    let (input, _) = char(' ')(input)?;
-    let (input, (ver, major, minor, _, _)) = parse_single_prefixed_version(input)?;
-    Ok((input, (ver, major, minor, Some(prefix), None)))
-}
-
-
 // todo: tag prefixes and suffixes ('Alt') and 'PS3 v...')
 // 4 digit versions can only appear AFTER a v... tag.
 make_parens_tag!(parse_version_tag, parse_version_string);
 fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken>
 {
+
+    fn parse_revision_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
+                                                             Option<&str>, Option<Vec<&str>>)>
+    {
+        let (input, tag) = tag("Rev")(input)?;
+        let (input, _) = char(' ')(input)?;
+        let (input, major) = alphanumeric1(input)?;
+        let (input, _) = opt(char('.'))(input)?;
+        let (input, minor) = opt(alphanumeric1)(input)?;
+
+        Ok((input, (tag, major, minor, None, None)))
+    }
+
+    fn parse_unprefixed_dot_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
+                                                                   Option<&str>, Option<Vec<&str>>)>
+    {
+        let (input, major) = digit1(input)?;
+        let (input, _) = char('.')(input)?;
+        let (input, minor) = digit1(input)?;
+        Ok((input, ("", major, Some(minor), None, None)))
+    }
+
+
+    fn parse_single_prefixed_version_with_full_tag(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
+                                                                                  Option<&str>, Option<Vec<&str>>)>
+    {
+        // Redump BIOS versions include date
+        fn parse_date(input: &str) -> IResult<&str, &str>
+        {
+            fn parse_date_check(input: &str) -> IResult<&str, (&str, &str, &str)> {
+                let (input, month) = take_while_m_n(2, 2, |c: char| c.is_ascii_digit())(input)?;
+                let (input, _) = char('/')(input)?;
+                let (input, day) = take_while_m_n(2, 2, |c: char| c.is_ascii_digit())(input)?;
+                let (input, _) = char('/')(input)?;
+                let (input, year) = take_while_m_n(2, 2, |c: char| c.is_ascii_digit())(input)?;
+                Ok((input, (month, day, year)))
+            }
+            let (input, _) = peek(parse_date_check)(input)?;
+            let (input, datestr) =  take_while_m_n(8, 8, |c: char| c.is_ascii_digit() || c == '/')(input)?;
+            Ok((input, datestr))
+        }
+
+        let (input, ver) = tag("Version")(input)?;
+        let (input, _) = char(' ')(input)?;
+
+        let (input, major) = digit1(input)?;
+        let (input, minor) = opt(preceded(char('.'),
+                                          take_while(|c: char| c.is_ascii_alphanumeric()
+                                              || c == '.' || c == '-')))(input)?;
+
+        let mut suffixes = Vec::new();
+
+        let (input, datestr) = opt(preceded(char(' '),parse_date))(input)?;
+
+        let (input, suffix) = opt(
+            preceded(char(' '),
+                     alt((
+                         tag("Alt"),
+                         take_while_m_n(1,1, |c: char| c.is_ascii_uppercase() && c.is_ascii_alphabetic()),
+                     ))
+            ))
+            (input)?;
+
+        if datestr.is_none() && suffix.is_none() {
+            return Ok((input,(ver.trim(), major, minor, None, None)));
+        }
+
+        if let Some(datestr) = datestr {
+            suffixes.push(datestr);
+        }
+
+        if let Some(suffix) = suffix {
+            suffixes.push(suffix);
+        }
+
+        Ok((input,(ver.trim(), major, minor, None, Some(suffixes))))
+    }
+
+    fn parse_single_prefixed_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
+                                                                    Option<&str>, Option<Vec<&str>>)>
+    {
+        let (input, ver) = tag("v")(input)?;
+
+        let (input, major) = digit1(input)?;
+        let (input, minor) = opt(preceded(char('.'),
+                                          take_while(|c: char| c.is_alphanumeric()
+                                              || c == '.' || c == '-')))(input)?;
+        let (input, suffix) =
+            opt(preceded(char(' '), tag("Alt")))(input)?;
+
+        Ok((input,(ver.trim(), major, minor, None, suffix.map(|x| vec![x]))))
+    }
+
+    fn parse_playstation_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
+                                                                Option<&str>, Option<Vec<&str>>)>
+    {
+        let (input, prefix) = alt((tag("PS3"), tag("PSP")))(input)?;
+        let (input, _) = char(' ')(input)?;
+        let (input, (ver, major, minor, _, _)) = parse_single_prefixed_version(input)?;
+        Ok((input, (ver, major, minor, Some(prefix), None)))
+    }
+
     let (input, vers1) =
         alt((
              parse_playstation_version,
@@ -244,7 +247,7 @@ fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken>
                     parse_single_prefixed_version,
                     parse_single_prefixed_version_with_full_tag,
                     parse_revision_version,
-                    take_while_m_n(4, 4, |c: char| c.is_ascii_digit())
+                    take_while_m_n(4, 4, |c: char| c.is_ascii_alphanumeric())
                         .map(|s| ("", s, None, None, None)
                 )))
         )(input)?;
@@ -265,10 +268,10 @@ fn parse_beta(input: &str) -> IResult<&str, NoIntroToken>
 make_parens_tag!(parse_disc_tag, parse_disc);
 fn parse_disc(input: &str) -> IResult<&str, NoIntroToken>
 {
-    let (input, _) = tag("Disc")(input)?;
+    let (input, disc) = tag("Disc")(input)?;
     let (input, _) = char(' ')(input)?;
     let (input, number) = digit1(input)?;
-    Ok((input, NoIntroToken::Disc(number)))
+    Ok((input, NoIntroToken::Part(disc, number)))
 }
 
 fn parse_scene_number(input: &str) -> IResult<&str, NoIntroToken>
@@ -340,8 +343,10 @@ fn parse_language(input: &str) -> IResult<&str, NoIntroToken>
 
 fn parse_additional_tag(input: &str) -> IResult<&str, NoIntroToken>
 {
-    let (input, tag) = in_parens(is_not(")"))(input)?;
-    Ok((input, NoIntroToken::Flag(FlagType::Parenthesized, tag)))
+    let (input, _) = tag("(")(input)?;
+    let (input, add_tag) = take_till1(|c: char| c == ')')(input)?;
+    let (input, _) = tag(")")(input)?;
+    Ok((input, NoIntroToken::Flag(FlagType::Parenthesized, add_tag)))
 }
 
 fn parse_known_flags(input: &str) -> IResult<&str, NoIntroToken>
@@ -429,11 +434,11 @@ impl<'a> From<Vec<NoIntroToken<'a>>> for NameInfo
             version: None,
             is_unlicensed: false,
             is_demo: false,
+            is_system: false,
             status: DevelopmentStatus::Release,
             naming_convention: NamingConvention::NoIntro,
         };
 
-        let mut has_bios = false;
         for token in tokens.into_iter()
         {
             match token {
@@ -459,18 +464,15 @@ impl<'a> From<Vec<NoIntroToken<'a>>> for NameInfo
                         _ => {}
                     }
                 }
-                NoIntroToken::Disc(disc)
-                => { name.part_number = disc.parse::<i32>().ok() }
+                NoIntroToken::Part(_, part) => { name.part_number = part.parse::<i32>().ok() }
                 NoIntroToken::Region(region) => { name.region = region }
-                NoIntroToken::Flag(_, "BIOS") => { has_bios = true }
+                NoIntroToken::Flag(_, "BIOS") => { name.is_system = true }
                 _ => {}
             }
         }
 
         let mut release_title = name.entry_title.clone();
-        if has_bios {
-            release_title.push_str(" BIOS")
-        }
+
         move_article(&mut release_title, &ARTICLES);
         replace_hyphen(&mut release_title);
         name.release_title = release_title;
@@ -516,6 +518,13 @@ mod tests
     }
 
     #[test]
+    fn parse_additional()
+    {
+        let stuff = parse_additional_tag("()");
+        assert_eq!(stuff, Err(nom::Err::Error(Error::new(")", ErrorKind::TakeTill1))));
+    }
+
+    #[test]
     fn parse_no_region_fail()
     {
         let err = do_parse("void tRrLM(); Void Terrarium");
@@ -534,7 +543,7 @@ mod tests
     fn parse_disc_test()
     {
         assert_eq!(parse_disc_tag("(Disc 5)"),
-                   Ok(("", NoIntroToken::Disc("5"))));
+                   Ok(("", NoIntroToken::Part("Disc", "5"))));
     }
 
     #[test]
@@ -615,6 +624,11 @@ mod tests
                        ("v", "1", Some("07"),None, None),
                        ("v", "1023", None, None, None)
                    ]))));
+        assert_eq!(parse_version_tag("(v1.07b, v1023)"),
+                   Ok(("", NoIntroToken::Version(vec![
+                       ("v", "1", Some("07b"),None, None),
+                       ("v", "1023", None, None, None)
+                   ]))));
         assert_eq!(parse_version_tag("(1984)"),
                    Err(nom::Err::Error(Error::new(")", ErrorKind::Char))));
         assert_eq!(parse_version_tag("(v1.07, v1023)"),
@@ -640,7 +654,7 @@ mod tests
                            ]
                        ))
                    ]))));
-        assert_eq!(parse_version_tag("(4.5 05/25/00 A)"),
+        assert_eq!(parse_version_tag("(Version 4.5 05/25/00 A)"),
                    Ok(("", NoIntroToken::Version(vec![
                        ("Version", "4", Some("5"), None, Some(
                            vec![

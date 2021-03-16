@@ -307,22 +307,29 @@ impl Region {
 fn from_tosec_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
     let mut regions: IndexSet<Region> = IndexSet::new();
     let mut iter = region_str.as_ref().split('-').enumerate().peekable();
+    let mut region_count = 0;
+    let mut region_string_index = 0;
+
     while let Some((idx, region_code)) = iter.next() {
-        let region = *TOSEC_REGION.get(region_code).unwrap_or(&Region::Unknown);
-        if idx == 0 && iter.peek().is_none() {
-            if region_code.len() != 2 { // No allocation path.
-                return Err(RegionError::InvalidFormat(RegionFormat::TOSEC));
-            }
-            return Ok(vec![region]);
+        let region = TOSEC_REGION.get(region_code);
+        if region_code.len() != 2 {
+            return Err(RegionError::BadRegionCode(RegionFormat::TOSEC,
+                                                  region_count,
+                                                  region_string_index))
+        }
+        if let Some(region) = region {
+            regions.insert(*region);
+            region_count += 1;
+            region_string_index += region_code.len();
+            region_string_index += "-".len();
         } else {
-            if region_code.len() != 2 {
-                return Err(RegionError::InvalidFormat(RegionFormat::TOSEC));
-            }
-            regions.insert(region);
+            return Err(RegionError::BadRegionCode(RegionFormat::TOSEC,
+                                                  region_count,
+                                                  region_string_index))
         }
     }
-     if regions.is_empty() {
-        Err(RegionError::InvalidFormat(RegionFormat::TOSEC))
+    if regions.is_empty() {
+         Err(RegionError::NoRegions(RegionFormat::TOSEC))
     } else {
         Ok(regions.into_iter().collect::<Vec<Region>>())
     }
