@@ -75,18 +75,18 @@ pub struct Version<'a>
 
     /// A suffix that appears after the version, such as
     /// (v1.40 Alt) would have suffix 'Alt'.
-    pub suffix: Option<&'a str>,
+    pub suffix: Option<&'a Vec<&'a str>>,
 }
 
-impl <'a> From<&(&'a str, &'a str, Option<&'a str>, Option<&'a str>, Option<&'a str>)> for Version<'a>
+impl <'a> From<&'a (&'a str, &'a str, Option<&'a str>, Option<&'a str>, Option<Vec<&'a str>>)> for Version<'a>
 {
-    fn from(tuple: &(&'a str, &'a str, Option<&'a str>, Option<&'a str>, Option<&'a str>)) -> Self {
+    fn from(tuple: &'a (&'a str, &'a str, Option<&'a str>, Option<&'a str>, Option<Vec<&'a str>>)) -> Self {
         Version {
             version_prefix: tuple.0,
             major: tuple.1,
             minor: tuple.2,
             prefix: tuple.3,
-            suffix: tuple.4
+            suffix: tuple.4.as_ref()
         }
     }
 }

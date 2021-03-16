@@ -109,7 +109,7 @@ fn write_meta_table(conn: &mut Connection) -> SqliteResult<(String, String)> {
                                         VALUES(:shiragame, :schema_version, :stone_version, :generated, :release, :aggregator)",
                     named_params! {
                         ":shiragame": "shiragame",
-                        ":schema_version": "2.0.1",
+                        ":schema_version": "2.1.0",
                         ":stone_version": StonePlatforms::version(),
                         ":generated": time,
                         ":release": uuid,
@@ -193,7 +193,7 @@ fn insert_entry(
             naming_convention,
             source
         )
-        VALUES (:platform_id, :entry_name, :entry_title, :release_title, :region, :part_number, :is_unlicensed, :is_demo, :version, :status, :naming_convention, :source)
+        VALUES (:platform_id, :entry_name, :entry_title, :release_title, :region, :part_number, :is_unlicensed, :is_demo, :is_system, :version, :status, :naming_convention, :source)
     "#,
     named_params! {
         ":platform_id": platform.as_ref(),
@@ -204,6 +204,7 @@ fn insert_entry(
         ":part_number": entry.info().map(|n| n.part_number()),
         ":is_unlicensed": entry.info().map(|n| n.is_unlicensed()).unwrap_or(false),
         ":is_demo": entry.info().map(|n| n.is_demo()).unwrap_or(false),
+        ":is_system": entry.info().map(|n| n.is_system()).unwrap_or(false),
         ":version": entry.info().map(|n| n.version()),
         ":status": entry.info().map(|n| n.development_status()).unwrap_or(DevelopmentStatus::Release).as_ref(),
         ":naming_convention": entry.info().map(|n| n.naming_convention()).unwrap_or(NamingConvention::Unknown).as_ref(),

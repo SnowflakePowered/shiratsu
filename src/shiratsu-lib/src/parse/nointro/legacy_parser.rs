@@ -118,9 +118,7 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
     trim_right_mut(&mut entry_title);
 
     let mut release_title = entry_title.clone();
-    if has_bios.is_some() {
-        release_title.push_str(" BIOS")
-    }
+
     move_article(&mut release_title, &ARTICLES);
     replace_hyphen(&mut release_title);
     Ok((
@@ -133,6 +131,7 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
             version,
             is_demo,
             is_unlicensed,
+            is_system: has_bios.is_some(),
             status,
             naming_convention: NamingConvention::NoIntro,
         },

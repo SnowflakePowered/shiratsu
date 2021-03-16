@@ -1,6 +1,6 @@
 # shiragame database specification
 
-**Schema Version:** `2.0.1`
+**Schema Version:** `2.1.0`
 **Stone Version:** `^10.0.0`
 
 This document defines the schema and semantics of the shiragame games database. 
@@ -44,7 +44,8 @@ Each row of the `game` table is REQUIRED to describe a single *game entry*.
 | `part_number`       | If this *game entry* is multi-part, or is one part of multiple discs or tapes, the part number thereof.†                               | OPTIONAL |
 | `is_unlicensed`     | If this *game entry* is of an unlicensed release.†                                                                                     | REQUIRED |
 | `is_demo`           | If this *game entry* is a demonstration or sample release.†                                                                            | REQUIRED |
-| `version`           | If this *game entry* has a revision to an earlier released *game entry*, the revision or version number thereof.†‡                      | OPTIONAL |
+| `is_system`         | If this *game entry* is a system update or BIOS file.†                                                                                 | REQUIRED |
+| `version`           | If this *game entry* has a revision to an earlier released *game entry*, the revision or version number thereof.†‡                     | OPTIONAL |
 | `status`            | The *development status* of this game.†                                                                                                | REQUIRED |
 | `naming_convention` | The *naming convention* used the `entry_name` conforms to.                                                                             | REQUIRED |
 | `source`            | The name of the *cataloguing organization* that provided the source data.                                                              | REQUIRED |
@@ -81,7 +82,7 @@ The release title is the name the *game entry* was sold or distributed under, wi
     14. El
     15. A
 2. All hyphens with spaces on both sides (matching the pattern ` - `) is removed, and at the index where the pattern begins, is replaces with a colon followed by a space (the pattern `: `). For example, "The Legend of Shiratsu - Wind of the City" becomes "The Legend of Shiratsu: Wind of the City".
-3. If the file is a BIOS, then the release title will end with ` BIOS`. 
+
 ### The Dump Entry table (`rom`)
 A *game entry* MAY have one or more *dump entries*.
 Each row of the `rom` table describes a single *dump entry* with the following schema.

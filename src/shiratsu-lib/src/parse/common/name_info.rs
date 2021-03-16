@@ -10,6 +10,7 @@ pub struct NameInfo {
     pub(in super::super) version: Option<String>,
     pub(in super::super) is_unlicensed: bool,
     pub(in super::super) is_demo: bool,
+    pub(in super::super) is_system: bool,
     pub(in super::super) status: DevelopmentStatus,
     pub(in super::super) naming_convention: NamingConvention,
 }
@@ -30,6 +31,10 @@ impl NameInfo {
     /// Whether or not this game is a sample or a demo version of a full game.
     pub fn is_demo(&self) -> bool {
         self.is_demo
+    }
+    /// Whether or not this game is a system update or BIOS file.
+    pub fn is_system(&self) -> bool {
+        self.is_system
     }
     /// The version of the game entry.
     pub fn version(&self) -> Option<&str> {

@@ -101,6 +101,7 @@ pub fn do_parse<'a, 'b>(title: &'a str, input: &'b str) -> IResult<&'b str, Name
             version,
             is_demo,
             is_unlicensed,
+            is_system: false,
             status,
             naming_convention: NamingConvention::TOSEC,
         },
