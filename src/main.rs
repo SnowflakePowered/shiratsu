@@ -297,7 +297,7 @@ fn compare<F>(event_fn: F) -> Result<()>
 
 
                             let old_name = game.entry_name();
-                            if let Ok(res) = shiratsu_parse::naming::nointro::try_parse(old_name)
+                            if let Ok(res) = shiratsu_parse::naming::tosec::try_parse(old_name)
                                 .map(|res| res.into())
                             {
 

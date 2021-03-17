@@ -1,14 +1,5 @@
 use crate::region::{Region, RegionError};
-use nom::{
-        multi::{many_till, many0, separated_list1},
-        sequence::preceded,
-        combinator::{opt, eof},
-        branch::alt,
-        bytes::complete::{tag, is_not},
-        error::{Error, ErrorKind},
-        IResult, Slice, Parser,
-        bytes::complete::{take_while, take_while_m_n},
-        character::complete::{anychar, char}};
+use nom::{multi::{many_till, many0, separated_list1}, sequence::preceded, combinator::{opt, eof}, branch::alt, bytes::complete::{tag, is_not}, error::{Error, ErrorKind}, IResult, Slice, Parser, bytes::complete::{take_while, take_while_m_n}, character::complete::{anychar, char}};
 
 use crate::naming::{
     NamingConvention,
@@ -19,7 +10,7 @@ use crate::naming::util::*;
 use crate::naming::parsers::*;
 use crate::naming::tosec::tokens::*;
 
-use nom::bytes::complete::{take_till1, take_until, take_while1};
+use nom::bytes::complete::{take_till1, take_while1};
 use nom::combinator::peek;
 
 fn parse_dumpinfo_tag<'a>(infotag: &'static str) -> impl FnMut(&'a str) -> IResult<&'a str, TOSECToken<'a>>
@@ -103,9 +94,10 @@ fn parse_publisher(input: &str) -> IResult<&str, TOSECToken>
 
     let (input, publishers) = separated_list1(
         tag(" - "),
-        alt((take_until(" - "),
-             is_not(")"), // little bit of a hack but whatever.
-             is_not("")))
+        alt((
+            take_until_is(")"," - "),
+                is_not(")")
+        ))
     )(input)?;
 
     Ok((input, TOSECToken::Publisher(Some(publishers))))
@@ -206,7 +198,7 @@ fn parse_version_string(input: &str) -> IResult<&str, TOSECToken>
     fn parse_version(input: &str) -> IResult<&str, TOSECToken>
     {
         let (input, v) = tag("v")(input)?;
-        let (input, major) = take_while(|c: char| c.is_ascii_alphanumeric())(input)?;
+        let (input, major) = take_while(|c: char| c.is_ascii_digit())(input)?;
         let (input, minor) = opt(preceded(char('.'),
                                           take_while(|c: char| c.is_ascii_alphanumeric())))(input)?;
         Ok((input, TOSECToken::Version((v, major, minor, None, None))))
@@ -222,7 +214,7 @@ fn parse_title_demo_date_happy(input: &str) -> IResult<&str, Vec<TOSECToken>>
     fn parse_version_and_demo_or_date(input: &str) -> IResult<&str, Vec<TOSECToken>>
     {
         let mut parses = Vec::new();
-        let (input, version) = opt(parse_version_string)(input)?;
+        let (input, version) = opt(preceded(char(' '), parse_version_string))(input)?;
         if let Some(version) = version {
             parses.push(version);
         }
@@ -264,7 +256,7 @@ fn parse_title_degenerate_path(input: &str) -> IResult<&str, Vec<TOSECToken>>
     let (input, (title, version)) = many_till(
         anychar,
         alt((
-            parse_version_string.map(|t| Some(t)),
+            preceded(char(' '), parse_version_string).map(|t| Some(t)),
             peek(char('(')).map(|_| None)))
     )(input)?;
 
@@ -293,31 +285,14 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
     let (input, publisher) = parse_publisher_tag(input)?;
     tokens.push(publisher);
 
-    let (input, (mut flags, region))
-        = many_till(parse_parens_tag, opt(parse_region_tag))(input)?;
+    let (input, mut flags)
+        = many0(alt((
+        parse_region_tag,
+        parse_language_tag,
+        parse_media_tag,
+        parse_parens_tag
+    )))(input)?;
 
-    tokens.append(&mut flags);
-
-    if let Some(region) = region {
-        tokens.push(region);
-    }
-
-    let (input, langs) = opt(parse_language_tag)(input)?;
-    if let Some(langs) = langs {
-        tokens.push(langs);
-    }
-
-    let (input, res)
-        = opt(many_till(parse_parens_tag, opt(parse_media_tag)))(input)?;
-
-    if let Some((mut flags, parts)) = res {
-        tokens.append(&mut flags);
-        if let Some(region) = parts {
-            tokens.push(region);
-        }
-    }
-
-    let (input, mut flags) = many0(parse_parens_tag)(input)?;
     tokens.append(&mut flags);
 
     let (input, info) = opt(parse_dumpinfo_tag("cr"))(input)?;
@@ -475,6 +450,36 @@ mod test
     use crate::naming::tosec::parsers::*;
 
     #[test]
+    fn test_parse_moto()
+    {
+        assert_eq!(
+            do_parse("Motocross & Pole Position Rev 1 (Starsoft - JVP)(PAL)[b1][possible unknown mode]"),
+            Ok(("",
+                vec![
+                    TOSECToken::Title(String::from("Motocross & Pole Position")),
+                    TOSECToken::Version(("Rev", "1", None, None, None)),
+                    TOSECToken::Publisher(Some(vec!["Starsoft", "JVP"])),
+                    TOSECToken::Flag(FlagType::Parenthesized, "PAL"),
+                    TOSECToken::DumpInfo("b", Some("1"), None),
+                    TOSECToken::Flag(FlagType::Bracketed, "possible unknown mode")]
+            ))
+        );
+    }
+    #[test]
+    fn test_parse_one()
+    {
+        assert_eq!(
+            do_parse("Dune - The Battle for Arrakis Demo Hack (2009-04-03)(Ti_)[h Dune - The Battle for Arrakis]"),
+            Ok(("",
+                vec![
+                    TOSECToken::Title(String::from("Dune - The Battle for Arrakis Demo Hack")),
+                    TOSECToken::Date("2009", Some("04"), Some("03")),
+                    TOSECToken::Publisher(Some(vec!["Ti_"])),
+                    TOSECToken::DumpInfo("h", None, Some("Dune - The Battle for Arrakis")),]
+            ))
+        );
+    }
+    #[test]
     fn test_parse_full()
     {
         assert_eq!(
@@ -525,9 +530,30 @@ mod test
                     TOSECToken::Flag(FlagType::Bracketed, "test flag")]
             ))
         );
-        let (_, out) = do_parse("TOSEC Game (; (Weird title with parens)(19XX)(-)(JP)(en-ja)(PD)[cr3 +test][test flag]").unwrap();
+        assert_eq!(
+            do_parse("Xevious (1983)(CCE)(NTSC)(BR)"),
+            Ok(("",
+                vec![
+                    TOSECToken::Title(String::from("Xevious")),
+                    TOSECToken::Date("1983", None, None),
+                    TOSECToken::Publisher(Some(vec!["CCE"])),
+                    TOSECToken::Flag(FlagType::Parenthesized, "NTSC"),
+                    TOSECToken::Region(vec![Region::Brazil]),]
+            ))
+        );
 
-        println!("{:?}", out);
+        assert_eq!(
+            do_parse("Mega Man III - Sample version (1992)(Capcom)(US)"),
+            Ok(("",
+                vec![
+                    TOSECToken::Title(String::from("Mega Man III - Sample version")),
+                    TOSECToken::Date("1992", None, None),
+                    TOSECToken::Publisher(Some(vec!["Capcom"])),
+                    TOSECToken::Region(vec![Region::UnitedStates]),]
+            ))
+        );
+
+
     }
     #[test]
     fn test_parse_dumpinfo()
