@@ -5,8 +5,9 @@ use shiratsu_stone::{
 };
 
 use shiratsu_parse::{
-    parse::*,
+    dat::*,
     region::Region,
+    naming::*,
 };
 
 use std::path::Path;

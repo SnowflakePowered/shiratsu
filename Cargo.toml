@@ -1,7 +1,7 @@
 [package]
 name = "shiratsu"
-version = "2.0.0"
-authors = ["Ronny Chan <ronny6993@gmail.com>"]
+version = "2.1.0"
+authors = ["Ronny Chan <ronny@ronnychan.ca>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -11,7 +11,7 @@ edition = "2018"
 [dependencies]
 
 # shiratsu core
-shiratsu-lib = { path = "./src/shiratsu-lib" }
+shiratsu-parse = { path = "src/shiratsu-parse" }
 shiratsu-stone = { path = "./src/shiratsu-stone" }
 
 # shiragame database creation

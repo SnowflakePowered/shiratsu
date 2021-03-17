@@ -1,17 +1,15 @@
 pub mod region;
-mod util;
-pub mod parse;
-
-pub mod error {
-
-}
+pub mod dat;
+pub mod naming;
+pub mod error;
 
 #[cfg(test)]
 mod tests {
+
+    use crate::naming::NameInfo;
+    use crate::naming::nointro::NoIntroNameable;
+    use crate::naming::tosec::TOSECNameable;
     use crate::region::Region;
-    use crate::parse::NameInfo;
-    use crate::parse::nointro::NoIntroNameable;
-    use crate::parse::tosec::TOSECNameable;
 
     #[test]
     fn nointro_region_parses() {

@@ -9,8 +9,9 @@ use shiratsu_stone::{
 };
 
 use shiratsu_parse::{
-    parse::*,
-    parse::{nointro::*, redump::*, tosec::*},
+    error::*,
+    dat::*,
+    dat::{nointro::*, redump::*, tosec::*},
 };
 
 use anyhow::{anyhow, Error, Result};
@@ -34,7 +35,7 @@ use lazy_static_include::*;
 use glob::glob_with;
 use glob::MatchOptions;
 
-type ParseResult<T> = std::result::Result<T, shiratsu_parse::parse::ParseError>;
+type ParseResult<T> = std::result::Result<T, ParseError>;
 
 fn get_entries<R: BufRead + Seek>(
     mut reader: R,
@@ -296,8 +297,7 @@ fn compare<F>(event_fn: F) -> Result<()>
 
 
                             let old_name = game.entry_name();
-
-                            if let Ok(res) = nointro::try_parse(old_name)
+                            if let Ok(res) = shiratsu_parse::naming::nointro::try_parse(old_name)
                                 .map(|res| res.into())
                             {
 
