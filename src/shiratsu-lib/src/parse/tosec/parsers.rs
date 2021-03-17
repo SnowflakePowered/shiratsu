@@ -8,7 +8,7 @@ use nom::{
         branch::alt,
         bytes::complete::{tag, is_not},
         error::{Error, ErrorKind},
-        IResult, Slice,
+        IResult, Slice, Parser,
         bytes::complete::{take_while, take_while_m_n},
         character::complete::{anychar, char}};
 use crate::parse::{trim_right_mut,
@@ -16,6 +16,7 @@ use crate::parse::{trim_right_mut,
                    NamingConvention, move_article,
                    replace_hyphen};
 use nom::bytes::complete::{take_till1, take_until, take_while1};
+use nom::combinator::peek;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum TOSECToken<'a>
@@ -261,10 +262,16 @@ fn parse_version_string(input: &str) -> IResult<&str, TOSECToken>
 // Parse the happy path where a date is actually required..
 fn parse_title_demo_date_happy(input: &str) -> IResult<&str, Vec<TOSECToken>>
 {
-    fn parse_demo_or_date(input: &str) -> IResult<&str, Vec<TOSECToken>>
+    fn parse_version_and_demo_or_date(input: &str) -> IResult<&str, Vec<TOSECToken>>
     {
         let mut parses = Vec::new();
-        let (input, demo) = opt(parse_demo_tag)(input)?;
+        let (input, version) = opt(parse_version_string)(input)?;
+        if let Some(version) = version {
+            parses.push(version);
+        }
+        let (input, demo) = opt(
+            preceded(opt(char(' ')), parse_demo_tag)
+        )(input)?;
         if let Some(demo) = demo {
             parses.push(demo);
         }
@@ -281,7 +288,7 @@ fn parse_title_demo_date_happy(input: &str) -> IResult<&str, Vec<TOSECToken>>
 
     // reuse the output vec as our collector
     let (input, (title, mut tokens))
-        = many_till(anychar, parse_demo_or_date)(input)?;
+        = many_till(anychar, parse_version_and_demo_or_date)(input)?;
 
     let mut title = title.into_iter().collect();
     trim_right_mut(&mut title);
@@ -296,11 +303,26 @@ fn parse_title_demo_date_happy(input: &str) -> IResult<&str, Vec<TOSECToken>>
 // Motocross & Pole Position (Starsoft - JVP)(PAL)[b1][possible unknown mode]
 fn parse_title_degenerate_path(input: &str) -> IResult<&str, Vec<TOSECToken>>
 {
-    let (input, title) = take_until("(")(input)?;
-    let mut title = title.to_string();
+    let mut vecs = Vec::new();
+    let (input, (title, version)) = many_till(
+        anychar,
+        alt((
+            parse_version_string.map(|t| Some(t)),
+            peek(char('(')).map(|_| None)))
+    )(input)?;
+
+    // Need to discard a space just in case we go to the version part
+    let (input, _) = opt(char(' '))(input)?;
+
+    let mut title = title.into_iter().collect();
     trim_right_mut(&mut title);
 
-    Ok((input, vec![TOSECToken::Title(title)]))
+    vecs.push(TOSECToken::Title(title));
+    if let Some(version) = version {
+        vecs.push(version)
+    }
+
+    Ok((input, vecs))
 }
 
 fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
@@ -501,12 +523,25 @@ mod test
             do_parse("Cube CD 20, The (40) - Testing v1.203 (demo) (2020)(SomePublisher)"),
             Ok(("",
                 vec![
-                    TOSECToken::Title(String::from("Cube CD 20, The (40) - Testing v1.203")),
+                    TOSECToken::Title(String::from("Cube CD 20, The (40) - Testing")),
+                    TOSECToken::Version(("v", "1", Some("203"), None, None)),
                     TOSECToken::Demo(None),
                     TOSECToken::Date("2020", None, None),
                     TOSECToken::Publisher(Some(vec!["SomePublisher"]))]
                 )));
 
+        assert_eq!(
+            do_parse("Motocross & Pole Position Rev 1 (Starsoft - JVP)(PAL)[b1][possible unknown mode]"),
+            Ok(("",
+                vec![
+                    TOSECToken::Title(String::from("Motocross & Pole Position")),
+                    TOSECToken::Version(("Rev", "1", None, None, None)),
+                    TOSECToken::Publisher(Some(vec!["Starsoft", "JVP"])),
+                    TOSECToken::Flag(FlagType::Parenthesized, "PAL"),
+                    TOSECToken::DumpInfo("b", Some("1"), None),
+                    TOSECToken::Flag(FlagType::Bracketed, "possible unknown mode")]
+            ))
+        );
         assert_eq!(
             do_parse("Motocross & Pole Position (Starsoft - JVP)(PAL)[b1][possible unknown mode]"),
             Ok(("",
