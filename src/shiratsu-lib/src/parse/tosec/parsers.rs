@@ -4,23 +4,18 @@ use crate::region::{Region, RegionError};
 use nom::{
         multi::{many_till, many0, separated_list1},
         sequence::preceded,
-        combinator::{opt, eof, peek},
+        combinator::{opt, eof},
         branch::alt,
         bytes::complete::{tag, is_not},
-        character::complete::{char, digit1, alpha1},
         error::{Error, ErrorKind},
-        IResult, Slice, Parser,
-        bytes::complete::{take_while, take_while_m_n, take},
-        character::complete::{anychar, alphanumeric1}};
+        IResult, Slice,
+        bytes::complete::{take_while, take_while_m_n},
+        character::complete::{anychar, char}};
 use crate::parse::{trim_right_mut,
                    NameInfo, DevelopmentStatus,
                    NamingConvention, move_article,
                    replace_hyphen};
-use nom::multi::separated_list0;
-use crate::region::RegionFormat::TOSEC;
 use nom::bytes::complete::{take_till1, take_until, take_while1};
-use nom::sequence::pair;
-
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum TOSECToken<'a>
@@ -163,7 +158,6 @@ fn parse_language(input: &str) -> IResult<&str, TOSECToken>
 {
     fn parse_multilang(input: &str) -> IResult<&str, TOSECToken>
     {
-        let original_input = input;
         let (input, _m) = tag("M")(input)?;
         let (input, digits) = take_while(|c: char| c.is_ascii_digit())(input)?;
         Ok((input, TOSECToken::Languages(TOSECLanguage::Count(digits))))
@@ -463,7 +457,6 @@ impl<'a> From<Vec<TOSECToken<'a>>> for NameInfo
                     match version {
                         (_, major, None, _, _) => { name.version = Some(major.to_string()) }
                         (_, major, Some(minor), _, _) => { name.version = Some(format!("{}.{}", major, minor)) }
-                        _ => {}
                     }
                 }
                 TOSECToken::DumpInfo("p", _, _) => {
