@@ -3,4 +3,5 @@
 /*.log
 unsorted/**/*.dat
 dats/**/*
+**/*.dat
 /unsorted/**/*

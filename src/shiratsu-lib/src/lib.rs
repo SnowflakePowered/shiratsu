@@ -57,7 +57,7 @@ mod tests {
     use crate::region::Region;
     use crate::parse::NameInfo;
     use crate::parse::nointro::NoIntroNameable;
-    use crate::parse::tosec::TosecNameable;
+    use crate::parse::tosec::TOSECNameable;
 
     #[test]
     fn nointro_region_parses() {

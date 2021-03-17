@@ -18,6 +18,26 @@ use crate::parse::{trim_right_mut,
                    replace_hyphen};
 use nom::multi::separated_list0;
 
+
+/// A parsed language code.
+#[derive(Debug, Eq, PartialEq)]
+pub struct NoIntroLanguage<'a>
+{
+    /// The language code
+    pub code: &'a str,
+
+    /// The language variant identifier,
+    /// appearing after the hyphen
+    pub variant: Option<&'a str>
+}
+
+impl <'a> From<&(&'a str, Option<&'a str>)> for NoIntroLanguage<'a>
+{
+    fn from(tuple: &(&'a str, Option<&'a str>)) -> Self {
+        NoIntroLanguage { code: tuple.0, variant: tuple.1 }
+    }
+}
+
 /// A token in a NoIntro filename.
 ///
 /// The Tokenizer API is  lossless. The original filename is reconstructible

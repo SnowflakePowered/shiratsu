@@ -3,7 +3,7 @@ use quick_xml::de::DeError as XmlError;
 use serde::Deserialize;
 use std::convert::{TryFrom, TryInto};
 
-use super::super::tosec::TosecNameable;
+use super::super::tosec::TOSECNameable;
 use super::super::xml::*;
 use super::super::*;
 
