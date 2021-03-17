@@ -22,7 +22,7 @@ impl Article {
     }
 }
 lazy_static! {
-    pub(in super::super) static ref ARTICLES: Vec<Article> = vec![
+    static ref ARTICLES: Vec<Article> = vec![
         article!("Eine"),
         article!("The"),
         article!("Der"),
@@ -42,13 +42,13 @@ lazy_static! {
 }
 
 /// From a provided list of articles, mutates the provided title
-/// so that the first article encounted comes at the beginning of the string, if
+/// so that the first article encountered comes at the beginning of the string, if
 /// it is somewhere after a comma.
 ///
 /// # Arguments
 /// - `title`: The string to move
 /// - `article`: The articles to check. The first article encountered in the correct position will be moved.
-pub(crate) fn move_article(title: &mut String, articles: &[Article]) {
+fn move_articles(title: &mut String, articles: &[Article]) {
     let min_art = articles
         .iter()
         .filter_map(|art| art.find(&title).map(|idx| (art, idx)))
@@ -60,8 +60,19 @@ pub(crate) fn move_article(title: &mut String, articles: &[Article]) {
 }
 
 
-/// Replaces the first hyphen found with a colon.
-pub(crate) fn replace_hyphen(title: &mut String) {
+/// Mutates the provided title so that the first article encountered
+/// comes at the beginning of the string, if it is somewhere after a comma.
+///
+/// Uses the default articles.
+/// # Arguments
+/// - `title`: The string to move
+#[inline(always)]
+pub(crate) fn move_default_articles_mut(title: &mut String) {
+    move_articles(title, &ARTICLES);
+}
+
+/// Replaces all hyphens found with a colon.
+pub(crate) fn replace_hyphen_mut(title: &mut String) {
     let mut hyphen_index = title.find(" - ");
     while let Some(index) = hyphen_index {
         let new_index = " - ".len() + index;
@@ -70,7 +81,23 @@ pub(crate) fn replace_hyphen(title: &mut String) {
     }
 }
 
-pub (crate) fn trim_right_mut(string: &mut String) {
+pub(crate) fn trim_right_mut(string: &mut String) {
+    // We are only taking ASCII space characters, so count == len.
     let space_count = string.chars().rev().take_while(|&c| c == ' ').count();
     string.truncate(string.len() - space_count);
+}
+
+#[cfg(test)]
+mod tests
+{
+    use crate::naming::util::replace_hyphen_mut;
+
+    #[test]
+    fn test_replace_hyphen()
+    {
+        let mut s = String::from("Hello - World - Foo - Bar");
+        replace_hyphen_mut(&mut s);
+        assert_eq!(s, String::from("Hello: World: Foo: Bar"));
+    }
+
 }

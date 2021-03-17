@@ -53,22 +53,12 @@ macro_rules! nointro_brackets_flag_parser {
         }
     }
 }
-//
-// macro_rules! make_parens_tag {
-//     ($fn_name:ident, $inner:ident) =>
-//     {
-//         fn $fn_name<'a>(input: &'a str) -> IResult<&str, NoIntroToken>
-//         {
-//             in_parens($inner)(input)
-//         }
-//     }
-// }
-
 
 nointro_brackets_flag_parser!(parse_baddump_tag, "b");
 nointro_brackets_flag_parser!(parse_bios_tag, "BIOS");
 
 // should be handled by parse_additional_tag
+
 // nointro_parens_flag_parser!(parse_prototype_tag, "Proto");
 // nointro_parens_flag_parser!(parse_kiosk_tag, "Kiosk");
 // nointro_parens_flag_parser!(parse_demo_tag, "Demo");
@@ -438,8 +428,8 @@ impl<'a> From<Vec<NoIntroToken<'a>>> for NameInfo
 
         let mut release_title = name.entry_title.clone();
 
-        move_article(&mut release_title, &ARTICLES);
-        replace_hyphen(&mut release_title);
+        move_default_articles_mut(&mut release_title);
+        replace_hyphen_mut(&mut release_title);
         name.release_title = release_title;
         name
     }

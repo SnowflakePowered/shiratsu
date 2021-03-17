@@ -460,8 +460,8 @@ impl<'a> From<Vec<TOSECToken<'a>>> for NameInfo
 
         let mut release_title = name.entry_title.clone();
 
-        move_article(&mut release_title, &ARTICLES);
-        replace_hyphen(&mut release_title);
+        move_default_articles_mut(&mut release_title);
+        replace_hyphen_mut(&mut release_title);
         name.release_title = release_title;
         name
     }

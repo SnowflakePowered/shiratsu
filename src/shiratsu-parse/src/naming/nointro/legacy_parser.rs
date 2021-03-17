@@ -121,8 +121,8 @@ fn do_parse(input: &str) -> IResult<&str, NameInfo> {
 
     let mut release_title = entry_title.clone();
 
-    move_article(&mut release_title, &ARTICLES);
-    replace_hyphen(&mut release_title);
+    move_default_articles_mut(&mut release_title);
+    replace_hyphen_mut(&mut release_title);
     Ok((
         input,
         NameInfo {

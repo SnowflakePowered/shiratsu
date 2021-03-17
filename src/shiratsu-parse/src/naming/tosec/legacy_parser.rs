@@ -7,7 +7,6 @@ use regex::Regex;
 use crate::naming::util::*;
 use nom::{
     bytes::complete::is_not,
-    // see the "streaming/complete" paragraph lower for an explanation of these submodules
     character::complete::char,
     multi::many0,
     sequence::delimited,
@@ -89,8 +88,8 @@ fn do_parse<'a, 'b>(title: &'a str, input: &'b str) -> IResult<&'b str, NameInfo
 
     let entry_title = String::from(title.trim());
     let mut release_title = entry_title.clone();
-    move_article(&mut release_title, &ARTICLES);
-    replace_hyphen(&mut release_title);
+    move_default_articles_mut(&mut release_title);
+    replace_hyphen_mut(&mut release_title);
 
     Ok((
         input,
