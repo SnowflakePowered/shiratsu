@@ -1,4 +1,3 @@
-#[macro_export(local_inner_macros)]
 macro_rules! wrap_error {
     ($(wrap $wrapper:ident ($error: ty) for $coerce: ty { fn from ($err: tt) { $body: expr } })*) => {
         $(

@@ -22,16 +22,6 @@ use crate::naming::tosec::tokens::*;
 use nom::bytes::complete::{take_till1, take_until, take_while1};
 use nom::combinator::peek;
 
-macro_rules! make_parens_tag {
-    ($fn_name:ident, $inner:ident) =>
-    {
-        fn $fn_name<'a>(input: &'a str) -> IResult<&str, TOSECToken>
-        {
-            in_parens($inner)(input)
-        }
-    }
-}
-
 fn parse_dumpinfo_tag<'a>(infotag: &'static str) -> impl FnMut(&'a str) -> IResult<&'a str, TOSECToken<'a>>
 {
     move |input: &'a str| {
@@ -44,7 +34,7 @@ fn parse_dumpinfo_tag<'a>(infotag: &'static str) -> impl FnMut(&'a str) -> IResu
     }
 }
 
-make_parens_tag!(parse_demo_tag, parse_demo);
+make_parens_tag!(parse_demo_tag, parse_demo, TOSECToken);
 fn parse_demo(input: &str) -> IResult<&str, TOSECToken>
 {
     let (input, _) = tag("demo")(input)?;
@@ -59,7 +49,7 @@ fn parse_demo(input: &str) -> IResult<&str, TOSECToken>
     Ok((input, TOSECToken::Demo(ty)))
 }
 
-make_parens_tag!(parse_date_tag, parse_date);
+make_parens_tag!(parse_date_tag, parse_date, TOSECToken);
 fn parse_date(input: &str) -> IResult<&str, TOSECToken>
 {
     let (input, year) = take_while_m_n(4, 4,
@@ -103,7 +93,7 @@ fn parse_region_tag(input: &str) -> IResult<&str, TOSECToken>
     Ok((input, TOSECToken::Region(regions)))
 }
 
-make_parens_tag!(parse_publisher_tag, parse_publisher);
+make_parens_tag!(parse_publisher_tag, parse_publisher, TOSECToken);
 fn parse_publisher(input: &str) -> IResult<&str, TOSECToken>
 {
     if let Ok((input, _)) = char::<&str, nom::error::Error<&str>>('-')(input)
@@ -121,7 +111,7 @@ fn parse_publisher(input: &str) -> IResult<&str, TOSECToken>
     Ok((input, TOSECToken::Publisher(Some(publishers))))
 }
 
-make_parens_tag!(parse_language_tag, parse_language);
+make_parens_tag!(parse_language_tag, parse_language, TOSECToken);
 fn parse_language(input: &str) -> IResult<&str, TOSECToken>
 {
     fn parse_multilang(input: &str) -> IResult<&str, TOSECToken>

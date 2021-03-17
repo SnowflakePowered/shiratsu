@@ -1,4 +1,3 @@
-use crate::wrap_error;
 use crate::naming::*;
 use crate::error::*;
 

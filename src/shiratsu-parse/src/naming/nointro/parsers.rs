@@ -11,10 +11,12 @@ use nom::{
         IResult, Slice, Parser,
         bytes::complete::{take_while, take_while_m_n, take_till1},
 };
+
 use crate::naming::{NameInfo, NamingConvention, DevelopmentStatus, FlagType};
 use crate::naming::util::*;
 use crate::naming::parsers::*;
 use crate::naming::nointro::tokens::*;
+
 
 use nom::multi::separated_list0;
 
@@ -51,16 +53,16 @@ macro_rules! nointro_brackets_flag_parser {
         }
     }
 }
-
-macro_rules! make_parens_tag {
-    ($fn_name:ident, $inner:ident) =>
-    {
-        fn $fn_name<'a>(input: &'a str) -> IResult<&str, NoIntroToken>
-        {
-            in_parens($inner)(input)
-        }
-    }
-}
+//
+// macro_rules! make_parens_tag {
+//     ($fn_name:ident, $inner:ident) =>
+//     {
+//         fn $fn_name<'a>(input: &'a str) -> IResult<&str, NoIntroToken>
+//         {
+//             in_parens($inner)(input)
+//         }
+//     }
+// }
 
 
 nointro_brackets_flag_parser!(parse_baddump_tag, "b");
@@ -87,7 +89,7 @@ nointro_brackets_flag_parser!(parse_bios_tag, "BIOS");
 
 // todo: tag prefixes and suffixes ('Alt') and 'PS3 v...')
 // 4 digit versions can only appear AFTER a v... tag.
-make_parens_tag!(parse_version_tag, parse_version_string);
+make_parens_tag!(parse_version_tag, parse_version_string, NoIntroToken);
 fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken>
 {
 
@@ -219,7 +221,7 @@ fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken>
     Ok((input, NoIntroToken::Version(nextvers)))
 }
 
-make_parens_tag!(parse_beta_tag, parse_beta);
+make_parens_tag!(parse_beta_tag, parse_beta, NoIntroToken);
 fn parse_beta(input: &str) -> IResult<&str, NoIntroToken>
 {
     let (input, _) = tag("Beta")(input)?;
@@ -228,7 +230,7 @@ fn parse_beta(input: &str) -> IResult<&str, NoIntroToken>
     Ok((input, NoIntroToken::Beta(beta)))
 }
 
-make_parens_tag!(parse_disc_tag, parse_disc);
+make_parens_tag!(parse_disc_tag, parse_disc, NoIntroToken);
 fn parse_disc(input: &str) -> IResult<&str, NoIntroToken>
 {
     let (input, disc) = tag("Disc")(input)?;
@@ -275,7 +277,7 @@ fn parse_scene_tag(input: &str) -> IResult<&str, NoIntroToken>
     Ok((input, scene))
 }
 
-make_parens_tag!(parse_language_tag, parse_language);
+make_parens_tag!(parse_language_tag, parse_language, NoIntroToken);
 fn parse_language(input: &str) -> IResult<&str, NoIntroToken>
 {
     fn parse_language_code(input: &str) -> IResult<&str, &str>

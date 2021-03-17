@@ -1,4 +1,3 @@
-use crate::wrap_error;
 use quick_xml::de::DeError as XmlError;
 use serde::Deserialize;
 use std::convert::{TryFrom, TryInto};

@@ -20,6 +20,16 @@ pub(crate) fn in_brackets<'a, O, E: ParseError<&'a str>, P>(inner: P)
     delimited(tag("["), inner, tag("]"))
 }
 
+macro_rules! make_parens_tag {
+    ($fn_name:ident, $inner:ident, $token:ty) =>
+    {
+        fn $fn_name<'a>(input: &'a str) -> IResult<&str, $token>
+        {
+            in_parens($inner)(input)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests
 {
