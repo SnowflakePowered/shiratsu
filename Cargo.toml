@@ -12,6 +12,7 @@ edition = "2018"
 
 # shiratsu core
 shiratsu-lib = { path = "./src/shiratsu-lib" }
+shiratsu-stone = { path = "./src/shiratsu-stone" }
 
 # shiragame database creation
 rusqlite = { version = "0.23.1", features = ["backup", "bundled"] }

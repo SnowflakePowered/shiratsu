@@ -1,4 +1,4 @@
-use shiratsu_lib::stone::PlatformId;
+use shiratsu_stone::PlatformId;
 use std::convert::TryInto;
 use std::path::Path;
 use walkdir::{DirEntry, WalkDir};

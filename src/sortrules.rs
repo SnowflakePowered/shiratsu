@@ -1,4 +1,4 @@
-use shiratsu_lib::stone::PlatformId;
+use shiratsu_stone::PlatformId;
 use serde_yaml;
 
 use std::collections::HashMap;

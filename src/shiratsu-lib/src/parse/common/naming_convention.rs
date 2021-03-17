@@ -13,6 +13,16 @@ pub enum NamingConvention {
     ///
     /// Defined at https://datomatic.no-intro.org/stuff/The%20Official%20No-Intro%20Convention%20(20071030).pdf
     NoIntro,
+    /// The naming convention used by GoodTools.
+    ///
+    /// Defined loosely by GoodCodes.txt 1.0.0 by Psych0phobiA / q^-o|o-^p
+    ///
+    /// Also uses information from
+    /// https://emulation.gametechwiki.com/index.php/GoodTools
+    ///
+    /// Empirically tested using OpenGood DAT files from
+    /// https://github.com/SnowflakePowered/opengood
+    GoodTools
 }
 
 impl From<&NamingConvention> for &str {
@@ -21,6 +31,7 @@ impl From<&NamingConvention> for &str {
             NamingConvention::Unknown => "Unknown",
             NamingConvention::TOSEC => "TOSEC",
             NamingConvention::NoIntro => "No-Intro",
+            NamingConvention::GoodTools => "GoodTools"
         }
     }
 }

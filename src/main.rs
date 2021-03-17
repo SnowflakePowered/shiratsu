@@ -2,11 +2,15 @@ mod database;
 mod ingest;
 mod log;
 mod sortrules;
+mod error;
+
+use shiratsu_stone::{
+    PlatformId, StonePlatforms
+};
 
 use shiratsu_lib::{
     parse::*,
     parse::{nointro::*, redump::*, tosec::*},
-    stone::{PlatformId, StonePlatforms},
 };
 
 use anyhow::{anyhow, Error, Result};

@@ -1,0 +1,15 @@
+[package]
+name = "shiratsu-stone"
+version = "0.1.0"
+authors = ["Ronny Chan <ronny@ronnychan.ca>"]
+edition = "2018"
+repository = "https://github.com/SnowflakePowered/shiratsu"
+license = "MIT"
+
+[dependencies]
+lazy_static = "1.4"
+lazy-static-include = "2.2"
+
+# Serde
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

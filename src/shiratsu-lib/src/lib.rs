@@ -1,55 +1,9 @@
-pub mod stone;
 pub mod region;
 mod util;
 pub mod parse;
 
-#[cfg(feature = "rusqlite")]
-pub mod rusqlite;
-
 pub mod error {
-    // #[derive(Debug)]
-    pub enum ShiratsuError {
-        StoneError(crate::stone::StoneError),
-        ParseError(crate::parse::ParseError),
-        IOError(std::io::Error)
-    }
-    impl std::error::Error for ShiratsuError {}
 
-    impl std::fmt::Debug for ShiratsuError{
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            match self {
-                ShiratsuError::StoneError(err) => write!(f, "{}", err),
-                ShiratsuError::ParseError(err) => write!(f, "{}", err),
-                ShiratsuError::IOError(err) => write!(f, "{}", err),
-            }
-        }
-    }
-    
-    impl std::fmt::Display for ShiratsuError{
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "{:?}", self)
-        }
-    }
-
-    impl From<crate::parse::ParseError> for ShiratsuError {
-        fn from(err: crate::parse::ParseError) -> Self {
-            ShiratsuError::ParseError(err)
-        }
-    }
-
-    impl From<crate::stone::StoneError> for ShiratsuError {
-        fn from(err: crate::stone::StoneError) -> Self {
-            ShiratsuError::StoneError(err)
-        }
-    }
-
-    impl From<std::io::Error> for ShiratsuError {
-        fn from(err: std::io::Error) -> Self {
-            ShiratsuError::IOError(err)
-        }
-    }
-
-    pub type Result<T> = std::result::Result<T, ShiratsuError>;
 }
 
 #[cfg(test)]

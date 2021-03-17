@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use regex::Regex;
 use lazy_static::lazy_static;
 
-use crate::stone::PlatformId;
 #[derive(Debug, Clone)]
 #[repr(transparent)]
 pub struct Serial(String);
@@ -12,7 +11,9 @@ impl Serial {
         Serial(serial_str)
     }
 
-    pub fn as_normalized<'a>(&'a self, ruleset: &PlatformId) -> Cow<'a, Serial> {
+    pub fn as_normalized<S>(&self, ruleset: S) -> Cow<Serial>
+        where S: AsRef<str>
+    {
         match ruleset.as_ref() {
             "SONY_PSX" | "SONY_PS2" | "SONY_PS3" | "SONY_PS4" |"SONY_PSP" | "SONY_PSV" => rule_sony(self),
             "NINTENDO_GCN" => rule_nintendo_gcn(self),

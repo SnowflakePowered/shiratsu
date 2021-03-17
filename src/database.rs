@@ -1,9 +1,12 @@
 use rusqlite::{backup::*, named_params, params, Connection, Result as SqliteResult};
 
+use shiratsu_stone::{
+    PlatformId, StonePlatforms, find_mimetype
+};
+
 use shiratsu_lib::{
     parse::*,
     region::Region,
-    stone::{FindRomMimetype, PlatformId, StonePlatforms},
 };
 
 use std::path::Path;
@@ -229,7 +232,7 @@ fn insert_entry(
         "#,
             named_params! {
                 ":file_name": rom.file_name(),
-                ":mimetype": rom.find_mimetype(platform),
+                ":mimetype": find_mimetype(platform, rom.file_name(), rom.hash_md5()),
                 ":md5": rom.hash_md5(),
                 ":crc": rom.hash_crc(),
                 ":sha1": rom.hash_sha1(),
