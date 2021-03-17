@@ -405,7 +405,7 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
 
 pub(crate) fn do_parse(input: &str) -> IResult<&str, Vec<TOSECToken>>
 {
-    let (input, res) = parse_tosec_name(input)?;
+    let (input, tokens) = parse_tosec_name(input)?;
     // make sure we are EOF.
     let (input, _) = eof(input)?;
 

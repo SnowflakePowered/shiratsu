@@ -58,6 +58,7 @@ mod tests {
     use crate::parse::NameInfo;
     use crate::parse::nointro::NoIntroNameable;
     use crate::parse::tosec::TosecNameable;
+
     #[test]
     fn nointro_region_parses() {
         assert_eq!(Region::from_region_string("USA, Europe"), vec![Region::UnitedStates, Region::Europe]);
@@ -149,6 +150,7 @@ mod tests {
         assert_eq!("Motocross & Pole Position", parsed.entry_title());
         assert_eq!(&[Region::Unknown], parsed.region());
     }
+
     #[test]
     fn tosec_filename_parses_6() {
         let parsed = NameInfo::try_from_tosec("256 Color Demo (1997)(Schick, Bastian)(PD)[a]").unwrap();
@@ -164,6 +166,7 @@ mod tests {
         assert_eq!(&[Region::Unknown], parsed.region());
         assert_eq!(Some("1.203"), parsed.version());
     }
+
     #[test]
     fn tosec_filename_parses_end_rev() {
         let parsed = NameInfo::try_from_tosec("Cube CD 20, The (40) - Testing Rev 1 (demo) (2020)(SomePublisher)").unwrap();

@@ -306,11 +306,11 @@ impl Region {
 /// - `region_str` The region string.
 fn from_tosec_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
     let mut regions: IndexSet<Region> = IndexSet::new();
-    let mut iter = region_str.as_ref().split('-').enumerate().peekable();
     let mut region_count = 0;
     let mut region_string_index = 0;
 
-    while let Some((idx, region_code)) = iter.next() {
+    for region_code in region_str.as_ref().split('-')
+    {
         let region = TOSEC_REGION.get(region_code);
         if region_code.len() != 2 {
             return Err(RegionError::BadRegionCode(RegionFormat::TOSEC,
@@ -328,6 +328,7 @@ fn from_tosec_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
                                                   region_string_index))
         }
     }
+
     if regions.is_empty() {
          Err(RegionError::NoRegions(RegionFormat::TOSEC))
     } else {
