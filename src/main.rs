@@ -8,7 +8,7 @@ use shiratsu_stone::{
     PlatformId, StonePlatforms
 };
 
-use shiratsu_lib::{
+use shiratsu_parse::{
     parse::*,
     parse::{nointro::*, redump::*, tosec::*},
 };
@@ -34,7 +34,7 @@ use lazy_static_include::*;
 use glob::glob_with;
 use glob::MatchOptions;
 
-type ParseResult<T> = std::result::Result<T, shiratsu_lib::parse::ParseError>;
+type ParseResult<T> = std::result::Result<T, shiratsu_parse::parse::ParseError>;
 
 fn get_entries<R: BufRead + Seek>(
     mut reader: R,

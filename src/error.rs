@@ -1,6 +1,6 @@
 pub enum ShiratsuError {
     StoneError(shiratsu_stone::StoneError),
-    ParseError(shiratsu_lib::parse::ParseError),
+    ParseError(shiratsu_parse::parse::ParseError),
     IOError(std::io::Error)
 }
 
@@ -22,8 +22,8 @@ impl std::fmt::Display for ShiratsuError{
     }
 }
 
-impl From<shiratsu_lib::parse::ParseError> for ShiratsuError {
-    fn from(err: shiratsu_lib::parse::ParseError) -> Self {
+impl From<shiratsu_parse::parse::ParseError> for ShiratsuError {
+    fn from(err: shiratsu_parse::parse::ParseError) -> Self {
         ShiratsuError::ParseError(err)
     }
 }

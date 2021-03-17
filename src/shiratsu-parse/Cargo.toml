@@ -1,5 +1,5 @@
 [package]
-name = "shiratsu-lib"
+name = "shiratsu-parse"
 version = "0.1.0"
 authors = ["Ronny Chan <ronny@ronnychan.ca>"]
 edition = "2018"

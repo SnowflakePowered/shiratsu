@@ -4,7 +4,7 @@ use shiratsu_stone::{
     PlatformId, StonePlatforms, find_mimetype
 };
 
-use shiratsu_lib::{
+use shiratsu_parse::{
     parse::*,
     region::Region,
 };

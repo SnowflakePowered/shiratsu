@@ -4,7 +4,7 @@ use console::style;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use lazy_static::lazy_static;
 use rusqlite::backup::Progress;
-use shiratsu_lib::parse::ParseError;
+use shiratsu_parse::parse::ParseError;
 use slog::{error, info, warn};
 
 lazy_static! {
