@@ -24,6 +24,9 @@ pub enum TOSECToken<'a>
     Media(Vec<(&'a str, &'a str, Option<&'a str>)>),
     /// A vector of language tuples (Code, Variant).
     Languages(TOSECLanguage<'a>),
+
+    /// 'ZZZ-UNK-' Unknown prefix for TOSEC v3
+    ZZZUnkPrefix,
 }
 
 #[derive(Debug, Eq, PartialEq)]

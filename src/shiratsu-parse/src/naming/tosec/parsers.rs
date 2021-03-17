@@ -274,12 +274,26 @@ fn parse_title_degenerate_path(input: &str) -> IResult<&str, Vec<TOSECToken>>
     Ok((input, vecs))
 }
 
+fn parse_zzz_unk(input: &str) -> IResult<&str, TOSECToken>
+{
+    let (input, _) = tag("ZZZ-UNK-")(input)?;
+    Ok((input, TOSECToken::ZZZUnkPrefix))
+}
+
+
 fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
 {
+    // ZZZ-UNK files need a totally separate parser..
+    let (input, zzz) = opt(parse_zzz_unk)(input)?;
+
     let (input, mut tokens) = alt(
         (parse_title_demo_date_happy,
             // TOSEC Wobbly Exception: degenerate path without date
          parse_title_degenerate_path))(input)?;
+
+    if let Some(zzz) = zzz {
+        tokens.push(zzz)
+    }
 
     // publisher is required
     let (input, publisher) = parse_publisher_tag(input)?;
@@ -354,15 +368,20 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
     Ok((input, tokens))
 }
 
-pub(crate) fn do_parse(input: &str) -> IResult<&str, Vec<TOSECToken>>
+pub(crate) fn do_parse(input: &str, complete: bool) -> IResult<&str, Vec<TOSECToken>>
 {
     let (input, tokens) = parse_tosec_name(input)?;
-    // make sure we are EOF.
-    let (input, _) = eof(input)?;
 
-    match input {
-        "" => Ok((input, tokens)),
-        _ => Err(nom::Err::Error(Error::new(input, ErrorKind::NonEmpty)))
+    // make sure we are EOF.
+    if complete {
+        let (input, _) = eof(input)?;
+
+        match input {
+            "" => Ok((input, tokens)),
+            _ => Err(nom::Err::Error(Error::new(input, ErrorKind::NonEmpty)))
+        }
+    } else {
+        Ok((input, tokens))
     }
 }
 
@@ -453,7 +472,8 @@ mod test
     fn test_parse_moto()
     {
         assert_eq!(
-            do_parse("Motocross & Pole Position Rev 1 (Starsoft - JVP)(PAL)[b1][possible unknown mode]"),
+            do_parse("Motocross & Pole Position Rev 1 (Starsoft - JVP)(PAL)[b1][possible unknown mode]",
+                     true),
             Ok(("",
                 vec![
                     TOSECToken::Title(String::from("Motocross & Pole Position")),
@@ -469,7 +489,8 @@ mod test
     fn test_parse_one()
     {
         assert_eq!(
-            do_parse("Dune - The Battle for Arrakis Demo Hack (2009-04-03)(Ti_)[h Dune - The Battle for Arrakis]"),
+            do_parse("Dune - The Battle for Arrakis Demo Hack (2009-04-03)(Ti_)[h Dune - The Battle for Arrakis]",
+                     true),
             Ok(("",
                 vec![
                     TOSECToken::Title(String::from("Dune - The Battle for Arrakis Demo Hack")),
@@ -483,7 +504,7 @@ mod test
     fn test_parse_full()
     {
         assert_eq!(
-            do_parse("Cube CD 20, The (40) - Testing v1.203 (demo) (2020)(SomePublisher)"),
+            do_parse("Cube CD 20, The (40) - Testing v1.203 (demo) (2020)(SomePublisher)", true),
             Ok(("",
                 vec![
                     TOSECToken::Title(String::from("Cube CD 20, The (40) - Testing")),
@@ -494,7 +515,8 @@ mod test
                 )));
 
         assert_eq!(
-            do_parse("Motocross & Pole Position Rev 1 (Starsoft - JVP)(PAL)[b1][possible unknown mode]"),
+            do_parse("Motocross & Pole Position Rev 1 (Starsoft - JVP)(PAL)[b1][possible unknown mode]",
+                     true),
             Ok(("",
                 vec![
                     TOSECToken::Title(String::from("Motocross & Pole Position")),
@@ -506,7 +528,8 @@ mod test
             ))
         );
         assert_eq!(
-            do_parse("Motocross & Pole Position (Starsoft - JVP)(PAL)[b1][possible unknown mode]"),
+            do_parse("Motocross & Pole Position (Starsoft - JVP)(PAL)[b1][possible unknown mode]",
+                     true),
             Ok(("",
                 vec![
                     TOSECToken::Title(String::from("Motocross & Pole Position")),
@@ -517,7 +540,8 @@ mod test
             ))
         );
         assert_eq!(
-            do_parse("Bombsawa (Jumpman Selected levels)(19XX)(-)(JP)(ja)(PD)[cr3 +test][test flag]"),
+            do_parse("Bombsawa (Jumpman Selected levels)(19XX)(-)(JP)(ja)(PD)[cr3 +test][test flag]",
+                     true),
             Ok(("",
                 vec![
                     TOSECToken::Title(String::from("Bombsawa (Jumpman Selected levels)")),
@@ -531,7 +555,7 @@ mod test
             ))
         );
         assert_eq!(
-            do_parse("Xevious (1983)(CCE)(NTSC)(BR)"),
+            do_parse("Xevious (1983)(CCE)(NTSC)(BR)", true),
             Ok(("",
                 vec![
                     TOSECToken::Title(String::from("Xevious")),
@@ -543,7 +567,7 @@ mod test
         );
 
         assert_eq!(
-            do_parse("Mega Man III - Sample version (1992)(Capcom)(US)"),
+            do_parse("Mega Man III - Sample version (1992)(Capcom)(US)", true),
             Ok(("",
                 vec![
                     TOSECToken::Title(String::from("Mega Man III - Sample version")),

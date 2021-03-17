@@ -6,6 +6,8 @@ pub enum NamingConvention {
     /// Not a known naming convention
     Unknown,
     /// The naming convention used by The Old School Emulation Center
+    /// 
+    /// Compatible with TNC v3 or later.
     ///
     /// Defined at https://www.tosecdev.org/tosec-naming-convention
     TOSEC,
@@ -22,7 +24,13 @@ pub enum NamingConvention {
     ///
     /// Empirically tested using OpenGood DAT files from
     /// https://github.com/SnowflakePowered/opengood
-    GoodTools
+    GoodTools,
+    /// The third revision of the TOSEC naming convention, supporting
+    /// ZZZ-UNK- names.
+    ///
+    /// Referenced from
+    /// https://web.archive.org/web/20141228081706/https://www.tosecdev.org/tosec-naming-convention
+    TOSECV0,
 }
 
 impl From<&NamingConvention> for &str {
@@ -31,7 +39,8 @@ impl From<&NamingConvention> for &str {
             NamingConvention::Unknown => "Unknown",
             NamingConvention::TOSEC => "TOSEC",
             NamingConvention::NoIntro => "No-Intro",
-            NamingConvention::GoodTools => "GoodTools"
+            NamingConvention::GoodTools => "GoodTools",
+            NamingConvention::TOSECV0 => "TOSEC"
         }
     }
 }
