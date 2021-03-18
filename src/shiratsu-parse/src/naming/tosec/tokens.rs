@@ -27,6 +27,20 @@ pub enum TOSECToken<'a>
 
     /// 'ZZZ-UNK-' Unknown prefix for TOSEC v3
     ZZZUnkPrefix,
+
+    /// A warning occurred
+    Warning(TOSECParseWarning<'a>)
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum TOSECParseWarning<'a>
+{
+    ZZZUnknown,
+    UppercasedPlaceholderDate(&'a str),
+    MissingDate,
+    MissingSpaceAfterDemo,
+    MissingSpaceBeforeDate,
+    NotEof(&'a str)
 }
 
 #[derive(Debug, Eq, PartialEq)]

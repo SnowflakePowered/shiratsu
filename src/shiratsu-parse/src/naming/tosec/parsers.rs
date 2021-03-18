@@ -12,6 +12,7 @@ use crate::naming::tosec::tokens::*;
 
 use nom::bytes::complete::{take_till1, take_while1};
 use nom::combinator::peek;
+use nom::sequence::pair;
 
 fn parse_dumpinfo_tag<'a>(infotag: &'static str) -> impl FnMut(&'a str) -> IResult<&'a str, TOSECToken<'a>>
 {
@@ -40,9 +41,10 @@ fn parse_demo(input: &str) -> IResult<&str, TOSECToken>
     Ok((input, TOSECToken::Demo(ty)))
 }
 
-make_parens_tag!(parse_date_tag, parse_date, TOSECToken);
-fn parse_date(input: &str) -> IResult<&str, TOSECToken>
+make_parens_tag!(parse_date_tag, parse_date, Vec<TOSECToken>);
+fn parse_date(input: &str) -> IResult<&str, Vec<TOSECToken>>
 {
+    let mut parses = Vec::new();
     let (input, year) = take_while_m_n(4, 4,
                                        |c: char| c.is_ascii_digit()
                                            || c == 'X'|| c == 'x')(input)?;
@@ -59,7 +61,29 @@ fn parse_date(input: &str) -> IResult<&str, TOSECToken>
                                     || c == 'X'|| c == 'x')
         ))(input)?;
 
-    Ok((input, TOSECToken::Date(year, month, day)))
+    if year.contains("X")
+    {
+        parses.push(TOSECToken::Warning(TOSECParseWarning::UppercasedPlaceholderDate(year)));
+    }
+
+    if let Some(month) = month
+    {
+        if month.contains("X")
+        {
+            parses.push(TOSECToken::Warning(TOSECParseWarning::UppercasedPlaceholderDate(month)));
+        }
+    }
+
+    if let Some(day) = day
+    {
+        if day.contains("X")
+        {
+            parses.push(TOSECToken::Warning(TOSECParseWarning::UppercasedPlaceholderDate(day)));
+        }
+    }
+
+    parses.push(TOSECToken::Date(year, month, day));
+    Ok((input, parses))
 }
 
 fn parse_region(input: &str) -> IResult<&str, Vec<Region>>
@@ -209,6 +233,8 @@ fn parse_version_string(input: &str) -> IResult<&str, TOSECToken>
 }
 
 // Parse the happy path where a date is actually required..
+// invariant:
+// This function returns vec![Title, Date, Warning?]
 fn parse_title_demo_date_happy(input: &str) -> IResult<&str, Vec<TOSECToken>>
 {
     fn parse_version_and_demo_or_date(input: &str) -> IResult<&str, Vec<TOSECToken>>
@@ -224,14 +250,26 @@ fn parse_title_demo_date_happy(input: &str) -> IResult<&str, Vec<TOSECToken>>
         if let Some(demo) = demo {
             parses.push(demo);
         }
-        let (input, date) = preceded(
+        let (input, (warning, mut date)) = pair(
             // TOSEC Wobbly Exception:
             // (demo) may occur without following space
             // 2600 Digital Clock - Demo 1 (demo)(1997-10-03)(Cracknell, Chris 'Crackers')(NTSC)(PD)
-            opt(char(' ')),
+            opt(char(' '))
+                .map(|c| {
+                    match c {
+                        Some(_) => None,
+                        None => Some(TOSECToken::Warning(TOSECParseWarning::MissingSpaceBeforeDate))
+                    }
+                }),
+
                 parse_date_tag
         )(input)?;
-        parses.push(date);
+
+        // Warnings come before associated token.
+        if let Some(warning) = warning {
+            parses.push(warning)
+        }
+        parses.append(&mut date);
         Ok((input, parses))
     }
 
@@ -271,6 +309,10 @@ fn parse_title_degenerate_path(input: &str) -> IResult<&str, Vec<TOSECToken>>
         vecs.push(version)
     }
 
+    // 'pretend' bad date was discovered after title.
+    // this means the associated token for 'Missing Date'
+    // is publisher.
+    vecs.push(TOSECToken::Warning(TOSECParseWarning::MissingDate));
     Ok((input, vecs))
 }
 
@@ -280,19 +322,21 @@ fn parse_zzz_unk(input: &str) -> IResult<&str, TOSECToken>
     Ok((input, TOSECToken::ZZZUnkPrefix))
 }
 
-
 fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
 {
-    // ZZZ-UNK files need a totally separate parser..
+    // ZZZ-UNK files need a totally separate parser to handle v0 names...
+
     let (input, zzz) = opt(parse_zzz_unk)(input)?;
 
-    let (input, mut tokens) = alt(
-        (parse_title_demo_date_happy,
+    let (input, mut tokens) = alt((
+            parse_title_demo_date_happy,
             // TOSEC Wobbly Exception: degenerate path without date
-         parse_title_degenerate_path))(input)?;
+            parse_title_degenerate_path))(input)?;
 
     if let Some(zzz) = zzz {
-        tokens.push(zzz)
+        // warning comes before the associated token.
+        tokens.insert(0, zzz);
+        tokens.insert(0, TOSECToken::Warning(TOSECParseWarning::ZZZUnknown));
     }
 
     // publisher is required
@@ -469,24 +513,25 @@ mod test
     use crate::naming::tosec::parsers::*;
 
     #[test]
-    fn test_parse_moto()
+    fn test_parse_zzz()
     {
         assert_eq!(
-            do_parse("Motocross & Pole Position Rev 1 (Starsoft - JVP)(PAL)[b1][possible unknown mode]",
+            do_parse("ZZZ-UNK-UNK But Ok (199x)(-)",
                      true),
             Ok(("",
                 vec![
-                    TOSECToken::Title(String::from("Motocross & Pole Position")),
-                    TOSECToken::Version(("Rev", "1", None, None, None)),
-                    TOSECToken::Publisher(Some(vec!["Starsoft", "JVP"])),
-                    TOSECToken::Flag(FlagType::Parenthesized, "PAL"),
-                    TOSECToken::DumpInfo("b", Some("1"), None),
-                    TOSECToken::Flag(FlagType::Bracketed, "possible unknown mode")]
+                    TOSECToken::Warning(TOSECParseWarning::ZZZUnknown),
+                    TOSECToken::ZZZUnkPrefix,
+                    TOSECToken::Title(String::from("UNK But Ok")),
+                    TOSECToken::Date("199x", None, None),
+                    TOSECToken::Publisher(None),
+                ]
             ))
         );
+
     }
     #[test]
-    fn test_parse_one()
+    fn test_parse_full()
     {
         assert_eq!(
             do_parse("Dune - The Battle for Arrakis Demo Hack (2009-04-03)(Ti_)[h Dune - The Battle for Arrakis]",
@@ -499,10 +544,20 @@ mod test
                     TOSECToken::DumpInfo("h", None, Some("Dune - The Battle for Arrakis")),]
             ))
         );
-    }
-    #[test]
-    fn test_parse_full()
-    {
+
+        assert_eq!(
+            do_parse("2600 Digital Clock - Demo 1 (demo)(1997-10-03)(Cracknell, Chris 'Crackers')(NTSC)(PD)", true),
+            Ok(("",
+                vec![
+                    TOSECToken::Title(String::from("2600 Digital Clock - Demo 1")),
+                    TOSECToken::Demo(None),
+                    TOSECToken::Warning(TOSECParseWarning::MissingSpaceBeforeDate),
+                    TOSECToken::Date("1997", Some("10"), Some("03")),
+                    TOSECToken::Publisher(Some(vec!["Cracknell, Chris 'Crackers'"])),
+                    TOSECToken::Flag(FlagType::Parenthesized, "NTSC"),
+                    TOSECToken::Flag(FlagType::Parenthesized, "PD"),
+                ]
+            )));
         assert_eq!(
             do_parse("Cube CD 20, The (40) - Testing v1.203 (demo) (2020)(SomePublisher)", true),
             Ok(("",
@@ -511,8 +566,8 @@ mod test
                     TOSECToken::Version(("v", "1", Some("203"), None, None)),
                     TOSECToken::Demo(None),
                     TOSECToken::Date("2020", None, None),
-                    TOSECToken::Publisher(Some(vec!["SomePublisher"]))]
-                )));
+                    TOSECToken::Publisher(Some(vec!["SomePublisher"])),
+                ])));
 
         assert_eq!(
             do_parse("Motocross & Pole Position Rev 1 (Starsoft - JVP)(PAL)[b1][possible unknown mode]",
@@ -521,11 +576,12 @@ mod test
                 vec![
                     TOSECToken::Title(String::from("Motocross & Pole Position")),
                     TOSECToken::Version(("Rev", "1", None, None, None)),
+                    TOSECToken::Warning(TOSECParseWarning::MissingDate),
                     TOSECToken::Publisher(Some(vec!["Starsoft", "JVP"])),
                     TOSECToken::Flag(FlagType::Parenthesized, "PAL"),
                     TOSECToken::DumpInfo("b", Some("1"), None),
-                    TOSECToken::Flag(FlagType::Bracketed, "possible unknown mode")]
-            ))
+                    TOSECToken::Flag(FlagType::Bracketed, "possible unknown mode"),
+                ]))
         );
         assert_eq!(
             do_parse("Motocross & Pole Position (Starsoft - JVP)(PAL)[b1][possible unknown mode]",
@@ -533,11 +589,12 @@ mod test
             Ok(("",
                 vec![
                     TOSECToken::Title(String::from("Motocross & Pole Position")),
+                    TOSECToken::Warning(TOSECParseWarning::MissingDate),
                     TOSECToken::Publisher(Some(vec!["Starsoft", "JVP"])),
                     TOSECToken::Flag(FlagType::Parenthesized, "PAL"),
                     TOSECToken::DumpInfo("b", Some("1"), None),
-                    TOSECToken::Flag(FlagType::Bracketed, "possible unknown mode")]
-            ))
+                    TOSECToken::Flag(FlagType::Bracketed, "possible unknown mode"),
+                ]))
         );
         assert_eq!(
             do_parse("Bombsawa (Jumpman Selected levels)(19XX)(-)(JP)(ja)(PD)[cr3 +test][test flag]",
@@ -545,14 +602,16 @@ mod test
             Ok(("",
                 vec![
                     TOSECToken::Title(String::from("Bombsawa (Jumpman Selected levels)")),
+                    TOSECToken::Warning(TOSECParseWarning::MissingSpaceBeforeDate),
+                    TOSECToken::Warning(TOSECParseWarning::UppercasedPlaceholderDate("19XX")),
                     TOSECToken::Date("19XX", None, None),
                     TOSECToken::Publisher(None),
                     TOSECToken::Region(vec![Region::Japan]),
                     TOSECToken::Languages(TOSECLanguage::Single("ja")),
                     TOSECToken::Flag(FlagType::Parenthesized, "PD"),
                     TOSECToken::DumpInfo("cr", Some("3"), Some("+test")),
-                    TOSECToken::Flag(FlagType::Bracketed, "test flag")]
-            ))
+                    TOSECToken::Flag(FlagType::Bracketed, "test flag"),
+                ]))
         );
         assert_eq!(
             do_parse("Xevious (1983)(CCE)(NTSC)(BR)", true),
@@ -643,10 +702,10 @@ mod test
     #[test]
     fn test_parse_date()
     {
-        assert_eq!(parse_date("1999"), Ok(("", TOSECToken::Date("1999", None, None))));
-        assert_eq!(parse_date("199x"), Ok(("", TOSECToken::Date("199x", None, None))));
-        assert_eq!(parse_date("199x-2x"), Ok(("", TOSECToken::Date("199x", Some("2x"), None))));
-        assert_eq!(parse_date("199x-2x-10"), Ok(("", TOSECToken::Date("199x", Some("2x"), Some("10")))));
+        assert_eq!(parse_date("1999"), Ok(("", vec![TOSECToken::Date("1999", None, None)])));
+        assert_eq!(parse_date("199x"), Ok(("", vec![TOSECToken::Date("199x", None, None)])));
+        assert_eq!(parse_date("199x-2x"), Ok(("", vec![TOSECToken::Date("199x", Some("2x"), None)])));
+        assert_eq!(parse_date("199x-2x-10"), Ok(("", vec![TOSECToken::Date("199x", Some("2x"), Some("10"))])));
     }
 
     #[test]

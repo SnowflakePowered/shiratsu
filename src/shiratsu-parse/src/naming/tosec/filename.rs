@@ -17,6 +17,8 @@ impl TOSECNameable for NameInfo {
 }
 
 /// Tries to parse the name into a vector of tokens.
+/// Tokens will be in the order of appearance in the resulting `Vec`.
+/// Warnings occur before the associated token.
 pub fn try_parse<'a>(input: &str) -> Result<Vec<TOSECToken>> {
     let (_, value) = do_parse(input, false).map_err(|_| {
         ParseError::BadFileNameError(NamingConvention::TOSEC, input.to_string())
