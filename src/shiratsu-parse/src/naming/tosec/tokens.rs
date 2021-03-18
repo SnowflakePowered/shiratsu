@@ -23,11 +23,9 @@ pub enum TOSECToken<'a>
     /// Media parts
 
     Media(Vec<(&'a str, &'a str, Option<&'a str>)>),
+
     /// A vector of language tuples (Code, Variant).
     Languages(TOSECLanguage<'a>),
-
-    /// 'ZZZ-UNK-' Unknown prefix for TOSEC v3
-    ZZZUnkPrefix,
 
     /// A warning occurred
     Warning(TOSECParseWarning<'a>)
@@ -131,6 +129,12 @@ impl <'a> ToNameInfo for TOSECName<'a>
                 _ => {}
 
             }
+        }
+
+        if name.entry_title.ends_with("BIOS")
+            || name.entry_title.ends_with("System Software")
+        {
+            name.is_system = true;
         }
 
         let mut release_title = name.entry_title.clone();

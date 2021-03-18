@@ -253,7 +253,7 @@ fn parse_title_demo_date_happy(input: &str) -> IResult<&str, Vec<TOSECToken>>
             parses.push(demo);
         }
         let (input, (warning, mut date)) = pair(
-            // TOSEC Wobbly Exception:
+            // TOSEC Warn:
             // (demo) may occur without following space
             // 2600 Digital Clock - Demo 1 (demo)(1997-10-03)(Cracknell, Chris 'Crackers')(NTSC)(PD)
             opt(char(' '))
@@ -314,96 +314,81 @@ fn parse_title_degenerate_path(input: &str) -> IResult<&str, Vec<TOSECToken>>
 fn parse_zzz_unk(input: &str) -> IResult<&str, TOSECToken>
 {
     let (input, _) = tag("ZZZ-UNK-")(input)?;
-    Ok((input, TOSECToken::ZZZUnkPrefix))
+    Ok((input, TOSECToken::Warning(TOSECParseWarning::ZZZUnknown)))
 }
 
 fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
 {
+    // TOSEC Warn: Filename may begin with ZZZ-UNK-
     // ZZZ-UNK files need a totally separate parser to handle v0 names...
     let (input, zzz) = opt(parse_zzz_unk)(input)?;
 
     let (input, mut tokens) = alt((
             parse_title_demo_date_happy,
-            // TOSEC Wobbly Exception: degenerate path without date
+            // TOSEC Warn: degenerate path without date
             parse_title_degenerate_path
     ))(input)?;
 
     if let Some(zzz) = zzz {
         // warning comes before the associated token.
         tokens.insert(0, zzz);
-        tokens.insert(0, TOSECToken::Warning(TOSECParseWarning::ZZZUnknown));
+    }
+
+    // TOSEC Warn: space may occur between date and publisher
+    let (input, space) = opt(char(' '))(input)?;
+    if let Some(_) = space {
+        tokens.push(TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace))
     }
 
     // publisher is required
     let (input, publisher) = parse_publisher_tag(input)?;
     tokens.push(publisher);
 
-    let (input, mut flags)
+    let (input, flags)
         = many0(
-        alt((
-            parse_region_tag,
-            parse_language_tag,
-            parse_media_tag,
-            parse_parens_tag
-        )))(input)?;
+        pair(opt(char(' ')),
+             alt((
+                parse_region_tag,
+                parse_language_tag,
+                parse_media_tag,
+                parse_parens_tag
+            ))))(input)?;
 
-    tokens.append(&mut flags);
-
-    let (input, info) = opt(parse_dumpinfo_tag("cr"))(input)?;
-    if let Some(info) =  info {
-        tokens.push(info);
-    }
-    let (input, info) = opt(parse_dumpinfo_tag("f"))(input)?;
-    if let Some(info) =  info {
-        tokens.push(info);
-    }
-    let (input, info) = opt(parse_dumpinfo_tag("h"))(input)?;
-    if let Some(info) =  info {
-        tokens.push(info);
-    }
-    let (input, info) = opt(parse_dumpinfo_tag("m"))(input)?;
-    if let Some(info) =  info {
-        tokens.push(info);
-    }
-    let (input, info) = opt(parse_dumpinfo_tag("p"))(input)?;
-    if let Some(info) =  info {
-        tokens.push(info);
-    }
-    let (input, info) = opt(parse_dumpinfo_tag("t"))(input)?;
-    if let Some(info) =  info {
-        tokens.push(info);
-    }
-    let (input, info) = opt(parse_dumpinfo_tag("tr"))(input)?;
-    if let Some(info) =  info {
-        tokens.push(info);
-    }
-    let (input, info) = opt(parse_dumpinfo_tag("o"))(input)?;
-    if let Some(info) =  info {
-        tokens.push(info);
-    }
-    let (input, info) = opt(parse_dumpinfo_tag("u"))(input)?;
-    if let Some(info) =  info {
-        tokens.push(info);
-    }
-    let (input, info) = opt(parse_dumpinfo_tag("v"))(input)?;
-    if let Some(info) =  info {
-        tokens.push(info);
-    }
-    let (input, info) = opt(parse_dumpinfo_tag("b"))(input)?;
-    if let Some(info) =  info {
-        tokens.push(info);
-    }
-    let (input, info) = opt(parse_dumpinfo_tag("a"))(input)?;
-    if let Some(info) =  info {
-        tokens.push(info);
-    }
-    let (input, info) = opt(parse_dumpinfo_tag("!"))(input)?;
-    if let Some(info) =  info {
-        tokens.push(info);
+    // TOSEC Warn: Space may occur between flags
+    for (space, flag) in flags {
+        if let Some(_) = space {
+            tokens.push(TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace));
+        }
+        tokens.push(flag)
     }
 
-    let (input, mut rest) = many0(parse_additional_tag)(input)?;
-    tokens.append(&mut rest);
+    let input = &["cr", "f", "h", "m", "p", "t", "tr", "o", "u", "v", "b", "a", "!"]
+        .iter()
+        .fold(Ok(input), |input, tag|{
+            // TOSEC Warn: space may occur between flags
+            let (input, space) = opt(char(' '))(input?)?;
+            if let Some(_) = space {
+                tokens.push(TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace))
+            }
+            let (input, info) = opt(parse_dumpinfo_tag(tag))(input)?;
+            if let Some(info) =  info {
+                tokens.push(info);
+            }
+            Ok(input)
+        })?;
+
+    let (input, rest) = many0(
+        pair(
+            opt(char(' ')),
+        parse_additional_tag)
+    )(input)?;
+
+    for (space, flag) in rest {
+        if let Some(_) = space {
+            tokens.push(TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace));
+        }
+        tokens.push(flag)
+    }
 
     Ok((input, tokens))
 }
@@ -444,6 +429,25 @@ mod test
     }
 
     #[test]
+    fn test_parse_spaces()
+    {
+        assert_eq!(
+            do_parse("ZZZ-UNK-Show King Tut (1996) (Schick, Bastian) [a]"),
+            Ok(("",
+                vec![
+                    TOSECToken::Warning(TOSECParseWarning::ZZZUnknown),
+                    TOSECToken::Title("Show King Tut"),
+                    TOSECToken::Date("1996", None, None),
+                    TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace),
+                    TOSECToken::Publisher(Some(vec!["Schick, Bastian"])),
+                    TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace),
+                    TOSECToken::DumpInfo("a", None, None)
+                ]
+            ))
+        );
+    }
+
+    #[test]
     fn test_parse_zzz()
     {
         assert_eq!(
@@ -451,14 +455,12 @@ mod test
             Ok(("",
                 vec![
                     TOSECToken::Warning(TOSECParseWarning::ZZZUnknown),
-                    TOSECToken::ZZZUnkPrefix,
                     TOSECToken::Title("UNK But Ok"),
                     TOSECToken::Date("199x", None, None),
                     TOSECToken::Publisher(None),
                 ]
             ))
         );
-
     }
     #[test]
     fn test_parse_full()
@@ -536,7 +538,7 @@ mod test
                 ]))
         );
         assert_eq!(
-            do_parse("Bombsawa (Jumpman Selected levels)(19XX)(-)(JP)(ja)(PD)[cr3 +test][test flag]"),
+            do_parse("Bombsawa (Jumpman Selected levels)(19XX)(-)(JP)(ja)(PD)[cr3 +test][h][test flag]"),
             Ok(("",
                 vec![
                     TOSECToken::Title("Bombsawa (Jumpman Selected levels)"),
@@ -548,6 +550,7 @@ mod test
                     TOSECToken::Languages(TOSECLanguage::Single("ja")),
                     TOSECToken::Flag(FlagType::Parenthesized, "PD"),
                     TOSECToken::DumpInfo("cr", Some("3"), Some("+test")),
+                    TOSECToken::DumpInfo("h", None, None),
                     TOSECToken::Flag(FlagType::Bracketed, "test flag"),
                 ]))
         );
