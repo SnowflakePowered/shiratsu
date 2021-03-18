@@ -1,19 +1,18 @@
 use crate::region::{Region, RegionError};
 
 use nom::{
-        multi::{many_till, many0, separated_list1},
+        multi::{many0, separated_list1},
         sequence::preceded,
         combinator::{opt, eof, peek},
         branch::alt,
         bytes::complete::{tag, is_not},
-        character::complete::{char, digit1, alpha1, anychar, alphanumeric1},
+        character::complete::{char, digit1, alpha1, alphanumeric1},
         error::{Error, ErrorKind},
         IResult, Slice, Parser,
         bytes::complete::{take_while, take_while_m_n, take_till1},
 };
 
 use crate::naming::FlagType;
-use crate::naming::util::*;
 use crate::naming::parsers::*;
 use crate::naming::nointro::tokens::*;
 
@@ -348,12 +347,9 @@ pub(crate) fn do_parse(input: &str) -> IResult<&str, Vec<NoIntroToken>>
     let (input, _) = many0(char(' '))(input)?;
 
     let (input, (title, region))
-        = many_till(anychar, parse_region_tag_and_ensure_end)(input)?;
+        = take_up_to(parse_region_tag_and_ensure_end)(input)?;
 
-    let mut title = title.into_iter().collect();
-
-    trim_right_mut(&mut title);
-    tokens.push(NoIntroToken::Title(title));
+    tokens.push(NoIntroToken::Title(title.trim()));
     tokens.push(region);
 
     let (input, mut known_tags) = many0(
@@ -412,7 +408,7 @@ mod tests
     {
         let (input, stuff) = do_parse("Odekake Lester - Lelele no Le (^^; (Japan) (Unl) (Rev 1)").unwrap();
         assert_eq!("", input);
-        assert_eq!(Some(&NoIntroToken::Title(String::from("Odekake Lester - Lelele no Le (^^;"))), stuff.first())
+        assert_eq!(Some(&NoIntroToken::Title("Odekake Lester - Lelele no Le (^^;")), stuff.first())
     }
 
     #[test]
@@ -426,7 +422,7 @@ mod tests
     fn parse_no_region_fail()
     {
         let err = do_parse("void tRrLM(); Void Terrarium");
-        assert_eq!(Err(nom::Err::Error(Error::new("", ErrorKind::Eof))), err);
+        assert_eq!(Err(nom::Err::Error(Error::new("void tRrLM(); Void Terrarium", ErrorKind::ManyTill))), err);
     }
 
     #[test]
@@ -434,7 +430,7 @@ mod tests
     {
         let (input, stuff) = do_parse("void tRrLM(); Void Terrarium (Japan)").unwrap();
         assert_eq!("", input);
-        assert_eq!(Some(&NoIntroToken::Title(String::from("void tRrLM(); Void Terrarium"))), stuff.first())
+        assert_eq!(Some(&NoIntroToken::Title("void tRrLM(); Void Terrarium")), stuff.first())
     }
 
     #[test]
@@ -598,7 +594,7 @@ mod tests
             do_parse("FIFA 20 - Portuguese (Brazil) In-Game Commentary (World) (Pt-BR) (DLC) (eShop)").unwrap();
         assert_eq!("", input);
         assert_eq!(Some(
-            &NoIntroToken::Title(String::from("FIFA 20 - Portuguese (Brazil) In-Game Commentary"))), stuff.first())
+            &NoIntroToken::Title("FIFA 20 - Portuguese (Brazil) In-Game Commentary")), stuff.first())
     }
     #[test]
     fn parse_unl()

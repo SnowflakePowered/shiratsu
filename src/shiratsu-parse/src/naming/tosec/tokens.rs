@@ -5,7 +5,7 @@ use crate::naming::util::*;
 #[derive(Debug, Eq, PartialEq)]
 pub enum TOSECToken<'a>
 {
-    Title(String),
+    Title(&'a str),
     /// A list of parsed regions.
     Region(Vec<Region>),
 
@@ -87,7 +87,7 @@ impl <'a> ToNameInfo for TOSECName<'a>
         {
             match token {
                 TOSECToken::Title(title) => {
-                    name.entry_title = title.clone()
+                    name.entry_title = title.to_string()
                 }
                 TOSECToken::Region(regions) => {
                     name.region = regions.clone()

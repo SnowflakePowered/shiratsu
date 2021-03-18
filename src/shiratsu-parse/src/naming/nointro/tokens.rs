@@ -29,7 +29,7 @@ impl <'a> From<&(&'a str, Option<&'a str>)> for NoIntroLanguage<'a>
 pub enum NoIntroToken<'a>
 {
     /// The title of the game.
-    Title(String),
+    Title(&'a str),
 
     /// A list of parsed regions.
     Region(Vec<Region>),
@@ -89,7 +89,7 @@ impl <'a> ToNameInfo for NoIntroName<'a>
         {
             match &token {
                 NoIntroToken::Title(title) => {
-                    name.entry_title = title.clone()
+                    name.entry_title = title.to_string()
                 }
                 NoIntroToken::Flag(_, "Kiosk")
                 | NoIntroToken::Flag(_, "Demo")

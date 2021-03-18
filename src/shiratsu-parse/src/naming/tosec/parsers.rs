@@ -1,9 +1,13 @@
 use crate::region::{Region, RegionError};
-use nom::{multi::{many_till, many0, separated_list1}, sequence::preceded, combinator::{opt, eof}, branch::alt, bytes::complete::{tag, is_not}, error::{Error, ErrorKind}, IResult, Slice, Parser, bytes::complete::{take_while, take_while_m_n}, character::complete::{anychar, char}};
+use nom::{multi::{many0, separated_list1},
+          sequence::preceded, combinator::{opt, eof},
+          branch::alt, bytes::complete::{tag, is_not},
+          error::{Error, ErrorKind}, IResult, Slice, Parser,
+          bytes::complete::{take_while, take_while_m_n},
+          character::complete::char};
 
 use crate::naming::FlagType;
 
-use crate::naming::util::*;
 use crate::naming::parsers::*;
 use crate::naming::tosec::tokens::*;
 
@@ -272,12 +276,9 @@ fn parse_title_demo_date_happy(input: &str) -> IResult<&str, Vec<TOSECToken>>
 
     // reuse the output vec as our collector
     let (input, (title, mut tokens))
-        = many_till(anychar, parse_version_and_demo_or_date)(input)?;
+        = take_up_to(parse_version_and_demo_or_date)(input)?;
 
-    let mut title = title.into_iter().collect();
-    trim_right_mut(&mut title);
-
-    tokens.insert(0, TOSECToken::Title(title));
+    tokens.insert(0, TOSECToken::Title(title.trim()));
 
     Ok((input, tokens))
 }
@@ -288,8 +289,7 @@ fn parse_title_demo_date_happy(input: &str) -> IResult<&str, Vec<TOSECToken>>
 fn parse_title_degenerate_path(input: &str) -> IResult<&str, Vec<TOSECToken>>
 {
     let mut vecs = Vec::new();
-    let (input, (title, version)) = many_till(
-        anychar,
+    let (input, (title, version)) = take_up_to(
         alt((
             preceded(char(' '), parse_version_string).map(|t| Some(t)),
             peek(char('(')).map(|_| None)))
@@ -298,10 +298,7 @@ fn parse_title_degenerate_path(input: &str) -> IResult<&str, Vec<TOSECToken>>
     // Need to discard a space just in case we go to the version part
     let (input, _) = opt(char(' '))(input)?;
 
-    let mut title = title.into_iter().collect();
-    trim_right_mut(&mut title);
-
-    vecs.push(TOSECToken::Title(title));
+    vecs.push(TOSECToken::Title(title.trim()));
     if let Some(version) = version {
         vecs.push(version)
     }
@@ -322,7 +319,6 @@ fn parse_zzz_unk(input: &str) -> IResult<&str, TOSECToken>
 fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
 {
     // ZZZ-UNK files need a totally separate parser to handle v0 names...
-
     let (input, zzz) = opt(parse_zzz_unk)(input)?;
 
     let (input, mut tokens) = alt((
@@ -435,6 +431,22 @@ mod test
     use crate::naming::tosec::parsers::*;
 
     #[test]
+    fn test_parse_multibyte_char()
+    {
+        assert_eq!(
+            do_parse("Segoin Demo Ikinä! (2015-03-28)(AirZero)(FI)", true),
+            Ok(("",
+                vec![
+                    TOSECToken::Title("Segoin Demo Ikinä!"),
+                    TOSECToken::Date("2015", Some("03"), Some("28")),
+                    TOSECToken::Publisher(Some(vec!["AirZero"])),
+                    TOSECToken::Region(vec![Region::Finland])
+                ]
+            ))
+        )
+    }
+
+    #[test]
     fn test_parse_zzz()
     {
         assert_eq!(
@@ -444,7 +456,7 @@ mod test
                 vec![
                     TOSECToken::Warning(TOSECParseWarning::ZZZUnknown),
                     TOSECToken::ZZZUnkPrefix,
-                    TOSECToken::Title(String::from("UNK But Ok")),
+                    TOSECToken::Title("UNK But Ok"),
                     TOSECToken::Date("199x", None, None),
                     TOSECToken::Publisher(None),
                 ]
@@ -460,7 +472,7 @@ mod test
                      true),
             Ok(("",
                 vec![
-                    TOSECToken::Title(String::from("Dune - The Battle for Arrakis Demo Hack")),
+                    TOSECToken::Title("Dune - The Battle for Arrakis Demo Hack"),
                     TOSECToken::Date("2009", Some("04"), Some("03")),
                     TOSECToken::Publisher(Some(vec!["Ti_"])),
                     TOSECToken::DumpInfo("h", None, Some("Dune - The Battle for Arrakis")),]
@@ -471,7 +483,7 @@ mod test
             do_parse("2600 Digital Clock - Demo 1 (demo)(1997-10-03)(Cracknell, Chris 'Crackers')(NTSC)(PD)", true),
             Ok(("",
                 vec![
-                    TOSECToken::Title(String::from("2600 Digital Clock - Demo 1")),
+                    TOSECToken::Title("2600 Digital Clock - Demo 1"),
                     TOSECToken::Demo(None),
                     TOSECToken::Warning(TOSECParseWarning::MissingSpaceBeforeDate),
                     TOSECToken::Date("1997", Some("10"), Some("03")),
@@ -484,7 +496,7 @@ mod test
             do_parse("Cube CD 20, The (40) - Testing v1.203 (demo) (2020)(SomePublisher)", true),
             Ok(("",
                 vec![
-                    TOSECToken::Title(String::from("Cube CD 20, The (40) - Testing")),
+                    TOSECToken::Title("Cube CD 20, The (40) - Testing"),
                     TOSECToken::Version(("v", "1", Some("203"), None, None)),
                     TOSECToken::Demo(None),
                     TOSECToken::Date("2020", None, None),
@@ -496,7 +508,7 @@ mod test
                      true),
             Ok(("",
                 vec![
-                    TOSECToken::Title(String::from("Motocross & Pole Position")),
+                    TOSECToken::Title("Motocross & Pole Position"),
                     TOSECToken::Version(("Rev", "1", None, None, None)),
                     TOSECToken::Warning(TOSECParseWarning::MissingDate),
                     TOSECToken::Publisher(Some(vec!["Starsoft", "JVP"])),
@@ -510,7 +522,7 @@ mod test
                      true),
             Ok(("",
                 vec![
-                    TOSECToken::Title(String::from("Motocross & Pole Position")),
+                    TOSECToken::Title("Motocross & Pole Position"),
                     TOSECToken::Warning(TOSECParseWarning::MissingDate),
                     TOSECToken::Publisher(Some(vec!["Starsoft", "JVP"])),
                     TOSECToken::Flag(FlagType::Parenthesized, "PAL"),
@@ -523,7 +535,7 @@ mod test
                      true),
             Ok(("",
                 vec![
-                    TOSECToken::Title(String::from("Bombsawa (Jumpman Selected levels)")),
+                    TOSECToken::Title("Bombsawa (Jumpman Selected levels)"),
                     TOSECToken::Warning(TOSECParseWarning::MissingSpaceBeforeDate),
                     TOSECToken::Warning(TOSECParseWarning::UppercasedPlaceholderDate("19XX")),
                     TOSECToken::Date("19XX", None, None),
@@ -539,7 +551,7 @@ mod test
             do_parse("Xevious (1983)(CCE)(NTSC)(BR)", true),
             Ok(("",
                 vec![
-                    TOSECToken::Title(String::from("Xevious")),
+                    TOSECToken::Title("Xevious"),
                     TOSECToken::Date("1983", None, None),
                     TOSECToken::Publisher(Some(vec!["CCE"])),
                     TOSECToken::Flag(FlagType::Parenthesized, "NTSC"),
@@ -551,7 +563,7 @@ mod test
             do_parse("Mega Man III - Sample version (1992)(Capcom)(US)", true),
             Ok(("",
                 vec![
-                    TOSECToken::Title(String::from("Mega Man III - Sample version")),
+                    TOSECToken::Title("Mega Man III - Sample version"),
                     TOSECToken::Date("1992", None, None),
                     TOSECToken::Publisher(Some(vec!["Capcom"])),
                     TOSECToken::Region(vec![Region::UnitedStates]),]
