@@ -36,9 +36,12 @@ pub enum TOSECParseWarning<'a>
 {
     ZZZUnknown,
     MalformedDatePlaceholder(&'a str),
+    UndelimitedDate(&'a str),
     MissingDate,
     MissingSpace,
     UnexpectedSpace,
+    ByPublisher,
+    PublisherBeforeDate,
     NotEof(&'a str)
 }
 
@@ -62,6 +65,17 @@ impl <'a> From<Vec<TOSECToken<'a>>> for TOSECName<'a>
 {
     fn from(vec: Vec<TOSECToken<'a>>) -> Self {
         TOSECName(vec)
+    }
+}
+
+impl TOSECName<'_> {
+    pub fn has_warnings(&self) -> bool {
+        self.0.iter().any(|e| match e { TOSECToken::Warning(_) => true, _ => false })
+    }
+
+    pub fn warnings(&self) -> impl Iterator<Item=&TOSECToken> + '_
+    {
+        self.0.iter().filter(|e| match e { TOSECToken::Warning(_) => true, _ => false })
     }
 }
 

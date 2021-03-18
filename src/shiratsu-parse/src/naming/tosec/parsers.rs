@@ -11,9 +11,10 @@ use crate::naming::FlagType;
 use crate::naming::parsers::*;
 use crate::naming::tosec::tokens::*;
 
-use nom::bytes::complete::{take_till1, take_while1};
-use nom::combinator::peek;
+use nom::bytes::complete::{take_till1, take_while1, take, take_until};
+use nom::combinator::{peek, verify, eof};
 use nom::sequence::pair;
+use nom::error::ParseError;
 
 fn parse_dumpinfo_tag<'a>(infotag: &'static str) -> impl FnMut(&'a str) -> IResult<&'a str, TOSECToken<'a>>
 {
@@ -45,6 +46,34 @@ fn parse_demo(input: &str) -> IResult<&str, TOSECToken>
 make_parens_tag!(parse_date_tag, parse_date, Vec<TOSECToken>);
 fn parse_date(input: &str) -> IResult<&str, Vec<TOSECToken>>
 {
+    fn parse_undelimited_date(input: &str)-> IResult<&str, Vec<TOSECToken>>
+    {
+        let orig_input = input;
+
+        let (input, year) = take_while_m_n(4, 4,
+                                           |c: char| c.is_ascii_digit())(input)?;
+        let (input, month) = verify(take_while_m_n(2, 2,
+                                           |c: char| c.is_ascii_digit()),
+        |month: &str| month.parse::<u32>().map(|m| m <= 12).unwrap_or(false))
+            (input)?;
+
+        let (input, day) = verify(take_while_m_n(2, 2,
+                                                |c: char| c.is_ascii_digit()),
+                                 |month: &str| month.parse::<u32>().map(|m| m <= 31 )
+                                     .unwrap_or(false))
+            (input)?;
+        let (_, datestr) = take(8usize)(orig_input)?;
+
+        Ok((input, vec![
+            TOSECToken::Warning(TOSECParseWarning::UndelimitedDate(datestr)),
+            TOSECToken::Date(year, Some(month), Some(day))
+        ]))
+    }
+
+    if let Ok(date) = parse_undelimited_date(input) {
+        return Ok(date)
+    }
+
     let mut parses = Vec::new();
     let (input, year) = take_while_m_n(4, 4,
                                        |c: char| c.is_ascii_digit()
@@ -226,7 +255,7 @@ fn parse_version_string(input: &str) -> IResult<&str, TOSECToken>
         let (input, v) = tag("v")(input)?;
         let (input, major) = take_while(|c: char| c.is_ascii_digit())(input)?;
         let (input, minor) = opt(preceded(char('.'),
-                                          take_while(|c: char| c.is_ascii_alphanumeric())))(input)?;
+                                          take_while(|c: char| c.is_ascii_alphanumeric() || c == '.')))(input)?;
         Ok((input, TOSECToken::Version((v, major, minor, None, None))))
     }
 
@@ -319,6 +348,15 @@ fn parse_zzz_unk(input: &str) -> IResult<&str, TOSECToken>
 
 fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
 {
+    // string must be " by ..."
+    fn parse_by_publisher(input: &str) -> IResult<&str, (TOSECToken, TOSECToken)>
+    {
+        let (input, title) = take_until(" by ")(input)?;
+        let (input, _) = tag(" by ")(input)?;
+        let (input, publisher) = take_while(|c| c != '(')(input)?;
+        Ok((input, (TOSECToken::Title(title.trim()), TOSECToken::Publisher(Some(vec![publisher.trim()])))))
+    }
+
     // TOSEC Warn: Filename may begin with ZZZ-UNK-
     // ZZZ-UNK files need a totally separate parser to handle v0 names...
     let (input, zzz) = opt(parse_zzz_unk)(input)?;
@@ -329,16 +367,46 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
             parse_title_degenerate_path
     ))(input)?;
 
-    if let Some(zzz) = zzz {
+    match tokens.first()
+    {
+        Some(&TOSECToken::Title(_)) => {},
+        _ => return Err(nom::Err::Error(
+            nom::error::Error::from_error_kind(input, ErrorKind::Tag)))
+    }
+
+    let input = if let Some(zzz) = zzz
+    {
+        let input = if let Some(&TOSECToken::Title(title)) = tokens.first()
+        {
+            if let Ok((_, (title,
+                    TOSECToken::Publisher(publisher)))) = parse_by_publisher(title) {
+                tokens[0] = title; // replace title.
+                tokens.insert(1, TOSECToken::Publisher(publisher));
+                tokens.insert(1,
+                              TOSECToken::Warning(TOSECParseWarning::ByPublisher));
+                tokens.insert(1,
+                              TOSECToken::Warning(TOSECParseWarning::PublisherBeforeDate));
+                input
+            }
+            else if let Ok((input, (_, publisher))) = parse_by_publisher(input) {
+                tokens.push(TOSECToken::Warning(TOSECParseWarning::ByPublisher));
+                tokens.push(publisher);
+                input
+            } else { input }
+        } else { input };
+
         // warning comes before the associated token.
         tokens.insert(0, zzz);
-    }
+        input
+    } else { input };
 
     // TOSEC Warn: space may occur between date and publisher
     let (input, space) = opt(char(' '))(input)?;
     if let Some(_) = space {
         tokens.push(TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace))
     }
+
+    // todo: check if next parens tag is not known tag such as region or copyright
 
     // publisher is required
     let (input, publisher) = parse_publisher_tag(input)?;
@@ -411,6 +479,56 @@ mod test
     use crate::region::Region;
     use crate::naming::*;
     use crate::naming::tosec::parsers::*;
+
+
+    // todo: ZZZ-UNK-Raiden (U) (CES Version) (v3.0)
+    // todo: ZZZ-UNK-Befok#Packraw (20021012) by Jum Hig (PD)
+
+    #[test]
+    fn test_by_publisher_after_date()
+    {
+        let x = do_parse("ZZZ-UNK-Befok#Packraw (20021012) by Jum Hig (PD)");
+        println!("{:?}", x.unwrap());
+    }
+
+    #[test]
+    fn test_by_publisher()
+    {
+        assert_eq!(
+            do_parse("ZZZ-UNK-Clicks! (test) by Domin, Matthias (2001) (PD)"),
+            Ok(("",
+                vec![
+                    TOSECToken::Warning(TOSECParseWarning::ZZZUnknown),
+                    TOSECToken::Title("Clicks! (test)"),
+                    TOSECToken::Warning(TOSECParseWarning::PublisherBeforeDate),
+                    TOSECToken::Warning(TOSECParseWarning::ByPublisher),
+                    TOSECToken::Publisher(Some(vec!["Domin, Matthias"])),
+                    TOSECToken::Date("2001", None, None),
+                    TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace),
+
+                    // todo: copyright
+                    TOSECToken::Flag(FlagType::Parenthesized, "PD")
+                ]
+            ))
+        )
+    }
+
+    #[test]
+    fn test_undelim_date()
+    {
+        assert_eq!(
+            do_parse("ZZZ-UNK-Befok#Packraw (20021012)(Jum Hig)"),
+            Ok(("",
+                vec![
+                    TOSECToken::Warning(TOSECParseWarning::ZZZUnknown),
+                    TOSECToken::Title("Befok#Packraw"),
+                    TOSECToken::Warning(TOSECParseWarning::UndelimitedDate("20021012")),
+                    TOSECToken::Date("2002", Some("10"), Some("12")),
+                    TOSECToken::Publisher(Some(vec!["Jum Hig"])),
+                ]
+            ))
+        )
+    }
 
     #[test]
     fn test_parse_multibyte_char()

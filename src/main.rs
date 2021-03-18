@@ -34,6 +34,7 @@ use lazy_static_include::*;
 
 use glob::glob_with;
 use glob::MatchOptions;
+use shiratsu_parse::naming::ToNameInfo;
 
 type ParseResult<T> = std::result::Result<T, ParseError>;
 
@@ -298,20 +299,31 @@ fn compare<F>(event_fn: F) -> Result<()>
 
                             let old_name = game.entry_name();
                             if let Ok(res) = shiratsu_parse::naming::tosec::try_parse(old_name)
-                                .map(|res| res.into())
                             {
-
-                                if Some(&res) != game.info()
+                                let info = res.to_name_info();
+                                if Some(&info) != game.info()
                                 {
+                                    if let Some(game) = game.info() {
+                                        if info.version() != None && game.version() == None {
+                                            continue;
+                                        }
+                                    }
                                     eprintln!("========DIFF===========");
                                     eprintln!("{}", old_name);
                                     eprintln!("========LEFT===========");
-                                    eprintln!("{:?}", Some(&res));
+                                    eprintln!("{:?}", Some(info));
                                     eprintln!("========RIGHT===========");
                                     eprintln!("{:?}", game.info());
                                     eprintln!();
                                 }
-                            } else
+
+                                if res.has_warnings() {
+                                    for warn in res.warnings() {
+                                        eprintln!("{:?}", warn);
+                                    }
+                                }
+                            }
+                            else
                             {
                                 println!("NEW PARSER FAILED TO PARSE {}", old_name);
                             }
