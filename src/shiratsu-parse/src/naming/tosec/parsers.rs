@@ -1,6 +1,6 @@
 use crate::region::{Region, RegionError};
 use nom::{multi::{many0, separated_list1},
-          sequence::preceded, combinator::{opt, eof},
+          sequence::preceded, combinator::opt,
           branch::alt, bytes::complete::{tag, is_not},
           error::{Error, ErrorKind}, IResult, Slice, Parser,
           bytes::complete::{take_while, take_while_m_n},
@@ -64,14 +64,14 @@ fn parse_date(input: &str) -> IResult<&str, Vec<TOSECToken>>
 
     if year.contains("X")
     {
-        parses.push(TOSECToken::Warning(TOSECParseWarning::UppercasedPlaceholderDate(year)));
+        parses.push(TOSECToken::Warning(TOSECParseWarning::MalformedDatePlaceholder(year)));
     }
 
     if let Some(month) = month
     {
         if month.contains("X")
         {
-            parses.push(TOSECToken::Warning(TOSECParseWarning::UppercasedPlaceholderDate(month)));
+            parses.push(TOSECToken::Warning(TOSECParseWarning::MalformedDatePlaceholder(month)));
         }
     }
 
@@ -79,7 +79,7 @@ fn parse_date(input: &str) -> IResult<&str, Vec<TOSECToken>>
     {
         if day.contains("X")
         {
-            parses.push(TOSECToken::Warning(TOSECParseWarning::UppercasedPlaceholderDate(day)));
+            parses.push(TOSECToken::Warning(TOSECParseWarning::MalformedDatePlaceholder(day)));
         }
     }
 
@@ -158,7 +158,8 @@ fn parse_language(input: &str) -> IResult<&str, TOSECToken>
     alt((parse_multilang, parse_double_lang,parse_single_lang))(input)
 }
 
-fn parse_media_tag(input: &str) -> IResult<&str, TOSECToken>
+make_parens_tag!(parse_media_tag, parse_media, TOSECToken);
+fn parse_media(input: &str) -> IResult<&str, TOSECToken>
 {
     fn parse_single_part(input: &str) -> IResult<&str, (&str, &str, Option<&str>)> {
         let (input, ty) = alt((
@@ -259,7 +260,7 @@ fn parse_title_demo_date_happy(input: &str) -> IResult<&str, Vec<TOSECToken>>
                 .map(|c| {
                     match c {
                         Some(_) => None,
-                        None => Some(TOSECToken::Warning(TOSECParseWarning::MissingSpaceBeforeDate))
+                        None => Some(TOSECToken::Warning(TOSECParseWarning::MissingSpace))
                     }
                 }),
 
@@ -338,12 +339,13 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
     tokens.push(publisher);
 
     let (input, mut flags)
-        = many0(alt((
-        parse_region_tag,
-        parse_language_tag,
-        parse_media_tag,
-        parse_parens_tag
-    )))(input)?;
+        = many0(
+        alt((
+            parse_region_tag,
+            parse_language_tag,
+            parse_media_tag,
+            parse_parens_tag
+        )))(input)?;
 
     tokens.append(&mut flags);
 
@@ -406,20 +408,15 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
     Ok((input, tokens))
 }
 
-pub(crate) fn do_parse(input: &str, complete: bool) -> IResult<&str, Vec<TOSECToken>>
+pub(crate) fn do_parse(input: &str) -> IResult<&str, Vec<TOSECToken>>
 {
-    let (input, tokens) = parse_tosec_name(input)?;
-
-    // make sure we are EOF.
-    if complete {
-        let (input, _) = eof(input)?;
-
-        match input {
-            "" => Ok((input, tokens)),
-            _ => Err(nom::Err::Error(Error::new(input, ErrorKind::NonEmpty)))
+    let (input, mut tokens) = parse_tosec_name(input)?;
+    match input {
+        "" => Ok((input, tokens)),
+        rest => {
+            tokens.push(TOSECToken::Warning(TOSECParseWarning::NotEof(rest)));
+            Ok((input, tokens))
         }
-    } else {
-        Ok((input, tokens))
     }
 }
 
@@ -434,7 +431,7 @@ mod test
     fn test_parse_multibyte_char()
     {
         assert_eq!(
-            do_parse("Segoin Demo Ikinä! (2015-03-28)(AirZero)(FI)", true),
+            do_parse("Segoin Demo Ikinä! (2015-03-28)(AirZero)(FI)"),
             Ok(("",
                 vec![
                     TOSECToken::Title("Segoin Demo Ikinä!"),
@@ -450,8 +447,7 @@ mod test
     fn test_parse_zzz()
     {
         assert_eq!(
-            do_parse("ZZZ-UNK-UNK But Ok (199x)(-)",
-                     true),
+            do_parse("ZZZ-UNK-UNK But Ok (199x)(-)"),
             Ok(("",
                 vec![
                     TOSECToken::Warning(TOSECParseWarning::ZZZUnknown),
@@ -468,8 +464,19 @@ mod test
     fn test_parse_full()
     {
         assert_eq!(
-            do_parse("Dune - The Battle for Arrakis Demo Hack (2009-04-03)(Ti_)[h Dune - The Battle for Arrakis]",
-                     true),
+            do_parse("Escape from the Mindmaster (1982)(Starpath)(PAL)(Part 3 of 4)[Supercharger Cassette]"),
+            Ok(("",
+                vec![
+                    TOSECToken::Title("Escape from the Mindmaster"),
+                    TOSECToken::Date("1982", None, None),
+                    TOSECToken::Publisher(Some(vec!["Starpath"])),
+                    TOSECToken::Flag(FlagType::Parenthesized, "PAL"),
+                    TOSECToken::Media(vec![("Part", "3", Some("4"))]),
+                    TOSECToken::Flag(FlagType::Bracketed, "Supercharger Cassette"),]
+            ))
+        );
+        assert_eq!(
+            do_parse("Dune - The Battle for Arrakis Demo Hack (2009-04-03)(Ti_)[h Dune - The Battle for Arrakis]"),
             Ok(("",
                 vec![
                     TOSECToken::Title("Dune - The Battle for Arrakis Demo Hack"),
@@ -480,12 +487,12 @@ mod test
         );
 
         assert_eq!(
-            do_parse("2600 Digital Clock - Demo 1 (demo)(1997-10-03)(Cracknell, Chris 'Crackers')(NTSC)(PD)", true),
+            do_parse("2600 Digital Clock - Demo 1 (demo)(1997-10-03)(Cracknell, Chris 'Crackers')(NTSC)(PD)"),
             Ok(("",
                 vec![
                     TOSECToken::Title("2600 Digital Clock - Demo 1"),
                     TOSECToken::Demo(None),
-                    TOSECToken::Warning(TOSECParseWarning::MissingSpaceBeforeDate),
+                    TOSECToken::Warning(TOSECParseWarning::MissingSpace),
                     TOSECToken::Date("1997", Some("10"), Some("03")),
                     TOSECToken::Publisher(Some(vec!["Cracknell, Chris 'Crackers'"])),
                     TOSECToken::Flag(FlagType::Parenthesized, "NTSC"),
@@ -493,7 +500,7 @@ mod test
                 ]
             )));
         assert_eq!(
-            do_parse("Cube CD 20, The (40) - Testing v1.203 (demo) (2020)(SomePublisher)", true),
+            do_parse("Cube CD 20, The (40) - Testing v1.203 (demo) (2020)(SomePublisher)"),
             Ok(("",
                 vec![
                     TOSECToken::Title("Cube CD 20, The (40) - Testing"),
@@ -504,8 +511,7 @@ mod test
                 ])));
 
         assert_eq!(
-            do_parse("Motocross & Pole Position Rev 1 (Starsoft - JVP)(PAL)[b1][possible unknown mode]",
-                     true),
+            do_parse("Motocross & Pole Position Rev 1 (Starsoft - JVP)(PAL)[b1][possible unknown mode]"),
             Ok(("",
                 vec![
                     TOSECToken::Title("Motocross & Pole Position"),
@@ -518,8 +524,7 @@ mod test
                 ]))
         );
         assert_eq!(
-            do_parse("Motocross & Pole Position (Starsoft - JVP)(PAL)[b1][possible unknown mode]",
-                     true),
+            do_parse("Motocross & Pole Position (Starsoft - JVP)(PAL)[b1][possible unknown mode]"),
             Ok(("",
                 vec![
                     TOSECToken::Title("Motocross & Pole Position"),
@@ -531,13 +536,12 @@ mod test
                 ]))
         );
         assert_eq!(
-            do_parse("Bombsawa (Jumpman Selected levels)(19XX)(-)(JP)(ja)(PD)[cr3 +test][test flag]",
-                     true),
+            do_parse("Bombsawa (Jumpman Selected levels)(19XX)(-)(JP)(ja)(PD)[cr3 +test][test flag]"),
             Ok(("",
                 vec![
                     TOSECToken::Title("Bombsawa (Jumpman Selected levels)"),
-                    TOSECToken::Warning(TOSECParseWarning::MissingSpaceBeforeDate),
-                    TOSECToken::Warning(TOSECParseWarning::UppercasedPlaceholderDate("19XX")),
+                    TOSECToken::Warning(TOSECParseWarning::MissingSpace),
+                    TOSECToken::Warning(TOSECParseWarning::MalformedDatePlaceholder("19XX")),
                     TOSECToken::Date("19XX", None, None),
                     TOSECToken::Publisher(None),
                     TOSECToken::Region(vec![Region::Japan]),
@@ -548,7 +552,7 @@ mod test
                 ]))
         );
         assert_eq!(
-            do_parse("Xevious (1983)(CCE)(NTSC)(BR)", true),
+            do_parse("Xevious (1983)(CCE)(NTSC)(BR)"),
             Ok(("",
                 vec![
                     TOSECToken::Title("Xevious"),
@@ -560,7 +564,7 @@ mod test
         );
 
         assert_eq!(
-            do_parse("Mega Man III - Sample version (1992)(Capcom)(US)", true),
+            do_parse("Mega Man III - Sample version (1992)(Capcom)(US)"),
             Ok(("",
                 vec![
                     TOSECToken::Title("Mega Man III - Sample version"),
@@ -593,20 +597,20 @@ mod test
     #[test]
     fn test_parse_parts()
     {
-        assert_eq!(parse_media_tag("Disc 2 of 2"), Ok(((""), TOSECToken::Media(
+        assert_eq!(parse_media("Disc 2 of 2"), Ok(((""), TOSECToken::Media(
             vec![("Disc", "2", Some("2"))]
         ))));
 
-        assert_eq!(parse_media_tag("Side B"), Ok(((""), TOSECToken::Media(
+        assert_eq!(parse_media("Side B"), Ok(((""), TOSECToken::Media(
             vec![("Side", "B", None)]
         ))));
 
-        assert_eq!(parse_media_tag("Disc 2 of 2 Side C"), Ok(((""), TOSECToken::Media(
+        assert_eq!(parse_media("Disc 2 of 2 Side C"), Ok(((""), TOSECToken::Media(
             vec![("Disc", "2", Some("2")),
             ("Side", "C", None)]
         ))));
 
-        assert_eq!(parse_media_tag("Side 2 of 2 Side C"), Ok(((""), TOSECToken::Media(
+        assert_eq!(parse_media("Side 2 of 2 Side C"), Ok(((""), TOSECToken::Media(
             vec![("Side", "2", Some("2")),
                  ("Side", "C", None)]
         ))));

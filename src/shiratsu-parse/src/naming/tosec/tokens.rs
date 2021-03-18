@@ -37,10 +37,10 @@ pub enum TOSECToken<'a>
 pub enum TOSECParseWarning<'a>
 {
     ZZZUnknown,
-    UppercasedPlaceholderDate(&'a str),
+    MalformedDatePlaceholder(&'a str),
     MissingDate,
-    MissingSpaceAfterDemo,
-    MissingSpaceBeforeDate,
+    MissingSpace,
+    UnexpectedSpace,
     NotEof(&'a str)
 }
 

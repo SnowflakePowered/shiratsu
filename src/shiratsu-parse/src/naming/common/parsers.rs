@@ -3,14 +3,14 @@ use nom::{bytes::complete::tag, sequence::delimited,
 use nom::error::{ParseError, ErrorKind};
 
 pub(crate) fn in_parens<'a, O, E: ParseError<&'a str>, P>(inner: P)
-                                                          -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
+    -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
     where P: Parser<&'a str, O, E>
 {
     delimited(tag("("), inner, tag(")"))
 }
 
 pub(crate) fn in_brackets<'a, O, E: ParseError<&'a str>, P>(inner: P)
-                                                            -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
+    -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
     where P: Parser<&'a str, O, E>
 {
     delimited(tag("["), inner, tag("]"))
@@ -33,6 +33,7 @@ pub(crate) fn take_until_is<Arr, Tag, Input, Error: ParseError<Input>>(arr: Arr,
 
         let res: IResult<_, _, Error> = match test.find_substring(t) {
             None => Err(nom::Err::Error(Error::from_error_kind(i, ErrorKind::TakeUntil))),
+            // the byte offset from find_substring should be safe to split at.
             Some(index) => Ok(i.take_split(index)),
         };
 

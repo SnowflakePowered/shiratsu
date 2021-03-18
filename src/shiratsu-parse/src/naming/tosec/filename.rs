@@ -20,7 +20,7 @@ impl TOSECNameable for NameInfo {
 /// Tokens will be in the order of appearance in the resulting `Vec`.
 /// Warnings occur before the associated token.
 pub fn try_parse(input: &str) -> Result<TOSECName> {
-    let (_, value) = do_parse(input, false).map_err(|_| {
+    let (_, value) = do_parse(input).map_err(|_| {
         ParseError::BadFileNameError(NamingConvention::TOSEC, input.to_string())
     })?;
     Ok(value.into())
