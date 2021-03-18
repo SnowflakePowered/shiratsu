@@ -1,5 +1,6 @@
 use crate::region::Region;
-use crate::naming::FlagType;
+use crate::naming::{FlagType, NameInfo, ToNameInfo, DevelopmentStatus, NamingConvention};
+use crate::naming::util::*;
 
 /// A parsed language code.
 #[derive(Debug, Eq, PartialEq)]
@@ -55,4 +56,72 @@ pub enum NoIntroToken<'a>
 
     /// A vector of language tuples (Code, Variant).
     Languages(Vec<(&'a str, Option<&'a str>)>),
+}
+
+#[derive(Debug, Eq, PartialEq)]
+#[repr(transparent)]
+pub struct NoIntroName<'a>(Vec<NoIntroToken<'a>>);
+
+impl <'a> From<Vec<NoIntroToken<'a>>> for NoIntroName<'a>
+{
+    fn from(vec: Vec<NoIntroToken<'a>>) -> Self {
+        NoIntroName(vec)
+    }
+}
+
+impl <'a> ToNameInfo for NoIntroName<'a>
+{
+    fn to_name_info(&self) -> NameInfo {
+        let mut name = NameInfo {
+            entry_title: "".to_string(),
+            release_title: "".to_string(),
+            region: vec![Region::Unknown],
+            part_number: None,
+            version: None,
+            is_unlicensed: false,
+            is_demo: false,
+            is_system: false,
+            status: DevelopmentStatus::Release,
+            naming_convention: NamingConvention::NoIntro,
+        };
+
+        for token in self.0.iter()
+        {
+            match &token {
+                NoIntroToken::Title(title) => {
+                    name.entry_title = title.clone()
+                }
+                NoIntroToken::Flag(_, "Kiosk")
+                | NoIntroToken::Flag(_, "Demo")
+                | NoIntroToken::Flag(_, "Sample")
+                | NoIntroToken::Flag(_, "Bonus Disc")
+                | NoIntroToken::Flag(_, "Bonus CD")
+                | NoIntroToken::Flag(_, "Taikenban")
+                | NoIntroToken::Flag(_, "Tentou Taikenban") => {
+                    name.is_demo = true
+                }
+                NoIntroToken::Beta(_) => { name.status = DevelopmentStatus::Prerelease }
+                NoIntroToken::Flag(_, "Proto") => { name.status = DevelopmentStatus::Prototype }
+                NoIntroToken::Flag(_, "Unl") => { name.is_unlicensed = true }
+                NoIntroToken::Version(versions) => {
+                    match versions.first() {
+                        Some((_, major, None, _, _)) => { name.version = Some(major.to_string()) }
+                        Some((_, major, Some(minor), _, _)) => { name.version = Some(format!("{}.{}", major, minor)) }
+                        _ => {}
+                    }
+                }
+                NoIntroToken::Part(_, part) => { name.part_number = part.parse::<i32>().ok() }
+                NoIntroToken::Region(region) => { name.region = region.clone() }
+                NoIntroToken::Flag(_, "BIOS") => { name.is_system = true }
+                _ => {}
+            }
+        }
+
+        let mut release_title = name.entry_title.clone();
+
+        move_default_articles_mut(&mut release_title);
+        replace_hyphen_mut(&mut release_title);
+        name.release_title = release_title;
+        name
+    }
 }

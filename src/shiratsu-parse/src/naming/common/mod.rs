@@ -4,7 +4,10 @@ mod naming_convention;
 mod development_status;
 
 pub use development_status::DevelopmentStatus;
-pub use name_info::NameInfo;
+pub use name_info::{
+    NameInfo,
+    ToNameInfo
+};
 pub use naming_convention::NamingConvention;
 
 #[macro_use]

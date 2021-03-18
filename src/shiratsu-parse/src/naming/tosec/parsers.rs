@@ -1,10 +1,7 @@
 use crate::region::{Region, RegionError};
 use nom::{multi::{many_till, many0, separated_list1}, sequence::preceded, combinator::{opt, eof}, branch::alt, bytes::complete::{tag, is_not}, error::{Error, ErrorKind}, IResult, Slice, Parser, bytes::complete::{take_while, take_while_m_n}, character::complete::{anychar, char}};
 
-use crate::naming::{
-    NamingConvention,
-    NameInfo, DevelopmentStatus,
-    FlagType};
+use crate::naming::FlagType;
 
 use crate::naming::util::*;
 use crate::naming::parsers::*;
@@ -331,7 +328,8 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
     let (input, mut tokens) = alt((
             parse_title_demo_date_happy,
             // TOSEC Wobbly Exception: degenerate path without date
-            parse_title_degenerate_path))(input)?;
+            parse_title_degenerate_path
+    ))(input)?;
 
     if let Some(zzz) = zzz {
         // warning comes before the associated token.
@@ -426,82 +424,6 @@ pub(crate) fn do_parse(input: &str, complete: bool) -> IResult<&str, Vec<TOSECTo
         }
     } else {
         Ok((input, tokens))
-    }
-}
-
-
-impl<'a> From<Vec<TOSECToken<'a>>> for NameInfo
-{
-    fn from(tokens: Vec<TOSECToken<'a>>) -> Self {
-        let mut name = NameInfo {
-            entry_title: "".to_string(),
-            release_title: "".to_string(),
-            region: vec![Region::Unknown],
-            part_number: None,
-            version: None,
-            is_unlicensed: false,
-            is_demo: false,
-            is_system: false,
-            status: DevelopmentStatus::Release,
-            naming_convention: NamingConvention::TOSEC,
-        };
-
-        for token in tokens.into_iter()
-        {
-            match token {
-                TOSECToken::Title(title) => {
-                    name.entry_title = title
-                }
-                TOSECToken::Region(regions) => {
-                    name.region = regions
-                }
-                TOSECToken::Media(parts) => {
-                    if let Some(parts) = parts.first()
-                    {
-                        if parts.0 != "Side" {
-                            name.part_number = parts.1.parse::<i32>().ok()
-                        } else {
-                            // Match Side A and B
-                            match parts.1 {
-                                "A" => name.part_number = Some(1),
-                                "B" => name.part_number = Some(2),
-                                _ => {}
-                            }
-                        }
-                    }
-                }
-                TOSECToken::Version(version) => {
-                    match version {
-                        (_, major, None, _, _) => { name.version = Some(major.to_string()) }
-                        (_, major, Some(minor), _, _) => { name.version = Some(format!("{}.{}", major, minor)) }
-                    }
-                }
-                TOSECToken::DumpInfo("p", _, _) => {
-                    name.is_unlicensed = true
-                }
-                TOSECToken::Demo(_) => {
-                    name.is_demo = true
-                }
-                TOSECToken::Flag(_, "proto") => {
-                    name.status = DevelopmentStatus::Prototype
-                }
-                TOSECToken::Flag(_, "alpha")
-                | TOSECToken::Flag(_, "beta")
-                | TOSECToken::Flag(_, "preview")
-                | TOSECToken::Flag(_, "pre-release") => {
-                    name.status = DevelopmentStatus::Prerelease
-                }
-                _ => {}
-
-            }
-        }
-
-        let mut release_title = name.entry_title.clone();
-
-        move_default_articles_mut(&mut release_title);
-        replace_hyphen_mut(&mut release_title);
-        name.release_title = release_title;
-        name
     }
 }
 

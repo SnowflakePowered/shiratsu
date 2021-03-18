@@ -30,7 +30,7 @@ impl TryFrom<Game> for GameEntry {
         let rom = game.rom;
         let name = game.name;
         Ok(GameEntry {
-            info: Some(NameInfo::try_from_nointro(&name).map(|n| n.into())?),
+            info: Some(NameInfo::try_from_nointro(&name)?),
             entry_name: name,
             serials: game
                 .serial

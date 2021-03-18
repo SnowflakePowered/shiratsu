@@ -99,5 +99,4 @@ mod tests
         replace_hyphen_mut(&mut s);
         assert_eq!(s, String::from("Hello: World: Foo: Bar"));
     }
-
 }

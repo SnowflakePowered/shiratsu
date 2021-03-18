@@ -6,6 +6,7 @@ pub use common::{
     DevelopmentStatus,
     display::*,
     NameInfo,
+    ToNameInfo,
     NamingConvention,
     tokens::{
         FlagType,

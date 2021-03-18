@@ -1,7 +1,7 @@
 use crate::naming::{NameInfo, NamingConvention};
 use crate::error::{ParseError, Result};
 
-use crate::naming::tosec::TOSECToken;
+use crate::naming::tosec::TOSECName;
 use crate::naming::tosec::parsers::do_parse;
 
 use crate::naming::tosec::legacy_parser::tosec_parser;
@@ -19,9 +19,9 @@ impl TOSECNameable for NameInfo {
 /// Tries to parse the name into a vector of tokens.
 /// Tokens will be in the order of appearance in the resulting `Vec`.
 /// Warnings occur before the associated token.
-pub fn try_parse<'a>(input: &str) -> Result<Vec<TOSECToken>> {
+pub fn try_parse(input: &str) -> Result<TOSECName> {
     let (_, value) = do_parse(input, false).map_err(|_| {
         ParseError::BadFileNameError(NamingConvention::TOSEC, input.to_string())
     })?;
-    Ok(value)
+    Ok(value.into())
 }

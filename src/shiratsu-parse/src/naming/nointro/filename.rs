@@ -2,7 +2,7 @@
 use crate::naming::{NameInfo, NamingConvention};
 use crate::error::{ParseError, Result};
 
-use crate::naming::nointro::NoIntroToken;
+use crate::naming::nointro::NoIntroName;
 use crate::naming::nointro::legacy_parser::legacy_parser;
 use crate::naming::nointro::parsers::do_parse;
 
@@ -17,9 +17,9 @@ impl NoIntroNameable for NameInfo {
 }
 
 /// Tries to parse the name into a vector of tokens.
-pub fn try_parse<'a>(input: &str) -> Result<Vec<NoIntroToken>> {
+pub fn try_parse(input: &str) -> Result<NoIntroName> {
     let (_, value) = do_parse(input).map_err(|_| {
         ParseError::BadFileNameError(NamingConvention::NoIntro, input.to_string())
     })?;
-    Ok(value)
+    Ok(value.into())
 }

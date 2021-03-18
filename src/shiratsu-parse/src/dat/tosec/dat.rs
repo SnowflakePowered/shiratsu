@@ -31,7 +31,7 @@ impl TryFrom<Game> for GameEntry {
         let rom = game.rom;
         let name = game.name;
         Ok(GameEntry {
-            info: Some(NameInfo::try_from_tosec(&name).map(|n| n.into())?),
+            info: Some(NameInfo::try_from_tosec(&name)?),
             entry_name: name,
             serials: vec![],
             rom_entries: rom.into_iter().map(|r| r.into()).collect(),

@@ -58,4 +58,16 @@ impl NameInfo {
     }
 }
 
+pub trait ToNameInfo
+{
+    /// Creates a new `NameInfo` object from the name data.
+    fn to_name_info(&self) -> NameInfo;
+}
 
+impl<'a, T> From<T> for NameInfo
+    where T: ToNameInfo
+{
+    fn from(name: T) -> Self {
+        name.to_name_info()
+    }
+}
