@@ -95,6 +95,21 @@ fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken>
         Ok((input, (tag, major, minor, None, None)))
     }
 
+    fn parse_single_prefixed_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
+                                                                    Option<&str>, Option<Vec<&str>>)>
+    {
+        let (input, ver) = tag("v")(input)?;
+
+        let (input, major) = digit1(input)?;
+        let (input, minor) = opt(preceded(char('.'),
+                                          take_while(|c: char| c.is_alphanumeric()
+                                              || c == '.' || c == '-')))(input)?;
+        let (input, suffix) =
+            opt(preceded(char(' '), tag("Alt")))(input)?;
+
+        Ok((input,(ver.trim(), major, minor, None, suffix.map(|x| vec![x]))))
+    }
+
     fn parse_unprefixed_dot_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
                                                                    Option<&str>, Option<Vec<&str>>)>
     {
@@ -158,21 +173,6 @@ fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken>
         }
 
         Ok((input,(ver.trim(), major, minor, None, Some(suffixes))))
-    }
-
-    fn parse_single_prefixed_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>,
-                                                                    Option<&str>, Option<Vec<&str>>)>
-    {
-        let (input, ver) = tag("v")(input)?;
-
-        let (input, major) = digit1(input)?;
-        let (input, minor) = opt(preceded(char('.'),
-                                          take_while(|c: char| c.is_alphanumeric()
-                                              || c == '.' || c == '-')))(input)?;
-        let (input, suffix) =
-            opt(preceded(char(' '), tag("Alt")))(input)?;
-
-        Ok((input,(ver.trim(), major, minor, None, suffix.map(|x| vec![x]))))
     }
 
     fn parse_playstation_version(input: &str) -> IResult<&str, (&str, &str, Option<&str>,

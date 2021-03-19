@@ -34,7 +34,7 @@ fn parse_goodtools_region_tag(input: &str) -> IResult<&str, Vec<TOSECToken>>
 {
     let (input, region_inner) = in_parens(is_not(")"))(input)?;
     let (_, regions) = parse_goodtools_region(region_inner)?;
-    Ok((input, vec![TOSECToken::Warning(TOSECParseWarning::GoodToolsRegionCode(region_inner)),
+    Ok((input, vec![TOSECToken::Warning(TOSECWarn::GoodToolsRegionCode(region_inner)),
                     TOSECToken::Region(vec![region_inner], regions)]))
 }
 
@@ -83,7 +83,7 @@ fn parse_devstatus(input: &str) -> IResult<&str, Vec<TOSECToken>>
         tag("Pre-Release"),
         tag("Proto"),
         tag("Prototype")
-        )).map(|c| Ok(vec![TOSECToken::Warning(TOSECParseWarning::MalformedDevelopmentStatus(c)),
+        )).map(|c| Ok(vec![TOSECToken::Warning(TOSECWarn::MalformedDevelopmentStatus(c)),
                            TOSECToken::Development(c)]));
 
     let (input, known) = alt((known, malformed))(input)?;
@@ -113,7 +113,7 @@ fn parse_date(input: &str) -> IResult<&str, Vec<TOSECToken>>
         let (_, datestr) = take(8usize)(orig_input)?;
 
         Ok((input, vec![
-            TOSECToken::Warning(TOSECParseWarning::UndelimitedDate(datestr)),
+            TOSECToken::Warning(TOSECWarn::UndelimitedDate(datestr)),
             TOSECToken::Date(year, Some(month), Some(day))
         ]))
     }
@@ -141,14 +141,14 @@ fn parse_date(input: &str) -> IResult<&str, Vec<TOSECToken>>
 
     if year.contains("X")
     {
-        parses.push(TOSECToken::Warning(TOSECParseWarning::MalformedDatePlaceholder(year)));
+        parses.push(TOSECToken::Warning(TOSECWarn::MalformedDatePlaceholder(year)));
     }
 
     if let Some(month) = month
     {
         if month.contains("X")
         {
-            parses.push(TOSECToken::Warning(TOSECParseWarning::MalformedDatePlaceholder(month)));
+            parses.push(TOSECToken::Warning(TOSECWarn::MalformedDatePlaceholder(month)));
         }
     }
 
@@ -156,7 +156,7 @@ fn parse_date(input: &str) -> IResult<&str, Vec<TOSECToken>>
     {
         if day.contains("X")
         {
-            parses.push(TOSECToken::Warning(TOSECParseWarning::MalformedDatePlaceholder(day)));
+            parses.push(TOSECToken::Warning(TOSECWarn::MalformedDatePlaceholder(day)));
         }
     }
 
@@ -325,6 +325,15 @@ fn parse_additional_tag(input: &str) -> IResult<&str, TOSECToken>
     Ok((input, TOSECToken::Flag(FlagType::Bracketed, add_tag)))
 }
 
+fn parse_version_tag(input: &str) -> IResult<&str, Vec<TOSECToken>>
+{
+    let (input, version) = in_parens(parse_version_string)(input)?;
+    Ok((input, vec![
+        TOSECToken::Warning(TOSECWarn::VersionInFlag),
+        version
+    ]))
+}
+
 fn parse_version_string(input: &str) -> IResult<&str, TOSECToken>
 {
     fn parse_revision(input: &str) -> IResult<&str, TOSECToken>
@@ -381,7 +390,7 @@ fn parse_title_demo_date_happy(input: &str) -> IResult<&str, Vec<TOSECToken>>
                 .map(|c| {
                     match c {
                         Some(_) => None,
-                        None => Some(TOSECToken::Warning(TOSECParseWarning::MissingSpace))
+                        None => Some(TOSECToken::Warning(TOSECWarn::MissingSpace))
                     }
                 }),
 
@@ -428,14 +437,14 @@ fn parse_title_degenerate_path(input: &str) -> IResult<&str, Vec<TOSECToken>>
     // 'pretend' bad date was discovered after title.
     // this means the associated token for 'Missing Date'
     // is publisher.
-    vecs.push(TOSECToken::Warning(TOSECParseWarning::MissingDate));
+    vecs.push(TOSECToken::Warning(TOSECWarn::MissingDate));
     Ok((input, vecs))
 }
 
 fn parse_zzz_unk(input: &str) -> IResult<&str, TOSECToken>
 {
     let (input, _) = tag("ZZZ-UNK-")(input)?;
-    Ok((input, TOSECToken::Warning(TOSECParseWarning::ZZZUnknown)))
+    Ok((input, TOSECToken::Warning(TOSECWarn::ZZZUnknown)))
 }
 
 fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
@@ -458,8 +467,8 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
             parse_title_degenerate_path
     ))(input).or(Ok(("", vec![
         TOSECToken::Title(input),
-        TOSECToken::Warning(TOSECParseWarning::MissingDate),
-        TOSECToken::Warning(TOSECParseWarning::MissingPublisher)
+        TOSECToken::Warning(TOSECWarn::MissingDate),
+        TOSECToken::Warning(TOSECWarn::MissingPublisher)
     ])))?;
 
     match tokens.first()
@@ -478,13 +487,13 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
                 tokens[0] = title; // replace title.
                 tokens.insert(1, TOSECToken::Publisher(publisher));
                 tokens.insert(1,
-                              TOSECToken::Warning(TOSECParseWarning::ByPublisher));
+                              TOSECToken::Warning(TOSECWarn::ByPublisher));
                 tokens.insert(1,
-                              TOSECToken::Warning(TOSECParseWarning::PublisherBeforeDate));
+                              TOSECToken::Warning(TOSECWarn::PublisherBeforeDate));
                 input
             }
             else if let Ok((input, (_, publisher))) = parse_by_publisher(input) {
-                tokens.push(TOSECToken::Warning(TOSECParseWarning::ByPublisher));
+                tokens.push(TOSECToken::Warning(TOSECWarn::ByPublisher));
                 tokens.push(publisher);
                 input
             }
@@ -492,8 +501,8 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
             {
                 if input == "" {
                     match tokens.last() {
-                        Some(TOSECToken::Warning(TOSECParseWarning::MissingPublisher)) => {},
-                        Some(_) => tokens.push(TOSECToken::Warning(TOSECParseWarning::MissingPublisher)),
+                        Some(TOSECToken::Warning(TOSECWarn::MissingPublisher)) => {},
+                        Some(_) => tokens.push(TOSECToken::Warning(TOSECWarn::MissingPublisher)),
                         None => unreachable!()
                     }
                 }
@@ -510,7 +519,7 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
     // TOSEC Warn: space may occur between date and publisher
     let (input, space) = opt(char(' '))(input)?;
     if let Some(_) = space {
-        tokens.push(TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace))
+        tokens.push(TOSECToken::Warning(TOSECWarn::UnexpectedSpace))
     }
 
     // check if next parens tag is not known tag such as region or copyright
@@ -525,9 +534,10 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
                         |c| vec![c]),
                     parse_devstatus_tag,
                     parse_goodtools_region_tag,
+                    parse_version_tag,
     )))(input)
     {
-        if let Some(TOSECToken::Warning(TOSECParseWarning::MissingPublisher)) = tokens.last() {
+        if let Some(TOSECToken::Warning(TOSECWarn::MissingPublisher)) = tokens.last() {
             input
         } else {
             // publisher is otherwise required...
@@ -539,7 +549,7 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
         // If no publisher was previously parsed...
         if !tokens.iter().any(|c|
                 match c { TOSECToken::Publisher(_) => true, _ => false }) {
-            tokens.push(TOSECToken::Warning(TOSECParseWarning::MissingPublisher));
+            tokens.push(TOSECToken::Warning(TOSECWarn::MissingPublisher));
         }
         input
     };
@@ -558,13 +568,14 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
                     |c| vec![c]),
                     parse_goodtools_region_tag,
                     parse_devstatus_tag,
+                    parse_version_tag,
                  map(parse_parens_tag, |t| vec![t])
             ))))(input)?;
 
     // TOSEC Warn: Space may occur between flags
     for (space, mut flag) in flags {
         if let Some(_) = space {
-            tokens.push(TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace));
+            tokens.push(TOSECToken::Warning(TOSECWarn::UnexpectedSpace));
         }
         tokens.append(&mut flag)
     }
@@ -575,7 +586,7 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
             // TOSEC Warn: space may occur between flags
             let (input, space) = opt(char(' '))(input?)?;
             if let Some(_) = space {
-                tokens.push(TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace))
+                tokens.push(TOSECToken::Warning(TOSECWarn::UnexpectedSpace))
             }
             let (input, info) = opt(parse_dumpinfo_tag(tag))(input)?;
             if let Some(info) =  info {
@@ -592,7 +603,7 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
 
     for (space, flag) in rest {
         if let Some(_) = space {
-            tokens.push(TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace));
+            tokens.push(TOSECToken::Warning(TOSECWarn::UnexpectedSpace));
         }
         tokens.push(flag)
     }
@@ -606,7 +617,7 @@ pub(crate) fn do_parse(input: &str) -> IResult<&str, Vec<TOSECToken>>
     match input {
         "" => Ok((input, tokens)),
         rest => {
-            tokens.push(TOSECToken::Warning(TOSECParseWarning::NotEof(rest)));
+            tokens.push(TOSECToken::Warning(TOSECWarn::NotEof(rest)));
             Ok((input, tokens))
         }
     }
@@ -624,25 +635,98 @@ mod test
     // todo: ZZZ-UNK-Befok#Packraw (20021012) by Jum Hig (PD)
     // ZZZ-UNK-Alien vs Predator (U) (Beta)
     #[test]
-    fn test_by_publisher_after_date()
+    fn test_zzz_unks()
     {
-        // ZZZ-UNK-Tron 6 fun v0.15
-        println!("{:?}", do_parse("ZZZ-UNK-Tron 6 fun v0.15").unwrap());
+        assert_eq!(do_parse("ZZZ-UNK-Space Lock (Rev 20040529)(Beta)"),
+                   Ok(("",
+                       vec![
+                           TOSECToken::Warning(TOSECWarn::ZZZUnknown),
+                           TOSECToken::Title("Space Lock"),
+                           TOSECToken::Warning(TOSECWarn::MissingDate),
+                           TOSECToken::Warning(TOSECWarn::MissingPublisher),
+                           TOSECToken::Warning(TOSECWarn::VersionInFlag),
+                           TOSECToken::Version(("Rev", "20040529", None, None, None)),
+                           TOSECToken::Warning(TOSECWarn::MalformedDevelopmentStatus("Beta")),
+                           TOSECToken::Development("Beta")
+                       ]
+                   ))
+        );
 
-        println!("{:?}", do_parse("ZZZ-UNK-Poker Game 512 (2005-06-20)").unwrap());
-        println!("{:?}", do_parse("ZZZ-UNK-rapide_racer [lyx]").unwrap());
+        assert_eq!(do_parse("ZZZ-UNK-Loopz (U) (Beta) (v0.06)"),
+            Ok(("", vec![
+                TOSECToken::Warning(TOSECWarn::ZZZUnknown),
+                TOSECToken::Title("Loopz"),
+                TOSECToken::Warning(TOSECWarn::MissingDate),
+                TOSECToken::Warning(TOSECWarn::MissingPublisher),
+                TOSECToken::Warning(TOSECWarn::GoodToolsRegionCode("U")),
+                TOSECToken::Region(vec!["U"], vec![Region::UnitedStates]),
+                TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
+                TOSECToken::Warning(TOSECWarn::MalformedDevelopmentStatus("Beta")),
+                TOSECToken::Development("Beta"),
+                TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
+                TOSECToken::Warning(TOSECWarn::VersionInFlag),
+                TOSECToken::Version(("v", "0", Some("06"), None, None))])
+        ));
 
-        let x = do_parse("ZZZ-UNK-Befok#Packraw (20021012) by Jum Hig (PD)");
-        println!("{:?}", x.unwrap());
+        assert_eq!(do_parse("ZZZ-UNK-Tron 6 fun v0.15"),
+        Ok(("",
+            vec![
+                TOSECToken::Warning(TOSECWarn::ZZZUnknown),
+                TOSECToken::Title("Tron 6 fun"),
+                TOSECToken::Version(("v", "0", Some("15"), None, None)),
+                TOSECToken::Warning(TOSECWarn::MissingDate),
+                TOSECToken::Warning(TOSECWarn::MissingPublisher)])
+        ));
 
-        println!("{:?}", do_parse("Air-Sea Battle (1977)(Atari)(PAL)[aka Target Fun (Anti-Aircraft)][CX2602]").unwrap())
+        assert_eq!(
+            do_parse("ZZZ-UNK-Poker Game 512 (2005-06-20)"),
+            Ok(("",
+                vec![
+                    TOSECToken::Warning(TOSECWarn::ZZZUnknown),
+                    TOSECToken::Title("Poker Game 512"),
+                    TOSECToken::Date("2005", Some("06"), Some("20")),
+                    TOSECToken::Warning(TOSECWarn::MissingPublisher)])
+            )
+        );
 
+        assert_eq!(
+            do_parse("ZZZ-UNK-rapide_racer [lyx]"),
+            Ok(("",
+                vec![
+                    TOSECToken::Warning(TOSECWarn::ZZZUnknown),
+                    TOSECToken::Title("rapide_racer"),
+                    TOSECToken::Warning(TOSECWarn::MissingDate),
+                    TOSECToken::Warning(TOSECWarn::MissingPublisher),
+                    TOSECToken::Flag(FlagType::Bracketed, "lyx")])
+            )
+        );
+
+        assert_eq!(
+            do_parse("ZZZ-UNK-Befok#Packraw (20021012) by Jum Hig (PD)"),
+            Ok(("", vec![
+                TOSECToken::Warning(TOSECWarn::ZZZUnknown),
+                TOSECToken::Title("Befok#Packraw"),
+                TOSECToken::Warning(TOSECWarn::UndelimitedDate("20021012")),
+                TOSECToken::Date("2002", Some("10"), Some("12")),
+                TOSECToken::Warning(TOSECWarn::ByPublisher),
+                TOSECToken::Publisher(Some(vec!["Jum Hig"])),
+                TOSECToken::Copyright("PD")])
+            ));
     }
 
     #[test]
     fn test_missing_publish_once()
     {
-        println!("{:?}", do_parse("ZZZ-UNK-ATARI").unwrap());
+        assert_eq!(do_parse("ZZZ-UNK-ATARI"),
+                   Ok(("",
+                       vec![
+                           TOSECToken::Warning(TOSECWarn::ZZZUnknown),
+                           TOSECToken::Title("ATARI"),
+                           TOSECToken::Warning(TOSECWarn::MissingDate),
+                           TOSECToken::Warning(TOSECWarn::MissingPublisher),
+                       ]
+                   ))
+        )
     }
 
     #[test]
@@ -651,14 +735,14 @@ mod test
         assert_eq!(do_parse("ZZZ-UNK-Alien vs Predator (U) (Beta)"),
                    Ok(("",
                        vec![
-                           TOSECToken::Warning(TOSECParseWarning::ZZZUnknown),
+                           TOSECToken::Warning(TOSECWarn::ZZZUnknown),
                            TOSECToken::Title("Alien vs Predator"),
-                           TOSECToken::Warning(TOSECParseWarning::MissingDate),
-                           TOSECToken::Warning(TOSECParseWarning::MissingPublisher),
-                           TOSECToken::Warning(TOSECParseWarning::GoodToolsRegionCode("U")),
+                           TOSECToken::Warning(TOSECWarn::MissingDate),
+                           TOSECToken::Warning(TOSECWarn::MissingPublisher),
+                           TOSECToken::Warning(TOSECWarn::GoodToolsRegionCode("U")),
                            TOSECToken::Region(vec!["U"], vec![Region::UnitedStates]),
-                           TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace),
-                           TOSECToken::Warning(TOSECParseWarning::MalformedDevelopmentStatus("Beta")),
+                           TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
+                           TOSECToken::Warning(TOSECWarn::MalformedDevelopmentStatus("Beta")),
                            TOSECToken::Development("Beta")
                        ]
                    ))
@@ -673,13 +757,13 @@ mod test
             do_parse("ZZZ-UNK-Micro Font Dumper by Schick, Bastian (199x) (PD)"),
             Ok(("",
                 vec![
-                    TOSECToken::Warning(TOSECParseWarning::ZZZUnknown),
+                    TOSECToken::Warning(TOSECWarn::ZZZUnknown),
                     TOSECToken::Title("Micro Font Dumper"),
-                    TOSECToken::Warning(TOSECParseWarning::PublisherBeforeDate),
-                    TOSECToken::Warning(TOSECParseWarning::ByPublisher),
+                    TOSECToken::Warning(TOSECWarn::PublisherBeforeDate),
+                    TOSECToken::Warning(TOSECWarn::ByPublisher),
                     TOSECToken::Publisher(Some(vec!["Schick, Bastian"])),
                     TOSECToken::Date("199x", None, None),
-                    TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace),
+                    TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
                     TOSECToken::Copyright("PD")
                 ]
             ))
@@ -689,13 +773,13 @@ mod test
             do_parse("ZZZ-UNK-Clicks! (test) by Domin, Matthias (2001) (PD)"),
             Ok(("",
                 vec![
-                    TOSECToken::Warning(TOSECParseWarning::ZZZUnknown),
+                    TOSECToken::Warning(TOSECWarn::ZZZUnknown),
                     TOSECToken::Title("Clicks! (test)"),
-                    TOSECToken::Warning(TOSECParseWarning::PublisherBeforeDate),
-                    TOSECToken::Warning(TOSECParseWarning::ByPublisher),
+                    TOSECToken::Warning(TOSECWarn::PublisherBeforeDate),
+                    TOSECToken::Warning(TOSECWarn::ByPublisher),
                     TOSECToken::Publisher(Some(vec!["Domin, Matthias"])),
                     TOSECToken::Date("2001", None, None),
-                    TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace),
+                    TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
                     TOSECToken::Copyright("PD")
                 ]
             ))
@@ -709,9 +793,9 @@ mod test
             do_parse("ZZZ-UNK-Befok#Packraw (20021012)(Jum Hig)"),
             Ok(("",
                 vec![
-                    TOSECToken::Warning(TOSECParseWarning::ZZZUnknown),
+                    TOSECToken::Warning(TOSECWarn::ZZZUnknown),
                     TOSECToken::Title("Befok#Packraw"),
-                    TOSECToken::Warning(TOSECParseWarning::UndelimitedDate("20021012")),
+                    TOSECToken::Warning(TOSECWarn::UndelimitedDate("20021012")),
                     TOSECToken::Date("2002", Some("10"), Some("12")),
                     TOSECToken::Publisher(Some(vec!["Jum Hig"])),
                 ]
@@ -742,12 +826,12 @@ mod test
             do_parse("ZZZ-UNK-Show King Tut (1996) (Schick, Bastian) [a]"),
             Ok(("",
                 vec![
-                    TOSECToken::Warning(TOSECParseWarning::ZZZUnknown),
+                    TOSECToken::Warning(TOSECWarn::ZZZUnknown),
                     TOSECToken::Title("Show King Tut"),
                     TOSECToken::Date("1996", None, None),
-                    TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace),
+                    TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
                     TOSECToken::Publisher(Some(vec!["Schick, Bastian"])),
-                    TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace),
+                    TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
                     TOSECToken::DumpInfo("a", None, None)
                 ]
             ))
@@ -761,7 +845,7 @@ mod test
             do_parse("ZZZ-UNK-UNK But Ok (199x)(-)"),
             Ok(("",
                 vec![
-                    TOSECToken::Warning(TOSECParseWarning::ZZZUnknown),
+                    TOSECToken::Warning(TOSECWarn::ZZZUnknown),
                     TOSECToken::Title("UNK But Ok"),
                     TOSECToken::Date("199x", None, None),
                     TOSECToken::Publisher(None),
@@ -801,7 +885,7 @@ mod test
                 vec![
                     TOSECToken::Title("2600 Digital Clock - Demo 1"),
                     TOSECToken::Demo(None),
-                    TOSECToken::Warning(TOSECParseWarning::MissingSpace),
+                    TOSECToken::Warning(TOSECWarn::MissingSpace),
                     TOSECToken::Date("1997", Some("10"), Some("03")),
                     TOSECToken::Publisher(Some(vec!["Cracknell, Chris 'Crackers'"])),
                     TOSECToken::Video("NTSC"),
@@ -825,7 +909,7 @@ mod test
                 vec![
                     TOSECToken::Title("Motocross & Pole Position"),
                     TOSECToken::Version(("Rev", "1", None, None, None)),
-                    TOSECToken::Warning(TOSECParseWarning::MissingDate),
+                    TOSECToken::Warning(TOSECWarn::MissingDate),
                     TOSECToken::Publisher(Some(vec!["Starsoft", "JVP"])),
                     TOSECToken::Video("PAL"),
                     TOSECToken::DumpInfo("b", Some("1"), None),
@@ -837,7 +921,7 @@ mod test
             Ok(("",
                 vec![
                     TOSECToken::Title("Motocross & Pole Position"),
-                    TOSECToken::Warning(TOSECParseWarning::MissingDate),
+                    TOSECToken::Warning(TOSECWarn::MissingDate),
                     TOSECToken::Publisher(Some(vec!["Starsoft", "JVP"])),
                     TOSECToken::Video("PAL"),
                     TOSECToken::DumpInfo("b", Some("1"), None),
@@ -849,8 +933,8 @@ mod test
             Ok(("",
                 vec![
                     TOSECToken::Title("Bombsawa (Jumpman Selected levels)"),
-                    TOSECToken::Warning(TOSECParseWarning::MissingSpace),
-                    TOSECToken::Warning(TOSECParseWarning::MalformedDatePlaceholder("19XX")),
+                    TOSECToken::Warning(TOSECWarn::MissingSpace),
+                    TOSECToken::Warning(TOSECWarn::MalformedDatePlaceholder("19XX")),
                     TOSECToken::Date("19XX", None, None),
                     TOSECToken::Publisher(None),
                     TOSECToken::Region(vec!["JP"], vec![Region::Japan]),

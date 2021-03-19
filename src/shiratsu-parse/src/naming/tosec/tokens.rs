@@ -33,11 +33,11 @@ pub enum TOSECToken<'a>
     Flag(FlagType, &'a str),
 
     /// A warning occurred
-    Warning(TOSECParseWarning<'a>)
+    Warning(TOSECWarn<'a>)
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum TOSECParseWarning<'a>
+pub enum TOSECWarn<'a>
 {
     ZZZUnknown,
     MalformedDatePlaceholder(&'a str),
@@ -50,6 +50,7 @@ pub enum TOSECParseWarning<'a>
     ByPublisher,
     PublisherBeforeDate,
     GoodToolsRegionCode(&'a str),
+    VersionInFlag,
     NotEof(&'a str)
 }
 
