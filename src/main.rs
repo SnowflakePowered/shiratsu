@@ -34,7 +34,7 @@ use lazy_static_include::*;
 
 use glob::glob_with;
 use glob::MatchOptions;
-use shiratsu_parse::naming::ToNameInfo;
+use shiratsu_parse::naming::{ToNameInfo, NamingConvention};
 
 type ParseResult<T> = std::result::Result<T, ParseError>;
 
@@ -296,36 +296,23 @@ fn compare<F>(event_fn: F) -> Result<()>
                                 &root,
                             ));
 
-
                             let old_name = game.entry_name();
                             if let Ok(res) = shiratsu_parse::naming::tosec::try_parse(old_name)
                             {
-                                let info = res.to_name_info();
-                                if Some(&info) != game.info()
-                                {
-                                    if let Some(game) = game.info() {
-                                        if info.version() != None && game.version() == None {
-                                            continue;
-                                        }
-                                    }
-                                    eprintln!("========DIFF===========");
-                                    eprintln!("{}", old_name);
-                                    eprintln!("========LEFT===========");
-                                    eprintln!("{:?}", Some(info));
-                                    eprintln!("========RIGHT===========");
-                                    eprintln!("{:?}", game.info());
-                                    eprintln!();
-                                }
-
                                 if res.has_warnings() {
-                                    for warn in res.warnings() {
-                                        eprintln!("{:?}", warn);
-                                    }
+                                    eprintln!("{}", old_name);
+                                    eprintln!("{:?}", res);
                                 }
                             }
-                            else
+                        }
+                        Err(ParseError::BadFileNameError(NamingConvention::TOSEC, name)) => {
+                            if let Ok(res) = shiratsu_parse::naming::tosec::try_parse(name)
                             {
-                                println!("NEW PARSER FAILED TO PARSE {}", old_name);
+                                eprintln!("NAMERRROR=====");
+                                if res.has_warnings() {
+                                    eprintln!("{}", name);
+                                    eprintln!("{:?}", res);
+                                }
                             }
                         }
                         Err(err) => parse_errors.push(Event::ParseEntryError(err, &root)),

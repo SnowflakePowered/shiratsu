@@ -414,7 +414,7 @@ fn parse_title_degenerate_path(input: &str) -> IResult<&str, Vec<TOSECToken>>
     let (input, (title, version)) = take_up_to(
         alt((
             preceded(char(' '), parse_version_string).map(|t| Some(t)),
-            peek(char('(')).map(|_| None)))
+            peek(alt((char('('), char('[')))).map(|_| None)))
     )(input)?;
 
     // Need to discard a space just in case we go to the version part
@@ -450,14 +450,17 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
     }
 
     // TOSEC Warn: Filename may begin with ZZZ-UNK-
-    // ZZZ-UNK files need a totally separate parser to handle v0 names...
     let (input, zzz) = opt(parse_zzz_unk)(input)?;
 
     let (input, mut tokens) = alt((
             parse_title_demo_date_happy,
             // TOSEC Warn: degenerate path without date
             parse_title_degenerate_path
-    ))(input)?;
+    ))(input).or(Ok(("", vec![
+        TOSECToken::Title(input),
+        TOSECToken::Warning(TOSECParseWarning::MissingDate),
+        TOSECToken::Warning(TOSECParseWarning::MissingPublisher)
+    ])))?;
 
     match tokens.first()
     {
@@ -484,7 +487,18 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
                 tokens.push(TOSECToken::Warning(TOSECParseWarning::ByPublisher));
                 tokens.push(publisher);
                 input
-            } else { input }
+            }
+            else
+            {
+                if input == "" {
+                    match tokens.last() {
+                        Some(TOSECToken::Warning(TOSECParseWarning::MissingPublisher)) => {},
+                        Some(_) => tokens.push(TOSECToken::Warning(TOSECParseWarning::MissingPublisher)),
+                        None => unreachable!()
+                    }
+                }
+                input
+            }
         } else { input };
 
         // warning comes before the associated token.
@@ -506,16 +520,21 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
                         parse_language_tag,
                         parse_video_tag,
                         parse_copyright_tag,
-                        parse_media_tag)),
+                        parse_media_tag,
+                        parse_additional_tag)),
                         |c| vec![c]),
                     parse_devstatus_tag,
                     parse_goodtools_region_tag,
     )))(input)
     {
-        // publisher is otherwise required...
-        let (input, publisher) = parse_publisher_tag(input)?;
-        tokens.push(publisher);
-        input
+        if let Some(TOSECToken::Warning(TOSECParseWarning::MissingPublisher)) = tokens.last() {
+            input
+        } else {
+            // publisher is otherwise required...
+            let (input, publisher) = parse_publisher_tag(input)?;
+            tokens.push(publisher);
+            input
+        }
     } else {
         // If no publisher was previously parsed...
         if !tokens.iter().any(|c|
@@ -607,6 +626,12 @@ mod test
     #[test]
     fn test_by_publisher_after_date()
     {
+        // ZZZ-UNK-Tron 6 fun v0.15
+        println!("{:?}", do_parse("ZZZ-UNK-Tron 6 fun v0.15").unwrap());
+
+        println!("{:?}", do_parse("ZZZ-UNK-Poker Game 512 (2005-06-20)").unwrap());
+        println!("{:?}", do_parse("ZZZ-UNK-rapide_racer [lyx]").unwrap());
+
         let x = do_parse("ZZZ-UNK-Befok#Packraw (20021012) by Jum Hig (PD)");
         println!("{:?}", x.unwrap());
 
@@ -614,11 +639,30 @@ mod test
 
     }
 
+    #[test]
+    fn test_missing_publish_once()
+    {
+        println!("{:?}", do_parse("ZZZ-UNK-ATARI").unwrap());
+    }
 
     #[test]
-    fn test_alien()
+    fn test_ambiguous_version()
     {
-        println!("{:?}", do_parse("ZZZ-UNK-Alien vs Predator (U) (Beta)").unwrap())
+        assert_eq!(do_parse("ZZZ-UNK-Alien vs Predator (U) (Beta)"),
+                   Ok(("",
+                       vec![
+                           TOSECToken::Warning(TOSECParseWarning::ZZZUnknown),
+                           TOSECToken::Title("Alien vs Predator"),
+                           TOSECToken::Warning(TOSECParseWarning::MissingDate),
+                           TOSECToken::Warning(TOSECParseWarning::MissingPublisher),
+                           TOSECToken::Warning(TOSECParseWarning::GoodToolsRegionCode("U")),
+                           TOSECToken::Region(vec!["U"], vec![Region::UnitedStates]),
+                           TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace),
+                           TOSECToken::Warning(TOSECParseWarning::MalformedDevelopmentStatus("Beta")),
+                           TOSECToken::Development("Beta")
+                       ]
+                   ))
+        )
     }
 
 
@@ -630,15 +674,13 @@ mod test
             Ok(("",
                 vec![
                     TOSECToken::Warning(TOSECParseWarning::ZZZUnknown),
-                    TOSECToken::Title("Clicks! (test)"),
+                    TOSECToken::Title("Micro Font Dumper"),
                     TOSECToken::Warning(TOSECParseWarning::PublisherBeforeDate),
                     TOSECToken::Warning(TOSECParseWarning::ByPublisher),
-                    TOSECToken::Publisher(Some(vec!["Domin, Matthias"])),
-                    TOSECToken::Date("2001", None, None),
+                    TOSECToken::Publisher(Some(vec!["Schick, Bastian"])),
+                    TOSECToken::Date("199x", None, None),
                     TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace),
-
-                    // todo: copyright
-                    TOSECToken::Flag(FlagType::Parenthesized, "PD")
+                    TOSECToken::Copyright("PD")
                 ]
             ))
         );
@@ -654,9 +696,7 @@ mod test
                     TOSECToken::Publisher(Some(vec!["Domin, Matthias"])),
                     TOSECToken::Date("2001", None, None),
                     TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace),
-
-                    // todo: copyright
-                    TOSECToken::Flag(FlagType::Parenthesized, "PD")
+                    TOSECToken::Copyright("PD")
                 ]
             ))
         )
@@ -739,7 +779,7 @@ mod test
                     TOSECToken::Title("Escape from the Mindmaster"),
                     TOSECToken::Date("1982", None, None),
                     TOSECToken::Publisher(Some(vec!["Starpath"])),
-                    TOSECToken::Flag(FlagType::Parenthesized, "PAL"),
+                    TOSECToken::Video("PAL"),
                     TOSECToken::Media(vec![("Part", "3", Some("4"))]),
                     TOSECToken::Flag(FlagType::Bracketed, "Supercharger Cassette"),]
             ))
@@ -764,8 +804,8 @@ mod test
                     TOSECToken::Warning(TOSECParseWarning::MissingSpace),
                     TOSECToken::Date("1997", Some("10"), Some("03")),
                     TOSECToken::Publisher(Some(vec!["Cracknell, Chris 'Crackers'"])),
-                    TOSECToken::Flag(FlagType::Parenthesized, "NTSC"),
-                    TOSECToken::Flag(FlagType::Parenthesized, "PD"),
+                    TOSECToken::Video("NTSC"),
+                    TOSECToken::Copyright("PD"),
                 ]
             )));
         assert_eq!(
@@ -787,7 +827,7 @@ mod test
                     TOSECToken::Version(("Rev", "1", None, None, None)),
                     TOSECToken::Warning(TOSECParseWarning::MissingDate),
                     TOSECToken::Publisher(Some(vec!["Starsoft", "JVP"])),
-                    TOSECToken::Flag(FlagType::Parenthesized, "PAL"),
+                    TOSECToken::Video("PAL"),
                     TOSECToken::DumpInfo("b", Some("1"), None),
                     TOSECToken::Flag(FlagType::Bracketed, "possible unknown mode"),
                 ]))
@@ -799,7 +839,7 @@ mod test
                     TOSECToken::Title("Motocross & Pole Position"),
                     TOSECToken::Warning(TOSECParseWarning::MissingDate),
                     TOSECToken::Publisher(Some(vec!["Starsoft", "JVP"])),
-                    TOSECToken::Flag(FlagType::Parenthesized, "PAL"),
+                    TOSECToken::Video("PAL"),
                     TOSECToken::DumpInfo("b", Some("1"), None),
                     TOSECToken::Flag(FlagType::Bracketed, "possible unknown mode"),
                 ]))
@@ -815,7 +855,7 @@ mod test
                     TOSECToken::Publisher(None),
                     TOSECToken::Region(vec!["JP"], vec![Region::Japan]),
                     TOSECToken::Languages(TOSECLanguage::Single("ja")),
-                    TOSECToken::Flag(FlagType::Parenthesized, "PD"),
+                    TOSECToken::Copyright("PD"),
                     TOSECToken::DumpInfo("cr", Some("3"), Some("+test")),
                     TOSECToken::DumpInfo("h", None, None),
                     TOSECToken::Flag(FlagType::Bracketed, "test flag"),
@@ -828,7 +868,7 @@ mod test
                     TOSECToken::Title("Xevious"),
                     TOSECToken::Date("1983", None, None),
                     TOSECToken::Publisher(Some(vec!["CCE"])),
-                    TOSECToken::Flag(FlagType::Parenthesized, "NTSC"),
+                    TOSECToken::Video("NTSC"),
                     TOSECToken::Region(vec!["BR"], vec![Region::Brazil]),]
             ))
         );
@@ -928,7 +968,7 @@ mod test
     {
         assert_eq!(parse_region_tag("(US)"), Ok(("", TOSECToken::Region(vec!["US"],
                                                                         vec![Region::UnitedStates]))));
-        assert_eq!(parse_region_tag("(US-ZZ)"), Ok(("", TOSECToken::Region(vec!["US"],
+        assert_eq!(parse_region_tag("(US-ZZ)"), Ok(("", TOSECToken::Region(vec!["US", "ZZ"],
                                                                            vec![Region::UnitedStates, Region::Unknown]))));
     }
 
