@@ -317,7 +317,7 @@ fn parse_parens_tag(input: &str) -> IResult<&str, TOSECToken>
     Ok((input, TOSECToken::Flag(FlagType::Parenthesized, add_tag)))
 }
 
-fn parse_additional_tag(input: &str) -> IResult<&str, TOSECToken>
+fn parse_moreinfo_tag(input: &str) -> IResult<&str, TOSECToken>
 {
     let (input, _) = tag("[")(input)?;
     let (input, add_tag) = take_till1(|c: char| c == ']')(input)?;
@@ -474,12 +474,15 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
             parse_title_demo_date_happy,
             // TOSEC Warn: degenerate path without date
             parse_title_degenerate_path
-    ))(input).or(Ok(("", vec![
-        TOSECToken::Title(input),
-        TOSECToken::Warning(TOSECWarn::MissingDate),
-        TOSECToken::Warning(TOSECWarn::MissingPublisher)
-    ])))?;
+    ))(input).or( // This means we have title only.
+                  // We need to keep this around to check for by-publisher if this is a ZZZ-UNK-
+        Ok(("", vec![
+            TOSECToken::Title(input),
+            TOSECToken::Warning(TOSECWarn::MissingDate),
+            TOSECToken::Warning(TOSECWarn::MissingPublisher)
+        ])))?;
 
+    // Error checking for the next part to prevent panic
     match tokens.first()
     {
         Some(&TOSECToken::Title(_)) => {},
@@ -487,43 +490,47 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
             nom::error::Error::from_error_kind(input, ErrorKind::Tag)))
     }
 
-    let input = if let Some(zzz) = zzz
-    {
-        let input = if let Some(&TOSECToken::Title(title)) = tokens.first()
-        {
-            if let Ok((_, (title,
-                    TOSECToken::Publisher(publisher)))) = parse_by_publisher(title) {
-                tokens[0] = title; // replace title.
-                tokens.insert(1, TOSECToken::Publisher(publisher));
-                tokens.insert(1,
-                              TOSECToken::Warning(TOSECWarn::ByPublisher));
-                tokens.insert(1,
-                              TOSECToken::Warning(TOSECWarn::PublisherBeforeDate));
-                input
-            }
-            else if let Ok((input, (_, publisher))) = parse_by_publisher(input) {
-                tokens.push(TOSECToken::Warning(TOSECWarn::ByPublisher));
-                tokens.push(publisher);
-                input
-            }
-            else
-            {
-                if input == "" {
-                    match tokens.last() {
-                        Some(TOSECToken::Warning(TOSECWarn::MissingPublisher)) => {},
-                        Some(_) => tokens.push(TOSECToken::Warning(TOSECWarn::MissingPublisher)),
-                        None => unreachable!()
+    let input = match zzz {
+        None => input,
+        Some(zzz) => {
+            /// ZZZ-UNK triggers special path for old-style by-publisher
+            let input = match tokens.first() {
+                Some(&TOSECToken::Title(title)) => {
+                    if let Ok((_, (title,
+                        TOSECToken::Publisher(publisher)))) = parse_by_publisher(title)
+                    {
+                        tokens[0] = title; // replace title.
+                        tokens.insert(1, TOSECToken::Publisher(publisher));
+                        tokens.insert(1,
+                                      TOSECToken::Warning(TOSECWarn::ByPublisher));
+                        tokens.insert(1,
+                                      TOSECToken::Warning(TOSECWarn::PublisherBeforeDate));
+                        input
+                    }
+                    else if let Ok((input, (_, publisher))) = parse_by_publisher(input)
+                    {
+                        tokens.push(TOSECToken::Warning(TOSECWarn::ByPublisher));
+                        tokens.push(publisher);
+                        input
+                    }
+                    else
+                    {
+                        if input == "" {
+                            match tokens.last() {
+                                Some(TOSECToken::Warning(TOSECWarn::MissingPublisher)) => {},
+                                Some(_) => tokens.push(TOSECToken::Warning(TOSECWarn::MissingPublisher)),
+                                None => unreachable!()
+                            }
+                        }
+                        input
                     }
                 }
-                input
-            }
-        } else { input };
-
-        // warning comes before the associated token.
-        tokens.insert(0, zzz);
-        input
-    }
-    else { input };
+                _ => input
+            };
+            tokens.insert(0, zzz);
+            input
+        }
+    };
 
     // TOSEC Warn: space may occur between date and publisher
     let (input, space) = opt(parse_unexpected_space)(input)?;
@@ -532,20 +539,15 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
     }
 
     // check if next parens tag is not known tag such as region or copyright
-    let input = if let Err(_) = peek(alt((
-                    map(alt((
-                        parse_region_tag,
-                        parse_language_tag,
-                        parse_video_tag,
-                        parse_copyright_tag,
-                        parse_media_tag,
-                        parse_additional_tag)),
-                        |c| vec![c]),
-                    parse_devstatus_tag,
-                    parse_goodtools_region_tag,
-                    parse_version_tag,
-    )))(input)
+    // if so then we are missing publisher.
+    // todo: may want to only trigger this behavaiour on ZZZ?
+    let input = if let Err(_) = peek(alt(
+        (
+            parse_known_flags,
+            map(parse_moreinfo_tag, |c| vec![c])
+        )))(input)
     {
+        // We've already established that there is no publisher.
         if let Some(TOSECToken::Warning(TOSECWarn::MissingPublisher)) = tokens.last() {
             input
         } else {
@@ -563,20 +565,14 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
         input
     };
 
+    // Do other flags now.
     let (input, flags)
         = many0(
         pair(opt(parse_unexpected_space),
              alt((
-                map(alt((
-                    parse_region_tag,
-                    parse_language_tag,
-                    parse_video_tag,
-                    parse_copyright_tag,
-                    parse_media_tag)),
-                    |c| vec![c]),
-                    parse_goodtools_region_tag,
-                    parse_devstatus_tag,
-                    parse_version_tag,
+                 parse_known_flags,
+                 // parse_parens_tag mainly for system and
+                 // media label tags that are an open class
                  map(parse_parens_tag, |t| vec![t])
             ))))(input)?;
 
@@ -588,7 +584,29 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
         tokens.append(&mut flag)
     }
 
-    let input = &["cr", "f", "h", "m", "p", "t", "tr", "o", "u", "v", "b", "a", "!"]
+    let (input, mut dumpinfos) = parse_collect_dumpinfos(input)?;
+    tokens.append(&mut dumpinfos);
+
+    let (input, rest) = many0(
+        pair(
+            opt(parse_unexpected_space),
+            parse_moreinfo_tag)
+    )(input)?;
+
+    for (space, flag) in rest {
+        if let Some(_) = space {
+            tokens.push(TOSECToken::Warning(TOSECWarn::UnexpectedSpace));
+        }
+        tokens.push(flag)
+    }
+
+    Ok((input, tokens))
+}
+
+fn parse_collect_dumpinfos(input: &str) -> IResult<&str, Vec<TOSECToken>>
+{
+    let mut tokens = Vec::new();
+    let input= &["cr", "f", "h", "m", "p", "t", "tr", "o", "u", "v", "b", "a", "!"]
         .iter()
         .fold(Ok(input), |input, tag|{
             // TOSEC Warn: space may occur between flags
@@ -602,21 +620,24 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
             }
             Ok(input)
         })?;
-
-    let (input, rest) = many0(
-        pair(
-            opt(parse_unexpected_space),
-        parse_additional_tag)
-    )(input)?;
-
-    for (space, flag) in rest {
-        if let Some(_) = space {
-            tokens.push(TOSECToken::Warning(TOSECWarn::UnexpectedSpace));
-        }
-        tokens.push(flag)
-    }
-
     Ok((input, tokens))
+}
+
+fn parse_known_flags(input: &str) -> IResult<&str, Vec<TOSECToken>>
+{
+    let (input, tags) = alt((
+            map(alt((
+                parse_region_tag,
+                parse_language_tag,
+                parse_video_tag,
+                parse_copyright_tag,
+                parse_media_tag)),
+                |c| vec![c]),
+            parse_goodtools_region_tag,
+            parse_devstatus_tag,
+            parse_version_tag
+    ))(input)?;
+    Ok((input, tags))
 }
 
 pub(crate) fn do_parse(input: &str) -> IResult<&str, Vec<TOSECToken>>
@@ -646,16 +667,7 @@ fn do_parse_multiset(input: &str)-> IResult<&str, (Vec<Vec<TOSECToken>>, Vec<TOS
             = many0(
             pair(opt(parse_unexpected_space),
                  alt((
-                     map(alt((
-                         parse_region_tag,
-                         parse_language_tag,
-                         parse_video_tag,
-                         parse_copyright_tag,
-                         parse_media_tag)),
-                         |c| vec![c]),
-                     parse_goodtools_region_tag,
-                     parse_devstatus_tag,
-                     parse_version_tag,
+                     parse_known_flags,
                      map(parse_parens_tag, |t| vec![t])
                  ))))(input)?;
 
@@ -666,25 +678,13 @@ fn do_parse_multiset(input: &str)-> IResult<&str, (Vec<Vec<TOSECToken>>, Vec<TOS
             globals.append(&mut flag)
         }
 
-        let input = &["cr", "f", "h", "m", "p", "t", "tr", "o", "u", "v", "b", "a", "!"]
-            .iter()
-            .fold(Ok(input), |input, tag| {
-                // TOSEC Warn: space may occur between flags
-                let (input, space) = opt(parse_unexpected_space)(input?)?;
-                if let Some(_) = space {
-                    globals.push(TOSECToken::Warning(TOSECWarn::UnexpectedSpace))
-                }
-                let (input, info) = opt(parse_dumpinfo_tag(tag))(input)?;
-                if let Some(info) = info {
-                    globals.push(info);
-                }
-                Ok(input)
-            })?;
+        let (input, mut dumpinfos) = parse_collect_dumpinfos(input)?;
+        globals.append(&mut dumpinfos);
 
         let (input, rest) = many0(
             pair(
                 opt(parse_unexpected_space),
-                parse_additional_tag)
+                parse_moreinfo_tag)
         )(input)?;
 
         for (space, flag) in rest {
