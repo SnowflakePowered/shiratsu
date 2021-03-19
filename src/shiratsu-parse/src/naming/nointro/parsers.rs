@@ -19,9 +19,9 @@ use crate::naming::nointro::tokens::*;
 
 use nom::multi::separated_list0;
 
-fn parse_region(input: &str) -> IResult<&str, Vec<Region>>
+fn parse_region(input: &str) -> IResult<&str, (Vec<&str>, Vec<Region>)>
 {
-    let regions = Region::try_from_nointro_region(input)
+    let regions = Region::try_from_nointro_region_with_strs(input)
         .map_err(|e|
             {
                 match e {
@@ -31,6 +31,7 @@ fn parse_region(input: &str) -> IResult<&str, Vec<Region>>
                     _ => nom::Err::Error(Error::new(input, ErrorKind::Tag))
                 }
             })?;
+    // yes, this is not how nom parsers generally work...
     Ok(("", regions))
 }
 
@@ -38,8 +39,8 @@ fn parse_region_tag(input: &str) -> IResult<&str, NoIntroToken>
 {
     // Hack because we don't want nom to backtrack :|
     let (input, region_inner) = in_parens(is_not(")"))(input)?;
-    let (_, regions) = parse_region(region_inner)?;
-    Ok((input, NoIntroToken::Region(regions)))
+    let (_, (strs, regions)) = parse_region(region_inner)?;
+    Ok((input, NoIntroToken::Region(strs, regions)))
 }
 
 macro_rules! nointro_brackets_flag_parser {
@@ -568,14 +569,18 @@ mod tests
     fn parse_region_test()
     {
         assert_eq!(parse_region("Japan, Europe, Australia, New Zealand"),
-                   Ok(("", vec![Region::Japan, Region::Europe, Region::Australia, Region::NewZealand])));
+                   Ok(("",
+                       (vec!["Japan", "Europe", "Australia", "New Zealand"],
+                        vec![Region::Japan, Region::Europe, Region::Australia, Region::NewZealand]
+                       ))));
     }
 
     #[test]
     fn parse_region_tag_test()
     {
         assert_eq!(parse_region_tag("(Japan, Europe, Australia, New Zealand)"),
-                   Ok(("", NoIntroToken::Region(vec![Region::Japan, Region::Europe, Region::Australia, Region::NewZealand]))));
+                   Ok(("", NoIntroToken::Region(vec!["Japan", "Europe", "Australia", "New Zealand"],
+                                                vec![Region::Japan, Region::Europe, Region::Australia, Region::NewZealand]))));
     }
 
     #[test]

@@ -7,17 +7,19 @@ pub enum TOSECToken<'a>
 {
     Title(&'a str),
     /// A list of parsed regions.
-    Region(Vec<Region>),
+    Region(Vec<&'a str>, Vec<Region>),
 
     Publisher(Option<Vec<&'a str>>),
 
     Demo(Option<&'a str>),
-    /// An unspecified regular flag
-    Flag(FlagType, &'a str),
+
     Version((&'a str, &'a str, Option<&'a str>, Option<&'a str>, Option<Vec<&'a str>>)),
 
     Date(&'a str, Option<&'a str>, Option<&'a str>),
 
+    Video(&'a str),
+    Copyright(&'a str),
+    Development(&'a str),
     DumpInfo(&'a str, Option<&'a str>, Option<&'a str>),
 
     /// Media parts
@@ -26,6 +28,9 @@ pub enum TOSECToken<'a>
 
     /// A vector of language tuples (Code, Variant).
     Languages(TOSECLanguage<'a>),
+
+    /// An unspecified regular flag
+    Flag(FlagType, &'a str),
 
     /// A warning occurred
     Warning(TOSECParseWarning<'a>)
@@ -36,12 +41,15 @@ pub enum TOSECParseWarning<'a>
 {
     ZZZUnknown,
     MalformedDatePlaceholder(&'a str),
+    MalformedDevelopmentStatus(&'a str),
     UndelimitedDate(&'a str),
     MissingDate,
+    MissingPublisher,
     MissingSpace,
     UnexpectedSpace,
     ByPublisher,
     PublisherBeforeDate,
+    GoodToolsRegionCode(&'a str),
     NotEof(&'a str)
 }
 
@@ -101,7 +109,7 @@ impl <'a> ToNameInfo for TOSECName<'a>
                 TOSECToken::Title(title) => {
                     name.entry_title = title.to_string()
                 }
-                TOSECToken::Region(regions) => {
+                TOSECToken::Region(_, regions) => {
                     name.region = regions.clone()
                 }
                 TOSECToken::Media(parts) => {
@@ -131,13 +139,12 @@ impl <'a> ToNameInfo for TOSECName<'a>
                 TOSECToken::Demo(_) => {
                     name.is_demo = true
                 }
-                TOSECToken::Flag(_, "proto") => {
+                TOSECToken::Development("proto")
+                | TOSECToken::Development("Proto")
+                | TOSECToken::Development("Prototype") => {
                     name.status = DevelopmentStatus::Prototype
                 }
-                TOSECToken::Flag(_, "alpha")
-                | TOSECToken::Flag(_, "beta")
-                | TOSECToken::Flag(_, "preview")
-                | TOSECToken::Flag(_, "pre-release") => {
+                TOSECToken::Development(_) => {
                     name.status = DevelopmentStatus::Prerelease
                 }
                 _ => {}

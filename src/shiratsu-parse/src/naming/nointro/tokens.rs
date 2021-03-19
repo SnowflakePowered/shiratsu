@@ -32,7 +32,7 @@ pub enum NoIntroToken<'a>
     Title(&'a str),
 
     /// A list of parsed regions.
-    Region(Vec<Region>),
+    Region(Vec<&'a str>, Vec<Region>),
 
     /// An unspecified regular flag
     Flag(FlagType, &'a str),
@@ -111,7 +111,7 @@ impl <'a> ToNameInfo for NoIntroName<'a>
                     }
                 }
                 NoIntroToken::Part(_, part) => { name.part_number = part.parse::<i32>().ok() }
-                NoIntroToken::Region(region) => { name.region = region.clone() }
+                NoIntroToken::Region(_, region) => { name.region = region.clone() }
                 NoIntroToken::Flag(_, "BIOS") => { name.is_system = true }
                 _ => {}
             }

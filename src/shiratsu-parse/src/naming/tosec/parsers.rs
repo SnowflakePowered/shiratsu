@@ -12,9 +12,31 @@ use crate::naming::parsers::*;
 use crate::naming::tosec::tokens::*;
 
 use nom::bytes::complete::{take_till1, take_while1, take, take_until};
-use nom::combinator::{peek, verify, eof};
+use nom::combinator::{peek, verify, map};
 use nom::sequence::pair;
 use nom::error::ParseError;
+
+pub fn parse_goodtools_region(input: &str) -> IResult<&str, Vec<Region>> {
+    let regions = Region::try_from_goodtools_region(input)
+        .map_err(|e|
+            {
+                match e {
+                    RegionError::BadRegionCode(_, _, idx)
+                    => nom::Err::Error(Error::new(input.slice(idx..),
+                                                  ErrorKind::Tag)),
+                    _ => nom::Err::Error(Error::new(input, ErrorKind::Tag))
+                }
+            })?;
+    Ok(("", regions))
+}
+
+fn parse_goodtools_region_tag(input: &str) -> IResult<&str, Vec<TOSECToken>>
+{
+    let (input, region_inner) = in_parens(is_not(")"))(input)?;
+    let (_, regions) = parse_goodtools_region(region_inner)?;
+    Ok((input, vec![TOSECToken::Warning(TOSECParseWarning::GoodToolsRegionCode(region_inner)),
+                    TOSECToken::Region(vec![region_inner], regions)]))
+}
 
 fn parse_dumpinfo_tag<'a>(infotag: &'static str) -> impl FnMut(&'a str) -> IResult<&'a str, TOSECToken<'a>>
 {
@@ -42,6 +64,32 @@ fn parse_demo(input: &str) -> IResult<&str, TOSECToken>
     ))(input)?;
     Ok((input, TOSECToken::Demo(ty)))
 }
+
+make_parens_tag!(parse_devstatus_tag, parse_devstatus, Vec<TOSECToken>);
+fn parse_devstatus(input: &str) -> IResult<&str, Vec<TOSECToken>>
+{
+    let known = alt((
+            tag("alpha"),
+            tag("beta"),
+            tag("preview"),
+            tag("pre-release"),
+            tag("proto")
+        )).map(|c| Ok(vec![TOSECToken::Development(c)]));
+
+    let malformed = alt((
+        tag("Alpha"),
+        tag("Beta"),
+        tag("Preview"),
+        tag("Pre-Release"),
+        tag("Proto"),
+        tag("Prototype")
+        )).map(|c| Ok(vec![TOSECToken::Warning(TOSECParseWarning::MalformedDevelopmentStatus(c)),
+                           TOSECToken::Development(c)]));
+
+    let (input, known) = alt((known, malformed))(input)?;
+    Ok((input, known?))
+}
+
 
 make_parens_tag!(parse_date_tag, parse_date, Vec<TOSECToken>);
 fn parse_date(input: &str) -> IResult<&str, Vec<TOSECToken>>
@@ -116,9 +164,9 @@ fn parse_date(input: &str) -> IResult<&str, Vec<TOSECToken>>
     Ok((input, parses))
 }
 
-fn parse_region(input: &str) -> IResult<&str, Vec<Region>>
+fn parse_region(input: &str) -> IResult<&str, (Vec<&str>, Vec<Region>)>
 {
-    let regions = Region::try_from_tosec_region(input)
+    let regions = Region::try_from_tosec_region_with_strs(input)
         .map_err(|e|
             {
                 match e {
@@ -134,8 +182,8 @@ fn parse_region(input: &str) -> IResult<&str, Vec<Region>>
 fn parse_region_tag(input: &str) -> IResult<&str, TOSECToken>
 {
     let (input, region_inner) = in_parens(is_not(")"))(input)?;
-    let (_, regions) = parse_region(region_inner)?;
-    Ok((input, TOSECToken::Region(regions)))
+    let (_, (strs, regions)) = parse_region(region_inner)?;
+    Ok((input, TOSECToken::Region(strs, regions)))
 }
 
 make_parens_tag!(parse_publisher_tag, parse_publisher, TOSECToken);
@@ -224,6 +272,43 @@ fn parse_media(input: &str) -> IResult<&str, TOSECToken>
     Ok((input, TOSECToken::Media(parts)))
 }
 
+make_parens_tag!(parse_video_tag, parse_video, TOSECToken);
+fn parse_video(input: &str) -> IResult<&str, TOSECToken>
+{
+    let (input, video) = alt((
+            tag("CGA"),
+            tag("EGA"),
+            tag("HGC"),
+            tag("MCGA"),
+            tag("MDA"),
+            tag("NTSC"),
+            tag("NTSC-PAL"),
+            tag("PAL"),
+            tag("PAL-60"),
+            tag("PAL-NTSC"),
+            tag("SVGA"),
+            tag("VGA"),
+            tag("XGA")
+        ))(input)?;
+    Ok((input, TOSECToken::Video(video)))
+}
+
+make_parens_tag!(parse_copyright_tag, parse_copyright, TOSECToken);
+fn parse_copyright(input: &str) -> IResult<&str, TOSECToken>
+{
+    let (input, copyright) = alt((
+        tag("CW"),
+        tag("CW-R"),
+        tag("FW"),
+        tag("GW"),
+        tag("GW-R"),
+        tag("LW"),
+        tag("PD"),
+        tag("SW"),
+        tag("SW-R")))(input)?;
+    Ok((input, TOSECToken::Copyright(copyright)))
+}
+
 fn parse_parens_tag(input: &str) -> IResult<&str, TOSECToken>
 {
     let (input, _) = tag("(")(input)?;
@@ -256,6 +341,13 @@ fn parse_version_string(input: &str) -> IResult<&str, TOSECToken>
         let (input, major) = take_while(|c: char| c.is_ascii_digit())(input)?;
         let (input, minor) = opt(preceded(char('.'),
                                           take_while(|c: char| c.is_ascii_alphanumeric() || c == '.')))(input)?;
+
+        // Major version can be empty string only if minor version is not.
+        // This prevents ambiguities if the title contains a v.
+        if minor.is_none() && major.is_empty() {
+            // fake takewhile1.
+            return Err(nom::Err::Error(nom::error::Error::from_error_kind(input, ErrorKind::TakeWhile1)));
+        }
         Ok((input, TOSECToken::Version((v, major, minor, None, None))))
     }
 
@@ -398,7 +490,8 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
         // warning comes before the associated token.
         tokens.insert(0, zzz);
         input
-    } else { input };
+    }
+    else { input };
 
     // TOSEC Warn: space may occur between date and publisher
     let (input, space) = opt(char(' '))(input)?;
@@ -406,28 +499,55 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
         tokens.push(TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace))
     }
 
-    // todo: check if next parens tag is not known tag such as region or copyright
+    // check if next parens tag is not known tag such as region or copyright
+    let input = if let Err(_) = peek(alt((
+                    map(alt((
+                        parse_region_tag,
+                        parse_language_tag,
+                        parse_video_tag,
+                        parse_copyright_tag,
+                        parse_media_tag)),
+                        |c| vec![c]),
+                    parse_devstatus_tag,
+                    parse_goodtools_region_tag,
+    )))(input)
+    {
+        // publisher is otherwise required...
+        let (input, publisher) = parse_publisher_tag(input)?;
+        tokens.push(publisher);
+        input
+    } else {
+        // If no publisher was previously parsed...
+        if !tokens.iter().any(|c|
+                match c { TOSECToken::Publisher(_) => true, _ => false }) {
+            tokens.push(TOSECToken::Warning(TOSECParseWarning::MissingPublisher));
+        }
+        input
+    };
 
-    // publisher is required
-    let (input, publisher) = parse_publisher_tag(input)?;
-    tokens.push(publisher);
 
     let (input, flags)
         = many0(
         pair(opt(char(' ')),
              alt((
-                parse_region_tag,
-                parse_language_tag,
-                parse_media_tag,
-                parse_parens_tag
+                map(alt((
+                    parse_region_tag,
+                    parse_language_tag,
+                    parse_video_tag,
+                    parse_copyright_tag,
+                    parse_media_tag)),
+                    |c| vec![c]),
+                    parse_goodtools_region_tag,
+                    parse_devstatus_tag,
+                 map(parse_parens_tag, |t| vec![t])
             ))))(input)?;
 
     // TOSEC Warn: Space may occur between flags
-    for (space, flag) in flags {
+    for (space, mut flag) in flags {
         if let Some(_) = space {
             tokens.push(TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace));
         }
-        tokens.push(flag)
+        tokens.append(&mut flag)
     }
 
     let input = &["cr", "f", "h", "m", "p", "t", "tr", "o", "u", "v", "b", "a", "!"]
@@ -483,17 +603,46 @@ mod test
 
     // todo: ZZZ-UNK-Raiden (U) (CES Version) (v3.0)
     // todo: ZZZ-UNK-Befok#Packraw (20021012) by Jum Hig (PD)
-
+    // ZZZ-UNK-Alien vs Predator (U) (Beta)
     #[test]
     fn test_by_publisher_after_date()
     {
         let x = do_parse("ZZZ-UNK-Befok#Packraw (20021012) by Jum Hig (PD)");
         println!("{:?}", x.unwrap());
+
+        println!("{:?}", do_parse("Air-Sea Battle (1977)(Atari)(PAL)[aka Target Fun (Anti-Aircraft)][CX2602]").unwrap())
+
     }
+
+
+    #[test]
+    fn test_alien()
+    {
+        println!("{:?}", do_parse("ZZZ-UNK-Alien vs Predator (U) (Beta)").unwrap())
+    }
+
 
     #[test]
     fn test_by_publisher()
     {
+        assert_eq!(
+            do_parse("ZZZ-UNK-Micro Font Dumper by Schick, Bastian (199x) (PD)"),
+            Ok(("",
+                vec![
+                    TOSECToken::Warning(TOSECParseWarning::ZZZUnknown),
+                    TOSECToken::Title("Clicks! (test)"),
+                    TOSECToken::Warning(TOSECParseWarning::PublisherBeforeDate),
+                    TOSECToken::Warning(TOSECParseWarning::ByPublisher),
+                    TOSECToken::Publisher(Some(vec!["Domin, Matthias"])),
+                    TOSECToken::Date("2001", None, None),
+                    TOSECToken::Warning(TOSECParseWarning::UnexpectedSpace),
+
+                    // todo: copyright
+                    TOSECToken::Flag(FlagType::Parenthesized, "PD")
+                ]
+            ))
+        );
+
         assert_eq!(
             do_parse("ZZZ-UNK-Clicks! (test) by Domin, Matthias (2001) (PD)"),
             Ok(("",
@@ -540,7 +689,7 @@ mod test
                     TOSECToken::Title("Segoin Demo Ikinä!"),
                     TOSECToken::Date("2015", Some("03"), Some("28")),
                     TOSECToken::Publisher(Some(vec!["AirZero"])),
-                    TOSECToken::Region(vec![Region::Finland])
+                    TOSECToken::Region(vec!["FI"], vec![Region::Finland])
                 ]
             ))
         )
@@ -664,7 +813,7 @@ mod test
                     TOSECToken::Warning(TOSECParseWarning::MalformedDatePlaceholder("19XX")),
                     TOSECToken::Date("19XX", None, None),
                     TOSECToken::Publisher(None),
-                    TOSECToken::Region(vec![Region::Japan]),
+                    TOSECToken::Region(vec!["JP"], vec![Region::Japan]),
                     TOSECToken::Languages(TOSECLanguage::Single("ja")),
                     TOSECToken::Flag(FlagType::Parenthesized, "PD"),
                     TOSECToken::DumpInfo("cr", Some("3"), Some("+test")),
@@ -680,7 +829,7 @@ mod test
                     TOSECToken::Date("1983", None, None),
                     TOSECToken::Publisher(Some(vec!["CCE"])),
                     TOSECToken::Flag(FlagType::Parenthesized, "NTSC"),
-                    TOSECToken::Region(vec![Region::Brazil]),]
+                    TOSECToken::Region(vec!["BR"], vec![Region::Brazil]),]
             ))
         );
 
@@ -691,7 +840,7 @@ mod test
                     TOSECToken::Title("Mega Man III - Sample version"),
                     TOSECToken::Date("1992", None, None),
                     TOSECToken::Publisher(Some(vec!["Capcom"])),
-                    TOSECToken::Region(vec![Region::UnitedStates]),]
+                    TOSECToken::Region(vec!["US"], vec![Region::UnitedStates]),]
             ))
         );
 
@@ -770,15 +919,17 @@ mod test
     #[test]
     fn test_parse_region()
     {
-        assert_eq!(parse_region("US"), Ok(("", vec![Region::UnitedStates])));
-        assert_eq!(parse_region("US-ZZ"), Ok(("", vec![Region::UnitedStates, Region::Unknown])));
+        assert_eq!(parse_region("US"), Ok(("", (vec!["US"], vec![Region::UnitedStates]))));
+        assert_eq!(parse_region("US-ZZ"), Ok(("", (vec!["US", "ZZ"], vec![Region::UnitedStates, Region::Unknown]))));
     }
 
     #[test]
     fn test_parse_region_tag()
     {
-        assert_eq!(parse_region_tag("(US)"), Ok(("", TOSECToken::Region(vec![Region::UnitedStates]))));
-        assert_eq!(parse_region_tag("(US-ZZ)"), Ok(("", TOSECToken::Region(vec![Region::UnitedStates, Region::Unknown]))));
+        assert_eq!(parse_region_tag("(US)"), Ok(("", TOSECToken::Region(vec!["US"],
+                                                                        vec![Region::UnitedStates]))));
+        assert_eq!(parse_region_tag("(US-ZZ)"), Ok(("", TOSECToken::Region(vec!["US"],
+                                                                           vec![Region::UnitedStates, Region::Unknown]))));
     }
 
     #[test]
