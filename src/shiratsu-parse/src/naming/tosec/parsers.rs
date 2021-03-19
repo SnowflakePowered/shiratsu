@@ -414,6 +414,15 @@ fn parse_title_demo_date_happy(input: &str) -> IResult<&str, Vec<TOSECToken>>
     Ok((input, tokens))
 }
 
+fn parse_unexpected_space(input: &str) -> IResult<&str, char>
+{
+    if let Ok(_) = peek::<&str, &str, nom::error::Error<&str>, _>(tag(" & "))(input) {
+        return Err(nom::Err::Error(nom::error::Error::from_error_kind(input, ErrorKind::Tag)))
+    }
+    let (input, c) = char(' ')(input)?;
+    Ok((input, c))
+}
+
 // For most cases, the happy path is good.
 // in some cases, the date is missing like in
 // Motocross & Pole Position (Starsoft - JVP)(PAL)[b1][possible unknown mode]
@@ -517,7 +526,7 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
     else { input };
 
     // TOSEC Warn: space may occur between date and publisher
-    let (input, space) = opt(char(' '))(input)?;
+    let (input, space) = opt(parse_unexpected_space)(input)?;
     if let Some(_) = space {
         tokens.push(TOSECToken::Warning(TOSECWarn::UnexpectedSpace))
     }
@@ -554,10 +563,9 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
         input
     };
 
-
     let (input, flags)
         = many0(
-        pair(opt(char(' ')),
+        pair(opt(parse_unexpected_space),
              alt((
                 map(alt((
                     parse_region_tag,
@@ -584,7 +592,7 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
         .iter()
         .fold(Ok(input), |input, tag|{
             // TOSEC Warn: space may occur between flags
-            let (input, space) = opt(char(' '))(input?)?;
+            let (input, space) = opt(parse_unexpected_space)(input?)?;
             if let Some(_) = space {
                 tokens.push(TOSECToken::Warning(TOSECWarn::UnexpectedSpace))
             }
@@ -597,7 +605,7 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
 
     let (input, rest) = many0(
         pair(
-            opt(char(' ')),
+            opt(parse_unexpected_space),
         parse_additional_tag)
     )(input)?;
 
@@ -623,6 +631,80 @@ pub(crate) fn do_parse(input: &str) -> IResult<&str, Vec<TOSECToken>>
     }
 }
 
+fn do_parse_multiset(input: &str)-> IResult<&str, (Vec<Vec<TOSECToken>>, Vec<TOSECToken>)>
+{
+    let (input, tokens) =
+        separated_list1(
+            tag(" & "),
+            parse_tosec_name
+        )(input)?;
+
+    let mut globals = Vec::new();
+
+    let input = if let Ok((input, _)) = char::<&str, nom::error::Error<&str>>('-')(input) {
+        let (input, flags)
+            = many0(
+            pair(opt(parse_unexpected_space),
+                 alt((
+                     map(alt((
+                         parse_region_tag,
+                         parse_language_tag,
+                         parse_video_tag,
+                         parse_copyright_tag,
+                         parse_media_tag)),
+                         |c| vec![c]),
+                     parse_goodtools_region_tag,
+                     parse_devstatus_tag,
+                     parse_version_tag,
+                     map(parse_parens_tag, |t| vec![t])
+                 ))))(input)?;
+
+        for (space, mut flag) in flags {
+            if let Some(_) = space {
+                globals.push(TOSECToken::Warning(TOSECWarn::UnexpectedSpace));
+            }
+            globals.append(&mut flag)
+        }
+
+        let input = &["cr", "f", "h", "m", "p", "t", "tr", "o", "u", "v", "b", "a", "!"]
+            .iter()
+            .fold(Ok(input), |input, tag| {
+                // TOSEC Warn: space may occur between flags
+                let (input, space) = opt(parse_unexpected_space)(input?)?;
+                if let Some(_) = space {
+                    globals.push(TOSECToken::Warning(TOSECWarn::UnexpectedSpace))
+                }
+                let (input, info) = opt(parse_dumpinfo_tag(tag))(input)?;
+                if let Some(info) = info {
+                    globals.push(info);
+                }
+                Ok(input)
+            })?;
+
+        let (input, rest) = many0(
+            pair(
+                opt(parse_unexpected_space),
+                parse_additional_tag)
+        )(input)?;
+
+        for (space, flag) in rest {
+            if let Some(_) = space {
+                globals.push(TOSECToken::Warning(TOSECWarn::UnexpectedSpace));
+            }
+            globals.push(flag)
+        }
+        input
+    } else { input };
+
+    match input {
+        "" => Ok((input, (tokens, globals))),
+        rest => {
+            globals.push(TOSECToken::Warning(TOSECWarn::NotEof(rest)));
+            Ok((input, (tokens, globals)))
+        }
+    }
+}
+
 #[cfg(test)]
 mod test
 {
@@ -630,6 +712,11 @@ mod test
     use crate::naming::*;
     use crate::naming::tosec::parsers::*;
 
+    #[test]
+    fn test_parse_multi()
+    {
+        println!("{:?}", do_parse_multiset("Amidar (19xx)(Devstudio) & Amigos (1987)(Mr. Tosec)-(PD)(Disk 1 of 2)[a]").unwrap())
+    }
 
     // todo: ZZZ-UNK-Raiden (U) (CES Version) (v3.0)
     // todo: ZZZ-UNK-Befok#Packraw (20021012) by Jum Hig (PD)

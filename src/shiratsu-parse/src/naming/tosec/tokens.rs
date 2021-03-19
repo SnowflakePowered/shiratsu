@@ -70,6 +70,13 @@ pub enum TOSECLanguage<'a>
 #[repr(transparent)]
 pub struct TOSECName<'a>(Vec<TOSECToken<'a>>);
 
+#[derive(Debug, Eq, PartialEq)]
+pub struct TOSECMultiSetName<'a>
+{
+    tokens: Vec<Vec<TOSECToken<'a>>>,
+    globals: Vec<TOSECToken<'a>>
+}
+
 impl <'a> From<Vec<TOSECToken<'a>>> for TOSECName<'a>
 {
     fn from(vec: Vec<TOSECToken<'a>>) -> Self {
