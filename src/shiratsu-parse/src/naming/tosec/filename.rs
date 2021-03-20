@@ -1,8 +1,8 @@
 use crate::naming::{NameInfo, NamingConvention};
 use crate::error::{ParseError, Result};
 
-use crate::naming::tosec::TOSECName;
-use crate::naming::tosec::parsers::do_parse;
+use crate::naming::tosec::{TOSECName, TOSECMultiSetName};
+use crate::naming::tosec::parsers::{do_parse, do_parse_multiset};
 
 use crate::naming::tosec::legacy_parser::tosec_parser;
 
@@ -21,6 +21,13 @@ impl TOSECNameable for NameInfo {
 /// Warnings occur before the associated token.
 pub fn try_parse(input: &str) -> Result<TOSECName> {
     let (_, value) = do_parse(input).map_err(|_| {
+        ParseError::BadFileNameError(NamingConvention::TOSEC, input.to_string())
+    })?;
+    Ok(value.into())
+}
+
+pub fn try_parse_multiset(input: &str) -> Result<TOSECMultiSetName> {
+    let (_, value) = do_parse_multiset(input).map_err(|_| {
         ParseError::BadFileNameError(NamingConvention::TOSEC, input.to_string())
     })?;
     Ok(value.into())

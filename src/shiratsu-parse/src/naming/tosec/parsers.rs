@@ -493,7 +493,7 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
     let input = match zzz {
         None => input,
         Some(zzz) => {
-            /// ZZZ-UNK triggers special path for old-style by-publisher
+            // ZZZ-UNK triggers special path for old-style by-publisher
             let input = match tokens.first() {
                 Some(&TOSECToken::Title(title)) => {
                     if let Ok((_, (title,
@@ -652,7 +652,7 @@ pub(crate) fn do_parse(input: &str) -> IResult<&str, Vec<TOSECToken>>
     }
 }
 
-fn do_parse_multiset(input: &str)-> IResult<&str, (Vec<Vec<TOSECToken>>, Vec<TOSECToken>)>
+pub(crate) fn do_parse_multiset(input: &str)-> IResult<&str, (Vec<Vec<TOSECToken>>, Vec<TOSECToken>)>
 {
     let (input, tokens) =
         separated_list1(
@@ -715,15 +715,51 @@ mod test
     #[test]
     fn test_parse_multi()
     {
-        println!("{:?}", do_parse_multiset("Amidar (19xx)(Devstudio) & Amigos (1987)(Mr. Tosec)-(PD)(Disk 1 of 2)[a]").unwrap())
+        assert_eq!(
+            do_parse_multiset("Amidar (19xx)(Devstudio) & Amigos (1987)(Mr. Tosec)-(PD)(Disk 1 of 2)[a]"),
+            Ok(("",
+                (
+                    vec![
+                        vec![
+                            TOSECToken::Title("Amidar"),
+                            TOSECToken::Date("199x", None, None),
+                            TOSECToken::Publisher(Some(vec!["Devstudio"]))
+                        ],
+                        vec![
+                            TOSECToken::Title("Amigos"),
+                            TOSECToken::Date("1987", None, None),
+                            TOSECToken::Publisher(Some(vec!["Mr. Tosec"]))
+                        ],
+                    ],
+                    vec![
+                        TOSECToken::Copyright("PD"),
+                        TOSECToken::Media(vec![("Disk", "1", Some("2"))]),
+                        TOSECToken::DumpInfo("a", None, None)
+                    ]
+                )
+            ))
+        );
     }
 
-    // todo: ZZZ-UNK-Raiden (U) (CES Version) (v3.0)
-    // todo: ZZZ-UNK-Befok#Packraw (20021012) by Jum Hig (PD)
-    // ZZZ-UNK-Alien vs Predator (U) (Beta)
     #[test]
     fn test_zzz_unks()
     {
+        assert_eq!(do_parse("ZZZ-UNK-Raiden (U) (CES Version) (v3.0)"),
+                   Ok(("",
+                       vec![
+                           TOSECToken::Warning(TOSECWarn::ZZZUnknown),
+                           TOSECToken::Title("Raiden"),
+                           TOSECToken::Warning(TOSECWarn::MissingDate),
+                           TOSECToken::Warning(TOSECWarn::MissingPublisher),
+                           TOSECToken::Warning(TOSECWarn::GoodToolsRegionCode("U")),
+                           TOSECToken::Region(vec!["U"], vec![Region::UnitedStates]),
+                           TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
+                           TOSECToken::Flag(FlagType::Parenthesized, "CES Version"),
+                           TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
+                           TOSECToken::Warning(TOSECWarn::VersionInFlag),
+                           TOSECToken::Version(("v", "3", Some("0"), None, None))
+                       ])));
+
         assert_eq!(do_parse("ZZZ-UNK-Space Lock (Rev 20040529)(Beta)"),
                    Ok(("",
                        vec![

@@ -2,7 +2,7 @@ use crate::region::Region;
 use crate::naming::{FlagType, ToNameInfo, NameInfo, DevelopmentStatus, NamingConvention};
 use crate::naming::util::*;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, Clone, PartialEq)]
 pub enum TOSECToken<'a>
 {
     Title(&'a str),
@@ -36,7 +36,7 @@ pub enum TOSECToken<'a>
     Warning(TOSECWarn<'a>)
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TOSECWarn<'a>
 {
     ZZZUnknown,
@@ -54,7 +54,7 @@ pub enum TOSECWarn<'a>
     NotEof(&'a str)
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TOSECLanguage<'a>
 {
     /// A single language code
@@ -66,16 +66,9 @@ pub enum TOSECLanguage<'a>
     Count(&'a str),
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct TOSECName<'a>(Vec<TOSECToken<'a>>);
-
-#[derive(Debug, Eq, PartialEq)]
-pub struct TOSECMultiSetName<'a>
-{
-    tokens: Vec<Vec<TOSECToken<'a>>>,
-    globals: Vec<TOSECToken<'a>>
-}
 
 impl <'a> From<Vec<TOSECToken<'a>>> for TOSECName<'a>
 {
@@ -92,6 +85,41 @@ impl TOSECName<'_> {
     pub fn warnings(&self) -> impl Iterator<Item=&TOSECToken> + '_
     {
         self.0.iter().filter(|e| match e { TOSECToken::Warning(_) => true, _ => false })
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct TOSECMultiSetName<'a>
+{
+    tokens: Vec<Vec<TOSECToken<'a>>>,
+    globals: Vec<TOSECToken<'a>>
+}
+
+impl <'a> From<(Vec<Vec<TOSECToken<'a>>>, Vec<TOSECToken<'a>>)> for TOSECMultiSetName<'a>
+{
+    fn from(vecs: (Vec<Vec<TOSECToken<'a>>>, Vec<TOSECToken<'a>>)) -> Self {
+        TOSECMultiSetName {
+            tokens: vecs.0,
+            globals: vecs.1,
+        }
+    }
+}
+
+impl <'a> TOSECMultiSetName<'a> {
+
+    fn get_combined_iter(&self, index: usize) -> Option<impl Iterator<Item=&TOSECToken<'a>>>
+    {
+        // todo: ensure the order of global flags.
+        self.tokens.get(index)
+            .map(|tokens| {
+                tokens.iter().chain(self.globals.iter())
+            })
+    }
+
+    pub fn get_single(&self, index: usize) -> Option<TOSECName<'a>>
+    {
+        self.get_combined_iter(index)
+            .map(|i| i.cloned().collect::<Vec<TOSECToken<'a>>>().into())
     }
 }
 

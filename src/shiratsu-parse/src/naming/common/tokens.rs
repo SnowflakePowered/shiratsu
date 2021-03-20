@@ -1,4 +1,4 @@
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum FlagType
 {
     /// The flag is parenthesized
@@ -9,7 +9,7 @@ pub enum FlagType
 }
 
 /// A parsed version
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Version<'a>
 {
     /// The version prefix.
