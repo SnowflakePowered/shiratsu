@@ -1,5 +1,4 @@
-use nom::{bytes::complete::tag, sequence::delimited,
-          IResult, Parser, InputTakeAtPosition, InputTake, InputLength, FindSubstring, FindToken};
+use nom::{bytes::complete::tag, sequence::delimited, IResult, Parser, InputTakeAtPosition, InputTake, InputLength, FindSubstring, FindToken, InputIter};
 use nom::error::{ParseError, ErrorKind};
 
 pub(crate) fn in_parens<'a, O, E: ParseError<&'a str>, P>(inner: P)
@@ -41,56 +40,22 @@ pub(crate) fn take_until_is<Arr, Tag, Input, Error: ParseError<Input>>(arr: Arr,
     }
 }
 
-/// Safe abstract slicing operations
-pub trait TryInputTake
-{
-    /// Tries to split the stream at the count byte offset.
-    fn try_take_split(&self, count: usize) -> Option<(Self, Self)> where Self: Sized;
-}
-
-impl <'a> TryInputTake for &'a str
-{
-    fn try_take_split(&self, count: usize) -> Option<(Self, Self)> {
-        match (self.get(count..), self.get(..count))
-        {
-            (Some(a), Some(b)) => Some((a, b)),
-            _ => None
-        }
-    }
-}
-
-impl <'a, T> TryInputTake for &'a [T]
-{
-    fn try_take_split(&self, count: usize) -> Option<(Self, Self)> {
-        if count > self.len() { return None; }
-
-        match (self.get(count..), self.get(..count))
-        {
-            (Some(a), Some(b)) => Some((a, b)),
-            _ => None
-        }
-    }
-}
-
 /// Return the input slice up to the first occurrence of the parser
 /// If the parser never matches, returns an error with code `ManyTill`
 pub(crate) fn take_up_to<Input, Output, Error:ParseError<Input>, P>(mut parser: P)
     -> impl FnMut(Input) -> IResult<Input, (Input, Output), Error>
     where P: FnMut(Input) -> IResult<Input, Output, Error>,
-    Input: InputLength + TryInputTake
+    Input: InputLength + InputIter + InputTake
 {
     move |i: Input| {
         let input = i;
-        for index in 0..input.input_len() {
-
-            if let Some((rest, front)) = input.try_take_split(index) {
-                match parser(rest) {
+        for (index, _) in input.iter_indices() {
+            let (rest, front) = input.take_split(index);
+            match parser(rest) {
                     Ok((remainder, output)) =>
                         return Ok((remainder, (front, output))),
                     Err(_) => continue,
-                }
             }
-            continue;
         }
         Err(nom::Err::Error(Error::from_error_kind(input, ErrorKind::ManyTill)))
     }
