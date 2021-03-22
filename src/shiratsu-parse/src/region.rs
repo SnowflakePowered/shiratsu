@@ -1,6 +1,8 @@
 use array_iterator::ArrayIterator;
 use indexmap::IndexSet;
 use phf::phf_map;
+use crate::region::Region::UnitedStates;
+
 #[derive(Debug)]
 pub enum RegionError {
     InvalidFormat(RegionFormat),
@@ -102,12 +104,15 @@ static TOSEC_REGION: phf::Map<&'static str, Region> = phf_map! {
     "ZZ" => Region::Unknown,
 };
 
+// GoodCodes.txt
+// also https://segaretro.org/GoodTools
 static GOODTOOLS_REGION: phf::Map<&'static str, Region> = phf_map! {
     "A" => Region::Australia,
     "As" => Region::Asia,
     "B" => Region::Brazil,
     "C" => Region::Canada,
     "Ch" => Region::China,
+    "Cz" => Region::Czechia,    // Does not exist in 2016-4-3, might exist as a TOSEC code?
     "D" => Region::Netherlands, // 'D' for Dutch
     "E" => Region::Europe,
     "F" => Region::France,
@@ -293,9 +298,15 @@ impl Region {
     pub fn try_from_nointro_region_with_strs(region_str: &str) -> Result<(Vec<&str>, Vec<Self>)> {
         from_nointro_region(region_str)
     }
-    pub fn try_from_goodtools_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Self>> {
+    pub fn try_from_goodtools_region(region_str: &str) -> Result<Vec<Self>> {
+        let (_, region) = from_goodtools_region(region_str)?;
+        Ok(region)
+    }
+
+    pub fn try_from_goodtools_region_with_strs(region_str: &str) -> Result<(Vec<&str>, Vec<Self>)> {
         from_goodtools_region(region_str)
     }
+
     pub fn to_region_string(regions: &[Self]) -> String {
         to_region_string(regions)
     }
@@ -347,19 +358,65 @@ fn from_tosec_region<'a>(region_str: &str) -> Result<(Vec<&str>, Vec<Region>)> {
 ///
 /// # Arguments
 /// - `region_str` The region string.
-fn from_goodtools_region<T: AsRef<str>>(region_str: T) -> Result<Vec<Region>> {
-    match region_str.as_ref() {
-        "1" => Ok(vec![Region::Japan, Region::SouthKorea]),
-        "4" => Ok(vec![Region::UnitedStates, Region::Brazil]),
-        "F" | "W" | "JUE" => Ok(vec![Region::Japan, Region::UnitedStates, Region::Europe]),
-        "UE" => Ok(vec![Region::UnitedStates, Region::Europe]),
-        "JU" => Ok(vec![Region::Japan, Region::UnitedStates]),
-        _ => {
-            GOODTOOLS_REGION
-                .get(region_str.as_ref())
-                .map(|&r| vec![r])
-                .ok_or(RegionError::BadRegionCode(RegionFormat::GoodTools, 0, 0))
+fn from_goodtools_region(region_str: &str) -> Result<(Vec<&str>, Vec<Region>)> {
+    let mut regions = IndexSet::<Region>::new();
+    let mut region_strings = Vec::new();
+
+    let mut region_count = 0;
+    let mut region_string_index = 0;
+
+    for region_code in region_str.split(",") {
+        match region_code {
+            "1" => {
+                regions.insert(Region::Japan);
+                regions.insert(Region::SouthKorea);
+            }
+            "4" => {
+                regions.insert(Region::UnitedStates);
+                regions.insert(Region::Brazil);
+            }
+            "5" => {
+                regions.insert(Region::Japan);
+                regions.insert(Region::UnitedStates);
+            }
+            "W" | "JUE" => {
+                regions.insert(Region::Japan);
+                regions.insert(Region::UnitedStates);
+                regions.insert(Region::Europe);
+            }
+            "UE" => {
+                regions.insert(Region::UnitedStates);
+                regions.insert(Region::Europe);
+            }
+            "JU" => {
+                regions.insert(Region::Japan);
+                regions.insert(Region::UnitedStates);
+            }
+            _ => match GOODTOOLS_REGION.get(region_str)
+            {
+                Some(&region) => {
+                    regions.insert(region);
+                }
+                None => return Err(
+                    RegionError::BadRegionCode(RegionFormat::GoodTools,
+                                               region_count, region_string_index)
+                )
+            }
         }
+
+        region_strings.push(region_code);
+        // If there was error we would have deleted..
+        region_count += 1;
+        region_string_index += region_code.len();
+        region_string_index += ", ".len();
+    }
+
+    // invariant: Do not return RegionError::BadRegionCode because region_string_index will
+    // overflow.
+    if regions.is_empty() {
+        Err(RegionError::NoRegions(RegionFormat::GoodTools))
+    } else {
+        Ok((region_strings, regions.into_iter().collect::<Vec<Region>>()))
     }
 }
 
@@ -450,7 +507,9 @@ fn to_region_string(regions: &[Region]) -> String {
 /// This function expects that the input string is a valid GoodTools, No-Intro, or TOSEC region string.
 /// If no match can be found, returns unknown region.
 fn parse_regions<T: AsRef<str>>(region_str: T) -> Vec<Region> {
-    let good_tools_try = from_goodtools_region(&region_str).unwrap_or(vec![Region::Unknown]);
+    let good_tools_try = from_goodtools_region(&region_str.as_ref())
+        .map(|(_, res)| res)
+        .unwrap_or(vec![Region::Unknown]);
     let nointro_try = from_nointro_region(&region_str.as_ref())
         .map(|(_, res)| res)
         .unwrap_or(vec![Region::Unknown]);

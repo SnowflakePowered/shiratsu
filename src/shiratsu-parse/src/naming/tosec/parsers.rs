@@ -16,26 +16,14 @@ use nom::combinator::{peek, verify, map};
 use nom::sequence::pair;
 use nom::error::ParseError;
 
-pub fn parse_goodtools_region(input: &str) -> IResult<&str, Vec<Region>> {
-    let regions = Region::try_from_goodtools_region(input)
-        .map_err(|e|
-            {
-                match e {
-                    RegionError::BadRegionCode(_, _, idx)
-                    => nom::Err::Error(Error::new(input.slice(idx..),
-                                                  ErrorKind::Tag)),
-                    _ => nom::Err::Error(Error::new(input, ErrorKind::Tag))
-                }
-            })?;
-    Ok(("", regions))
-}
+use crate::naming::goodtools::parse_goodtools_region;
 
 fn parse_goodtools_region_tag(input: &str) -> IResult<&str, Vec<TOSECToken>>
 {
     let (input, region_inner) = in_parens(is_not(")"))(input)?;
-    let (_, regions) = parse_goodtools_region(region_inner)?;
+    let (_, (strs, regions)) = parse_goodtools_region(region_inner)?;
     Ok((input, vec![TOSECToken::Warning(TOSECWarn::GoodToolsRegionCode(region_inner)),
-                    TOSECToken::Region(vec![region_inner], regions)]))
+                    TOSECToken::Region(strs, regions)]))
 }
 
 fn parse_dumpinfo_tag<'a>(infotag: &'static str) -> impl FnMut(&'a str) -> IResult<&'a str, TOSECToken<'a>>
@@ -98,8 +86,9 @@ fn parse_date(input: &str) -> IResult<&str, Vec<TOSECToken>>
     {
         let orig_input = input;
 
-        let (input, year) = take_while_m_n(4, 4,
-                                           |c: char| c.is_ascii_digit())(input)?;
+        let (input, year) = take_year(input)?;
+
+
         let (input, month) = verify(take_while_m_n(2, 2,
                                            |c: char| c.is_ascii_digit()),
         |month: &str| month.parse::<u32>().map(|m| m <= 12).unwrap_or(false))
@@ -123,9 +112,7 @@ fn parse_date(input: &str) -> IResult<&str, Vec<TOSECToken>>
     }
 
     let mut parses = Vec::new();
-    let (input, year) = take_while_m_n(4, 4,
-                                       |c: char| c.is_ascii_digit()
-                                           || c == 'X'|| c == 'x')(input)?;
+    let (input, year) = take_year(input)?;
     let (input, month) = opt(
         preceded(char('-'),
                  take_while_m_n(2, 2,
@@ -341,7 +328,7 @@ fn parse_version_string(input: &str) -> IResult<&str, TOSECToken>
         let (input, rev) = tag("Rev")(input)?;
         let (input, _) = char(' ')(input)?;
         let (input, version) = take_while(|c: char| c.is_ascii_alphanumeric())(input)?;
-        Ok((input, TOSECToken::Version((rev, version, None, None, None))))
+        Ok((input, TOSECToken::Version(rev, version, None)))
     }
 
     fn parse_version(input: &str) -> IResult<&str, TOSECToken>
@@ -357,7 +344,7 @@ fn parse_version_string(input: &str) -> IResult<&str, TOSECToken>
             // fake takewhile1.
             return Err(nom::Err::Error(nom::error::Error::from_error_kind(input, ErrorKind::TakeWhile1)));
         }
-        Ok((input, TOSECToken::Version((v, major, minor, None, None))))
+        Ok((input, TOSECToken::Version(v, major, minor)))
     }
 
     let (input, version) = alt((parse_revision, parse_version))(input)?;
@@ -722,7 +709,7 @@ mod test
                     vec![
                         vec![
                             TOSECToken::Title("Amidar"),
-                            TOSECToken::Date("199x", None, None),
+                            TOSECToken::Date("19xx", None, None),
                             TOSECToken::Publisher(Some(vec!["Devstudio"]))
                         ],
                         vec![
@@ -757,7 +744,7 @@ mod test
                            TOSECToken::Flag(FlagType::Parenthesized, "CES Version"),
                            TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
                            TOSECToken::Warning(TOSECWarn::VersionInFlag),
-                           TOSECToken::Version(("v", "3", Some("0"), None, None))
+                           TOSECToken::Version("v", "3", Some("0"))
                        ])));
 
         assert_eq!(do_parse("ZZZ-UNK-Space Lock (Rev 20040529)(Beta)"),
@@ -768,7 +755,7 @@ mod test
                            TOSECToken::Warning(TOSECWarn::MissingDate),
                            TOSECToken::Warning(TOSECWarn::MissingPublisher),
                            TOSECToken::Warning(TOSECWarn::VersionInFlag),
-                           TOSECToken::Version(("Rev", "20040529", None, None, None)),
+                           TOSECToken::Version("Rev", "20040529", None),
                            TOSECToken::Warning(TOSECWarn::MalformedDevelopmentStatus("Beta")),
                            TOSECToken::Development("Beta")
                        ]
@@ -788,7 +775,7 @@ mod test
                 TOSECToken::Development("Beta"),
                 TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
                 TOSECToken::Warning(TOSECWarn::VersionInFlag),
-                TOSECToken::Version(("v", "0", Some("06"), None, None))])
+                TOSECToken::Version("v", "0", Some("06"))])
         ));
 
         assert_eq!(do_parse("ZZZ-UNK-Tron 6 fun v0.15"),
@@ -796,7 +783,7 @@ mod test
             vec![
                 TOSECToken::Warning(TOSECWarn::ZZZUnknown),
                 TOSECToken::Title("Tron 6 fun"),
-                TOSECToken::Version(("v", "0", Some("15"), None, None)),
+                TOSECToken::Version("v", "0", Some("15")),
                 TOSECToken::Warning(TOSECWarn::MissingDate),
                 TOSECToken::Warning(TOSECWarn::MissingPublisher)])
         ));
@@ -1020,7 +1007,7 @@ mod test
             Ok(("",
                 vec![
                     TOSECToken::Title("Cube CD 20, The (40) - Testing"),
-                    TOSECToken::Version(("v", "1", Some("203"), None, None)),
+                    TOSECToken::Version("v", "1", Some("203")),
                     TOSECToken::Demo(None),
                     TOSECToken::Date("2020", None, None),
                     TOSECToken::Publisher(Some(vec!["SomePublisher"])),
@@ -1031,7 +1018,7 @@ mod test
             Ok(("",
                 vec![
                     TOSECToken::Title("Motocross & Pole Position"),
-                    TOSECToken::Version(("Rev", "1", None, None, None)),
+                    TOSECToken::Version("Rev", "1", None),
                     TOSECToken::Warning(TOSECWarn::MissingDate),
                     TOSECToken::Publisher(Some(vec!["Starsoft", "JVP"])),
                     TOSECToken::Video("PAL"),
@@ -1138,11 +1125,11 @@ mod test
     fn test_parse_version()
     {
         assert_eq!(parse_version_string("v1.0a"),
-                   Ok(((""), TOSECToken::Version(("v", "1", Some("0a"), None, None)))));
+                   Ok(((""), TOSECToken::Version("v", "1", Some("0a")))));
         assert_eq!(parse_version_string("Rev 1b"),
-                   Ok(((""), TOSECToken::Version(("Rev", "1b",None, None, None)))));
+                   Ok(((""), TOSECToken::Version("Rev", "1b", None))));
         assert_eq!(parse_version_string("v20000101"),
-                   Ok(((""), TOSECToken::Version(("v", "20000101",None, None, None)))));
+                   Ok(((""), TOSECToken::Version("v", "20000101", None))));
     }
 
     #[test]

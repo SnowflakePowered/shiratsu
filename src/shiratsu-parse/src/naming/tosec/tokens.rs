@@ -13,7 +13,7 @@ pub enum TOSECToken<'a>
 
     Demo(Option<&'a str>),
 
-    Version((&'a str, &'a str, Option<&'a str>, Option<&'a str>, Option<Vec<&'a str>>)),
+    Version(&'a str, &'a str, Option<&'a str>),
 
     Date(&'a str, Option<&'a str>, Option<&'a str>),
 
@@ -163,10 +163,10 @@ impl <'a> ToNameInfo for TOSECName<'a>
                         }
                     }
                 }
-                TOSECToken::Version(version) => {
-                    match version {
-                        (_, major, None, _, _) => { name.version = Some(major.to_string()) }
-                        (_, major, Some(minor), _, _) => { name.version = Some(format!("{}.{}", major, minor)) }
+                TOSECToken::Version(_, major, minor) => {
+                    match minor {
+                        None => { name.version = Some(major.to_string()) }
+                        Some(minor) => { name.version = Some(format!("{}.{}", major, minor)) }
                     }
                 }
                 TOSECToken::DumpInfo("p", _, _) => {

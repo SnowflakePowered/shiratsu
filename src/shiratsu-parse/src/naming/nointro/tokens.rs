@@ -3,7 +3,7 @@ use crate::naming::{FlagType, NameInfo, ToNameInfo, DevelopmentStatus, NamingCon
 use crate::naming::util::*;
 
 /// A parsed language code.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct NoIntroLanguage<'a>
 {
     /// The language code
@@ -25,7 +25,7 @@ impl <'a> From<&(&'a str, Option<&'a str>)> for NoIntroLanguage<'a>
 ///
 /// The Tokenizer API is  lossless. The original filename is reconstructible
 /// from the information in the parsed tokens.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum NoIntroToken<'a>
 {
     /// The title of the game.
@@ -58,7 +58,7 @@ pub enum NoIntroToken<'a>
     Languages(Vec<(&'a str, Option<&'a str>)>),
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct NoIntroName<'a>(Vec<NoIntroToken<'a>>);
 

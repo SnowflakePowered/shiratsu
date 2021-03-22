@@ -1,5 +1,8 @@
 use nom::{bytes::complete::tag, sequence::delimited, IResult, Parser, InputTakeAtPosition, InputTake, InputLength, FindSubstring, FindToken, InputIter};
 use nom::error::{ParseError, ErrorKind};
+use nom::combinator::recognize;
+use nom::branch::alt;
+use nom::bytes::complete::take_while_m_n;
 
 pub(crate) fn in_parens<'a, O, E: ParseError<&'a str>, P>(inner: P)
     -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
@@ -61,6 +64,20 @@ pub(crate) fn take_up_to<Input, Output, Error:ParseError<Input>, P>(mut parser: 
     }
 }
 
+pub(crate) fn take_year(input: &str) -> IResult<&str, &str>
+{
+    fn take_year_inner(input: &str) -> IResult<&str, ()>
+    {
+        let (input, _) = alt((tag("19"), tag("20")))(input)?;
+        let (input, _) = take_while_m_n(2, 2,
+                                        |c: char| c == 'X'
+                                            || c == 'x' || c.is_ascii_digit())(input)?;
+        Ok((input, ()))
+    }
+
+    recognize(take_year_inner)(input)
+}
+
 macro_rules! make_parens_tag {
     ($fn_name:ident, $inner:ident, $token:ty) =>
     {
@@ -70,6 +87,17 @@ macro_rules! make_parens_tag {
         }
     }
 }
+
+macro_rules! make_brackets_tag {
+    ($fn_name:ident, $inner:ident, $token:ty) =>
+    {
+        fn $fn_name<'a>(input: &'a str) -> IResult<&str, $token>
+        {
+            in_brackets($inner)(input)
+        }
+    }
+}
+
 
 #[cfg(test)]
 mod tests
