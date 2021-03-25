@@ -1,0 +1,22 @@
+[package]
+name = "shiratsu-dat"
+version = "0.1.0"
+authors = ["Ronny Chan <ronny6993@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lazy_static = "1.4"
+paste = "1.0"
+
+shiratsu-naming = { path = "../shiratsu-naming" }
+shiratsu-stone = { path = "../shiratsu-stone" }
+
+# Serde
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+quick-xml = { version = "0.22", features = [ "serialize" ] }
+
+# todo: only enable when using legacy parsers
+regex = "1"

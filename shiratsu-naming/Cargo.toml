@@ -1,0 +1,21 @@
+[package]
+name = "shiratsu-naming"
+version = "0.1.0"
+authors = ["Ronny Chan <ronny@ronnychan.ca>"]
+edition = "2018"
+repository = "https://github.com/SnowflakePowered/shiratsu"
+license = "MIT"
+
+[features]
+default = []
+
+[dependencies]
+# Statics
+phf = { version = "0.8", features = ["macros"] }
+
+# Parsing
+nom = { version = "6" }
+indexmap = "1.3"
+
+# pin funty
+funty = "=1.1.0"
