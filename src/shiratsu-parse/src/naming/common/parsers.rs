@@ -89,16 +89,6 @@ macro_rules! make_parens_tag {
     }
 }
 
-macro_rules! make_brackets_tag {
-    ($fn_name:ident, $inner:ident, $token:ty) =>
-    {
-        fn $fn_name<'a>(input: &'a str) -> IResult<&str, $token>
-        {
-            in_brackets($inner)(input)
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests
 {

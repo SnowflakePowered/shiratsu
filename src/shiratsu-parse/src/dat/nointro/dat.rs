@@ -7,7 +7,6 @@ use std::convert::{TryFrom, TryInto};
 use quick_xml::de::DeError as XmlError;
 
 use crate::naming::nointro::*;
-use crate::dat::GameEntry;
 
 #[derive(Debug, Deserialize, PartialEq)]
 struct Rom {

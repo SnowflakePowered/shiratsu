@@ -4,8 +4,8 @@ use std::convert::{TryFrom, TryInto};
 
 use crate::error::*;
 
-use super::super::xml::*;
-use super::super::*;
+use crate::naming::NameInfo;
+use crate::naming::nointro::NoIntroNameable;
 
 #[derive(Debug, Deserialize, PartialEq)]
 struct Rom {
@@ -28,7 +28,7 @@ impl TryFrom<Game> for GameEntry {
         let rom = game.rom;
         let name = game.name;
         Ok(GameEntry {
-            info: None,
+            info: Some(NameInfo::try_from_nointro(&name)?),
             entry_name: name,
             serials: vec![],
             rom_entries: rom.into_iter().map(|r| r.into()).collect(),
@@ -56,10 +56,10 @@ impl From<Rom> for RomEntry {
 wrap_error! {
     wrap DatsSiteParserError(XmlError) for ParseError {
         fn from (err) {
-            ParseError::ParseError(format!("Error parsing dats.site XML: {}", err.0.to_string()))
+            ParseError::ParseError(format!("Error parsing The Custom DATs XML: {}", err.0.to_string()))
         }
     }
 }
 
 make_parse!("Collectors Love It - The Custom Dats", Game, DatsSiteParserError);
-make_from!("dats.site", "http://dats.site/", DatsSite, dats_site);
+make_from!("Collectors Love It - The Custom DATs", "http://dats.site/", DatsSite, dats_site);

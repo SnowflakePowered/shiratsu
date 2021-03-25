@@ -128,11 +128,10 @@ macro_rules! make_from {
     ($hp: expr, $url: expr, $upper: ident, $lower: ident) => {
         use paste::paste;
 
-        use crate::dat::xml::*;
-        use crate::dat::*;
+        use crate::dat::GameEntry;
 
         paste! {
-            /// Provides methods that parse an XML .dat files from [
+            /// Provides methods that parse XML .dat files from [
             #[doc=$hp]
             ///](
             #[doc=$url]
@@ -142,21 +141,29 @@ macro_rules! make_from {
                 #[doc=$hp]
                 /// XML DAT into a vector of `GameEntries`
                 /// This function will check that the
-                /// XML has the proper header for $hp DATs. Use
-                /// `parse_$lower_unchecked` if you wish to ignore the header.
+                /// XML has the proper header for
+                #[doc=$hp]
+                /// DATs. Use the unchecked variant if you wish to ignore the header.
                 fn [<try_from_ $lower _str>](dat: &str) -> Result<Vec<Result<GameEntry>>>;
 
-                /// Parses the contents of a $hp XML DAT into a vector of `GameEntries`,
+                /// Parses the contents of a
+                #[doc=$hp]
+                /// XML DAT into a vector of `GameEntries`,
                 /// ignoring the header element.
                 fn [<try_unchecked_from_ $lower _str>](dat: &str) -> Result<Vec<Result<GameEntry>>>;
 
-                /// Parses the contents of a $hp XML DAT into a vector of `GameEntries`
+                /// Parses the contents of a
+                #[doc=$hp]
+                /// XML DAT into a vector of `GameEntries`
                 /// This function will check that the
-                /// XML has the proper header for $hp DATs. Use
-                /// `parse_nointro_unchecked` if you wish to ignore the header.
+                /// XML has the proper header for
+                #[doc=$hp]
+                /// DATs. Use the unchecked variant if you wish to ignore the header.
                 fn [<try_from_ $lower _buf>]<R: std::io::BufRead>(buf: R) -> Result<Vec<Result<GameEntry>>>;
 
-                /// Parses the contents of a No-Intro XML DAT into a vector of `GameEntries`,
+                /// Parses the contents of a
+                #[doc=$hp]
+                /// XML DAT into a vector of `GameEntries`,
                 /// ignoring the header element
                 fn [<try_unchecked_from_ $lower _buf>]<R: std::io::BufRead>(
                     buf: R,

@@ -4,8 +4,8 @@ use std::convert::{TryFrom, TryInto};
 
 use crate::error::*;
 
-use super::super::xml::*;
-use super::super::*;
+use crate::naming::NameInfo;
+use crate::naming::goodtools::GoodToolsNameable;
 
 #[derive(Debug, Deserialize, PartialEq)]
 struct Rom {
@@ -28,7 +28,7 @@ impl TryFrom<Game> for GameEntry {
         let rom = game.rom;
         let name = game.name;
         Ok(GameEntry {
-            info: None,
+            info: Some(NameInfo::try_from_goodtools(&name)?),
             entry_name: name,
             serials: vec![],
             rom_entries: rom.into_iter().map(|r| r.into()).collect(),

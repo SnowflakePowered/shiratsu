@@ -11,7 +11,7 @@ use nom::Parser;
 use nom::combinator::{recognize, peek, opt, eof};
 use nom::sequence::preceded;
 use crate::naming::FlagType;
-use nom::multi::{separated_list1, separated_list0, many0, many1};
+use nom::multi::many1;
 
 pub(crate) fn parse_region(input: &str) -> IResult<&str, (Vec<&str>, Vec<Region>)> {
     let (strs, regions) = Region::try_from_goodtools_region_with_strs(input)
@@ -272,7 +272,7 @@ fn parse_known_tag(input: &str) -> IResult<&str, GoodToolsToken>
     Ok((input, tokens))
 }
 
-fn do_parse(input: &str) -> IResult<&str, Vec<GoodToolsToken>>
+pub(super) fn do_parse(input: &str) -> IResult<&str, Vec<GoodToolsToken>>
 {
     // two paths
     // 1. title is up to the first parens or brackets tag where
@@ -309,7 +309,7 @@ fn do_parse(input: &str) -> IResult<&str, Vec<GoodToolsToken>>
 #[cfg(test)]
 mod test
 {
-    use crate::naming::goodtools::parsers::{parse_year_tag, parse_region_tag, parse_translation_tag, parse_version_with_space_tag, parse_version_tag, parse_version_with_underscore_tag, parse_vol_tag, parse_game_hack, parse_game_hack_tag, parse_dump_tag, do_parse};
+    use crate::naming::goodtools::parsers::*;
     use crate::naming::goodtools::tokens::{GoodToolsToken, TranslationStatus};
     use crate::region::Region;
     use nom::error::ErrorKind;
