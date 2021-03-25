@@ -180,7 +180,7 @@ fn insert_entry(
     let region_str = entry
         .info()
         .map(|n| n.region())
-        .map(|r| Region::to_region_string(r));
+        .map(|r| Region::to_normalized_region_string(r));
 
     tx.execute_named(r#"
         INSERT INTO game (

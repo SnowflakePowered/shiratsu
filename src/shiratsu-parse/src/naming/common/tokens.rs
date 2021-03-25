@@ -1,6 +1,6 @@
 use std::error::Error;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub enum FlagType
 {
     /// The flag is parenthesized

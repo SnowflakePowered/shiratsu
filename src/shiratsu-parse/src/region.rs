@@ -2,11 +2,15 @@ use array_iterator::ArrayIterator;
 use indexmap::IndexSet;
 use phf::phf_map;
 
+/// Region parsing errors
 #[derive(Debug)]
 pub enum RegionError {
-    InvalidFormat(RegionFormat),
+    /// A parsing error occurred.
+    ///
+    /// The format was invalid for `(RegionFormat, index, column)`
     BadRegionCode(RegionFormat, usize, usize),
-    UnknownRegion(RegionFormat, String),
+
+    /// No regions were found during parsing.
     NoRegions(RegionFormat),
 }
 
@@ -208,7 +212,7 @@ static NOINTRO_REGION: phf::Map<&'static str, Region> = phf_map! {
 };
 
 /// Possible regions of a ROM file taken mostly from TOSEC and No-Intro
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd)]
 pub enum Region {
     Unknown,
     UnitedArabEmirates,
@@ -283,32 +287,88 @@ pub enum Region {
 }
 
 impl Region {
+    /// Parse a valid TOSEC region string into a `Vec<Region>`.
+    /// A valid region string is 2 uppercase letter country codes, separated by hyphens.
+    ///
+    /// # Arguments
+    /// - `region_str` The region string.
     pub fn try_from_tosec_region(region_str: &str) -> Result<Vec<Self>> {
         let (_, region) = from_tosec_region(region_str)?;
         Ok(region)
     }
+
+    /// Parse a valid TOSEC region string into a vector including the
+    /// strings corresponding to each parsed region.
+    ///
+    /// A valid region string is 2 uppercase letter country codes, separated by hyphens.
+    ///
+    /// # Arguments
+    /// - `region_str` The region string.
     pub fn try_from_tosec_region_with_strs(region_str: &str) -> Result<(Vec<&str>, Vec<Self>)>  {
         from_tosec_region(region_str)
     }
+
+    /// Parse a valid No-Intro region string into a `Vec<Region>`.
+    /// A valid region string is a comma + space separated list of valid country names.
+    ///
+    /// Country names are case sensitive.
+    ///
+    /// The following strings are expanded
+    ///
+    /// - `World` is expanded to USA, Japan, and Europe.
+    /// - `Scandinavia` is expanded to Denmark, Norway, and Sweden.
+    /// # Arguments
+    /// - `region_str` The region string.
     pub fn try_from_nointro_region(region_str: &str) -> Result<Vec<Self>> {
         let (_, region) = from_nointro_region(region_str)?;
         Ok(region)
     }
+
+    /// Parse a valid No-Intro region string into a vector including the
+    /// strings corresponding to each parsed region.
+    /// A valid region string is a comma + space separated list of valid country names.
+    ///
+    /// Country names are case sensitive.
+    ///
+    /// The following strings are expanded
+    ///
+    /// - `World` is expanded to USA, Japan, and Europe.
+    /// - `Scandinavia` is expanded to Denmark, Norway, and Sweden.
+    /// - `Latin America` is expanded to Mexico, Brazil, Argentina, Chile, and Peru
+    /// # Arguments
+    /// - `region_str` The region string.
     pub fn try_from_nointro_region_with_strs(region_str: &str) -> Result<(Vec<&str>, Vec<Self>)> {
         from_nointro_region(region_str)
     }
+
+    /// Parse a valid GoodTools region string into a `Vec<Region>`.
+    ///
+    /// # Arguments
+    /// - `region_str` The region string.
     pub fn try_from_goodtools_region(region_str: &str) -> Result<Vec<Self>> {
         let (_, region) = from_goodtools_region(region_str)?;
         Ok(region)
     }
 
+    /// Parse a valid GoodTools region string into a vector including the
+    /// strings corresponding to each parsed region.
+    /// # Arguments
+    /// - `region_str` The region string.
     pub fn try_from_goodtools_region_with_strs(region_str: &str) -> Result<(Vec<&str>, Vec<Self>)> {
         from_goodtools_region(region_str)
     }
 
-    pub fn to_region_string(regions: &[Self]) -> String {
-        to_region_string(regions)
+    /// Creates a TOSEC-compatible ISO code region string, separated by hyphens,
+    /// from a vector of Region.
+    pub fn to_normalized_region_string(regions: &[Self]) -> String {
+        to_normalized_region_string(regions)
     }
+
+    /// Best-guess a region string from one of the three known formats.
+    /// Returns the format that matches the best (meaning it contains the longest number of matches, excluding 'Unknown')
+    ///
+    /// This function expects that the input string is a valid GoodTools, No-Intro, or TOSEC region string.
+    /// If no match can be found, returns unknown region.
     pub fn from_region_string<T: AsRef<str>>(region_str: T) -> Vec<Self> {
         parse_regions(region_str)
     }
@@ -463,7 +523,6 @@ fn from_nointro_region(region_str: &str) -> Result<(Vec<&str>, Vec<Region>)> {
                 regions.insert(Region::Argentina);
                 regions.insert(Region::Chile);
                 regions.insert(Region::Peru);
-                regions.insert(Region::Argentina);
             }
             _ => match NOINTRO_REGION.get(region_code) {
                 Some(&region) => {
@@ -493,7 +552,7 @@ fn from_nointro_region(region_str: &str) -> Result<(Vec<&str>, Vec<Region>)> {
 
 /// Creates a TOSEC-compatible ISO code region string, separated by hyphens,
 /// from a vector of Region.
-fn to_region_string(regions: &[Region]) -> String {
+fn to_normalized_region_string(regions: &[Region]) -> String {
     regions
         .iter()
         .map(|r| r.into())

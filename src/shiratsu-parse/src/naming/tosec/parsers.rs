@@ -259,6 +259,76 @@ fn parse_media(input: &str) -> IResult<&str, TOSECToken>
     Ok((input, TOSECToken::Media(parts)))
 }
 
+
+make_parens_tag!(parse_system_tag, parse_system, TOSECToken);
+fn parse_system(input: &str) -> IResult<&str, TOSECToken>
+{
+    let (input, system) = alt((
+        alt((
+            tag("+2"),
+            tag("+2a"),
+            tag("+3"),
+            tag("130XE"),
+            tag("A1000"),
+            tag("A1200"),
+            tag("A1200-A4000"),
+            tag("A2000"),
+            tag("A2000-A3000"),
+            tag("A2024"),
+            tag("A2500-A3000UX"),
+            tag("A3000"),
+            tag("A4000"),
+            tag("A4000T"),
+            tag("A500"),
+            tag("A500+"),
+            tag("A500-A1000-A2000"),
+            tag("A500-A1000-A2000-CDTV"),
+            tag("A500-A1200"),
+            tag("A500-A1200-A2000-A4000"))),
+        alt((
+            tag("A500-A2000"),
+            tag("A500-A600-A2000"),
+            tag("A570"),
+            tag("A600"),
+            tag("A600HD"),
+            tag("AGA"),
+            tag("AGA-CD32"),
+            tag("Aladdin Deck Enhancer"))),
+        alt((
+            tag("CD32"),
+            tag("CDTV"),
+            tag("Computrainer"),
+            tag("Doctor PC Jr."),
+            tag("ECS"),
+            tag("ECS-AGA"),
+            tag("Executive"),
+            tag("Mega ST"),
+            tag("Mega-STE"),
+            tag("OCS"),
+            tag("OCS-AGA"),
+            tag("ORCH80"),
+            tag("Osbourne 1"))),
+        alt((
+            tag("PIANO90"),
+            tag("PlayChoice-10"),
+            tag("Plus4"),
+            tag("Primo-A"),
+            tag("Primo-A64"),
+            tag("Primo-B"),
+            tag("Primo-B64"),
+            tag("Pro-Primo"),
+            tag("ST"),
+            tag("STE"),
+            tag("STE-Falcon"),
+            tag("TT"),
+            tag("TURBO-R GT"),
+            tag("TURBO-R ST"),
+            tag("VS DualSystem"),
+            tag("VS UniSystem"))),
+    ))(input)?;
+    Ok((input, TOSECToken::System(system)))
+}
+
 make_parens_tag!(parse_video_tag, parse_video, TOSECToken);
 fn parse_video(input: &str) -> IResult<&str, TOSECToken>
 {
@@ -616,6 +686,7 @@ fn parse_known_flags(input: &str) -> IResult<&str, Vec<TOSECToken>>
             map(alt((
                 parse_region_tag,
                 parse_language_tag,
+                parse_system_tag,
                 parse_video_tag,
                 parse_copyright_tag,
                 parse_media_tag)),
@@ -699,6 +770,22 @@ mod test
     use crate::naming::*;
     use crate::naming::tosec::parsers::*;
 
+    #[test]
+    fn test_repair()
+    {
+        assert_eq!(do_parse("ZZZ-UNK-Loopz (U) (Beta) (v0.06)")
+                       .map(|(i, e)| (i, e.into()))
+                       .map(|(i, e): (&str, TOSECName)| (i, e.into_strict()))
+                       .map(|(i, e)| (i, e.into())),
+                   Ok(("", vec![
+                       TOSECToken::Title("Loopz"),
+                       TOSECToken::Version("v", "0", Some("06")),
+                       TOSECToken::Date("19xx", None, None),
+                       TOSECToken::Publisher(None),
+                       TOSECToken::Region(vec!["US"], vec![Region::UnitedStates]),
+                       TOSECToken::Development("beta")
+                   ])));
+    }
     #[test]
     fn test_parse_multi()
     {
@@ -879,9 +966,9 @@ mod test
             ))
         );
 
-        assert_eq!(
-            do_parse("ZZZ-UNK-Clicks! (test) by Domin, Matthias (2001) (PD)"),
-            Ok(("",
+        let parse = do_parse("ZZZ-UNK-Clicks! (test) by Domin, Matthias (2001) (PD)");
+        assert_eq!(&parse,
+            &Ok(("",
                 vec![
                     TOSECToken::Warning(TOSECWarn::ZZZUnknown),
                     TOSECToken::Title("Clicks! (test)"),
@@ -893,7 +980,12 @@ mod test
                     TOSECToken::Copyright("PD")
                 ]
             ))
-        )
+        );
+
+        let (_, parse) = parse.unwrap();
+        let parse: TOSECName = parse.into();
+        println!("{:?}", parse.into_strict());
+
     }
 
     #[test]
@@ -966,9 +1058,10 @@ mod test
     #[test]
     fn test_parse_full()
     {
+        let parse = do_parse("Escape from the Mindmaster (1982)(Starpath)(PAL)(Part 3 of 4)[Supercharger Cassette]");
         assert_eq!(
-            do_parse("Escape from the Mindmaster (1982)(Starpath)(PAL)(Part 3 of 4)[Supercharger Cassette]"),
-            Ok(("",
+            &parse,
+            &Ok(("",
                 vec![
                     TOSECToken::Title("Escape from the Mindmaster"),
                     TOSECToken::Date("1982", None, None),

@@ -1,11 +1,11 @@
-/// Functions that involve parsing region strings from various naming conventions
+/// Functions that involve parsing region strings from various naming conventions.
 pub mod region;
 /// Parsers for various ROM naming conventions.
 pub mod naming;
 /// Parsing routines for XML .dat files, including
 /// source-specific verification and serial extraction.
 pub mod dat;
-/// Error types and handling
+/// Error types and handling.
 pub mod error;
 
 #[cfg(test)]
