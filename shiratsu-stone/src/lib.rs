@@ -5,8 +5,12 @@ pub use platforms::{PlatformId, PlatformInfo, StoneError, StonePlatforms};
 
 #[cfg(test)]
 mod tests {
+    use crate::StonePlatforms;
+
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn dump_stone() {
+        for platform in StonePlatforms::get().ids() {
+            println!("{:?}", platform);
+        };
     }
 }

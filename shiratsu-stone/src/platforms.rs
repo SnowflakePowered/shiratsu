@@ -14,7 +14,7 @@ use std::io;
 
 type Result<T> = std::result::Result<T, StoneError>;
 
-lazy_static_include_str!(STONE_DIST, "../../stone/dist/stone.dist.json");
+lazy_static_include_str!(STONE_DIST, "./stone/dist/stone.dist.json");
 lazy_static! {
     pub static ref STONE: (StonePlatforms, String) = load_platform_info().unwrap();
 }

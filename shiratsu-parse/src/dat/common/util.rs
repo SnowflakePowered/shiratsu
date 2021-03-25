@@ -139,7 +139,7 @@ macro_rules! make_from {
             pub trait [<From $upper>] {
                 /// Parses the contents of a
                 #[doc=$hp]
-                /// XML DAT into a vector of `GameEntries`
+                /// XML DAT into a vector of `GameEntries`.
                 /// This function will check that the
                 /// XML has the proper header for
                 #[doc=$hp]
@@ -154,7 +154,7 @@ macro_rules! make_from {
 
                 /// Parses the contents of a
                 #[doc=$hp]
-                /// XML DAT into a vector of `GameEntries`
+                /// XML DAT into a vector of `GameEntries`.
                 /// This function will check that the
                 /// XML has the proper header for
                 #[doc=$hp]
