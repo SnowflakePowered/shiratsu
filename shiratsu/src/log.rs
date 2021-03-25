@@ -4,7 +4,7 @@ use console::style;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use lazy_static::lazy_static;
 use rusqlite::backup::Progress;
-use shiratsu_naming::error::NameError;
+use shiratsu_naming::NameError;
 use slog::{error, info, warn};
 use shiratsu_dat::DatError;
 
@@ -181,7 +181,7 @@ pub fn print_event(e: Event) {
             );
         }
         Event::ParseEntryError(err, root) => match err {
-            DatError::NameError(NameError::BadFileNameError(convention, filename)) => {
+            DatError::NameError(NameError::ParseError(convention, filename)) => {
                 warn!(
                     root,
                     "Could not parse {} under the {:?} naming convention", filename, convention

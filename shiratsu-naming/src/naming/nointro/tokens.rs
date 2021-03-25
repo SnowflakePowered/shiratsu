@@ -67,7 +67,7 @@ impl NoIntroName<'_>
     /// Tries to parse the name into a vector of tokens.
     pub fn try_parse<S: AsRef<str> + ?Sized>(input: &S) -> Result<NoIntroName> {
         let (_, value) = do_parse(input.as_ref()).map_err(|_| {
-            NameError::BadFileNameError(NamingConvention::NoIntro, input.as_ref().to_string())
+            NameError::ParseError(NamingConvention::NoIntro, input.as_ref().to_string())
         })?;
         Ok(value.into())
     }

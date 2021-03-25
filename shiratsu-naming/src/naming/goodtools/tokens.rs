@@ -43,7 +43,7 @@ impl GoodToolsName<'_>
 
     pub fn try_parse<S: AsRef<str> + ?Sized>(input: &S) -> Result<GoodToolsName> {
         let (_, value) = do_parse(input.as_ref()).map_err(|_| {
-            NameError::BadFileNameError(NamingConvention::GoodTools, input.as_ref().to_string())
+            NameError::ParseError(NamingConvention::GoodTools, input.as_ref().to_string())
         })?;
         Ok(value.into())
     }

@@ -5,5 +5,7 @@
 pub mod region;
 /// Parsers for various ROM naming conventions.
 pub mod naming;
+
 /// Error types and handling.
-pub mod error;
+mod error;
+pub use error::*;

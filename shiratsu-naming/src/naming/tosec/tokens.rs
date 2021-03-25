@@ -321,7 +321,7 @@ impl TOSECName<'_> {
     pub fn try_parse<S: AsRef<str> + ?Sized>(input: &S) -> Result<TOSECName>
     {
         let (_, value) = do_parse(input.as_ref()).map_err(|_| {
-            NameError::BadFileNameError(NamingConvention::TOSEC, input.as_ref().to_string())
+            NameError::ParseError(NamingConvention::TOSEC, input.as_ref().to_string())
         })?;
         Ok(value.into())
     }
@@ -338,8 +338,9 @@ pub struct TOSECMultiSetName<'a>
 impl TOSECMultiSetName<'_> {
     pub fn try_parse<S: AsRef<str> + ?Sized>(input: &S) -> Result<TOSECMultiSetName>
     {
-        let (_, value) = do_parse_multiset(input.as_ref()).map_err(|_| {
-            NameError::BadFileNameError(NamingConvention::TOSEC, input.as_ref().to_string())
+        let (_, value) = do_parse_multiset(input.as_ref())
+            .map_err(|_| {
+                NameError::ParseError(NamingConvention::TOSEC, input.as_ref().to_string())
         })?;
         Ok(value.into())
     }
