@@ -4,8 +4,9 @@ use shiratsu_stone::{
     PlatformId, StonePlatforms, find_mimetype
 };
 
-use shiratsu_parse::{
-    dat::*,
+use shiratsu_dat::{DevelopmentStatus, GameEntry};
+
+use shiratsu_naming::{
     region::Region,
     naming::*,
 };

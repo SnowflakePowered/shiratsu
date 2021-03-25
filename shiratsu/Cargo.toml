@@ -9,8 +9,9 @@ edition = "2018"
 [dependencies]
 
 # shiratsu core
-shiratsu-parse = { path = "../shiratsu-parse" }
+shiratsu-naming = { path = "../shiratsu-naming" }
 shiratsu-stone = { path = "../shiratsu-stone" }
+shiratsu-dat = { path = "../shiratsu-dat" }
 
 # shiragame database creation
 rusqlite = { version = "0.23.1", features = ["backup", "bundled"] }

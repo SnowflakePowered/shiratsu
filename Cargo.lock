@@ -51,21 +51,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
-name = "bit-set"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e11e16035ea35e4e5997b393eacbf6f63983188f7a2ad25bfb13465f5ad59de"
-dependencies = [
- "bit-vec",
-]
-
-[[package]]
-name = "bit-vec"
-version = "0.6.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "349f9b6a179ed607305526ca489b34ad0a41aed5f7980fa90eb03160b69598fb"
-
-[[package]]
 name = "bitflags"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -216,16 +201,6 @@ name = "fallible-streaming-iterator"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
-
-[[package]]
-name = "fancy-regex"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe09872bd11351a75f22b24c3769fc863e8212d926d6db46b94ad710d14cc5cc"
-dependencies = [
- "bit-set",
- "regex",
-]
 
 [[package]]
 name = "funty"
@@ -709,7 +684,8 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_yaml",
- "shiratsu-parse",
+ "shiratsu-dat",
+ "shiratsu-naming",
  "shiratsu-stone",
  "slog",
  "slog-async",
@@ -721,22 +697,28 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiratsu-parse"
+name = "shiratsu-dat"
 version = "0.1.0"
 dependencies = [
- "array_iterator",
- "fancy-regex",
- "funty",
- "indexmap",
- "lazy-static-include",
  "lazy_static",
- "nom",
  "paste",
- "phf",
  "quick-xml",
  "regex",
  "serde",
  "serde_json",
+ "shiratsu-naming",
+ "shiratsu-stone",
+]
+
+[[package]]
+name = "shiratsu-naming"
+version = "0.1.0"
+dependencies = [
+ "array_iterator",
+ "funty",
+ "indexmap",
+ "nom",
+ "phf",
 ]
 
 [[package]]

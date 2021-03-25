@@ -29,19 +29,23 @@
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/serde_json-4342ef2e5ed2d81a/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/slog-2197dfeab5ec0028/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/syn-749208192c8c8c5b/out" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/shiratsu-parse/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/shiratsu-dat/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/shiratsu-naming/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/shiratsu-stone/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/shiratsu/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/anyhow-82ae20ee194379e4/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/crossbeam-utils-c6b81fd29e84aa02/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/indexmap-517b365cd620f1b7/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/libc-81f8e4b0937ddeed/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/libc-a1c7bb7bc3f3080e/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/libsqlite3-sys-ae698491f9d01b31/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/memchr-484f8fdd591c8c9f/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/nom-82a5ac3f69d853fd/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/serde-12b9a91bfa09eca2/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/serde_derive-5b541b1ce54ed2dc/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/serde_json-246c7ac852b2e9de/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/syn-8dfbc0bfbbedb606/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/syn-9d33a8663707813f/out" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

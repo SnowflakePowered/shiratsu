@@ -2,6 +2,7 @@
 [workspace]
 members = [
     "shiratsu",
-    "shiratsu-parse",
-    "shiratsu-stone"
+    "shiratsu-naming",
+    "shiratsu-stone",
+    "shiratsu-dat"
 ]

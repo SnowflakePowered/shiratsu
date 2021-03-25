@@ -5,3 +5,4 @@ unsorted/**/*.dat
 dats/**/*
 **/*.dat
 /unsorted/**/*
+log.txt*

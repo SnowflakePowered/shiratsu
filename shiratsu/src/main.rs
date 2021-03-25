@@ -2,16 +2,14 @@ mod database;
 mod ingest;
 mod log;
 mod sortrules;
-mod error;
 
 use shiratsu_stone::{
     PlatformId, StonePlatforms
 };
 
-use shiratsu_parse::{
-    error::*,
-    dat::*,
-    dat::{nointro::*, redump::*, tosec::*, dats_site::*, opengood::*},
+use shiratsu_dat::{
+    *,
+    {nointro::*, redump::*, tosec::*, dats_site::*, opengood::*}
 };
 
 use anyhow::{anyhow, Error, Result};
@@ -34,9 +32,9 @@ use lazy_static_include::*;
 
 use glob::glob_with;
 use glob::MatchOptions;
-use shiratsu_parse::naming::{ToNameInfo, NamingConvention};
+use shiratsu_dat::GameEntry;
 
-type ParseResult<T> = std::result::Result<T, ParseError>;
+type ParseResult<T> = std::result::Result<T, DatError>;
 
 fn get_entries<R: BufRead + Seek>(
     mut reader: R,
@@ -44,19 +42,19 @@ fn get_entries<R: BufRead + Seek>(
     reader.seek(SeekFrom::Start(0))?;
     match GameEntry::try_from_nointro_buf(reader.by_ref()) {
         Ok(entries) => return Ok(Some((entries, "No-Intro"))),
-        Err(ParseError::HeaderMismatchError(_, _)) => {}
+        Err(DatError::HeaderMismatchError(_, _)) => {}
         Err(err) => return Err(Error::new(err)),
     }
     reader.seek(SeekFrom::Start(0))?;
     match GameEntry::try_from_redump_buf(reader.by_ref()) {
         Ok(entries) => return Ok(Some((entries, "Redump"))),
-        Err(ParseError::HeaderMismatchError(_, _)) => {}
+        Err(DatError::HeaderMismatchError(_, _)) => {}
         Err(err) => return Err(Error::new(err)),
     }
     reader.seek(SeekFrom::Start(0))?;
     match GameEntry::try_from_tosec_buf(reader.by_ref()) {
         Ok(entries) => return Ok(Some((entries, "TOSEC"))),
-        Err(ParseError::HeaderMismatchError(_, _)) => {}
+        Err(DatError::HeaderMismatchError(_, _)) => {}
         Err(err) => return Err(Error::new(err)),
     }
     Err(anyhow!("Did not match any known cataloguing organization."))
@@ -127,7 +125,7 @@ pub enum Event<'a> {
         &'a str,
         &'a Logger,
     ),
-    ParseEntryError(&'a ParseError, &'a Logger),
+    ParseEntryError(&'a DatError, &'a Logger),
     ProcessEntrySuccess(&'a ProgressBar),
     DatProcessingSuccess(&'a ProgressBar, &'a PlatformId, &'a Path, usize, &'a Logger),
     DbSaveSuccess(&'a Path, &'a String, &'a String, u64),
