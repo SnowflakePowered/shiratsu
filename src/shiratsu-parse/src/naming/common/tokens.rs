@@ -1,3 +1,5 @@
+use std::error::Error;
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum FlagType
 {
@@ -43,4 +45,10 @@ impl <'a> From<&'a (&'a str, &'a str, Option<&'a str>, Option<&'a str>, Option<V
             suffix: tuple.4.as_ref()
         }
     }
+}
+
+pub trait TryIntoStrict<T, E>
+where E: Error
+{
+    fn try_into_strict(self) -> Result<T, E>;
 }

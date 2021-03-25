@@ -7,12 +7,15 @@ pub enum GoodToolsToken<'a>
     Title(&'a str),
     Region(Vec<&'a str>, Vec<Region>),
     Year(&'a str),
-    Multilanguage(&'a str),
-    Translation(TranslationStatus, &'a str),
-    Version(&'a str, &'a str, Option<&'a str>),
-    DumpInfo(&'a str, Option<&'a str>, Option<&'a str>),
+    Multilanguage(&'a str), // (M#)
+    Translation(TranslationStatus, &'a str), // [T(+/-)...]
+    Version(&'a str, &'a str, Option<&'a str>), // (REV/V/V /V_ ...)
+    Volume(&'a str), // (Vol #)
+    NInOne(Vec<&'a str>, Option<&'a str>), // list, sep (either + or ,)
+    DumpCode(&'a str, Option<&'a str>, Option<&'a str>, Option<&'a str>, Option<&'a str>, Option<&'a str>), // (code, number, type, sep, argnum, args)
+    GameHack(Option<&'a str>), // (... Hack)
     Media(&'a str, &'a str, Option<&'a str>),
-    Code(FlagType, &'a str),
+    Flag(FlagType, &'a str),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

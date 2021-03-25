@@ -59,7 +59,6 @@ pub enum TOSECLanguage<'a>
 {
     /// A single language code
     Single(&'a str),
-
     /// A double language
     Double(&'a str, &'a str),
     /// A multi-language indicator without the leading 'M'
@@ -74,6 +73,20 @@ impl <'a> From<Vec<TOSECToken<'a>>> for TOSECName<'a>
 {
     fn from(vec: Vec<TOSECToken<'a>>) -> Self {
         TOSECName(vec)
+    }
+}
+
+impl <'a> From<TOSECName<'a>> for Vec<TOSECToken<'a>>
+{
+    fn from(name: TOSECName<'a>) -> Self {
+        name.0
+    }
+}
+
+impl <'a> AsRef<Vec<TOSECToken<'a>>> for TOSECName<'a>
+{
+    fn as_ref(&self) -> &Vec<TOSECToken<'a>> {
+        &self.0
     }
 }
 

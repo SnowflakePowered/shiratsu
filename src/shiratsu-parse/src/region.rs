@@ -1,7 +1,6 @@
 use array_iterator::ArrayIterator;
 use indexmap::IndexSet;
 use phf::phf_map;
-use crate::region::Region::UnitedStates;
 
 #[derive(Debug)]
 pub enum RegionError {

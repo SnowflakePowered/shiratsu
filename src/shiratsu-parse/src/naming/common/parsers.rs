@@ -43,7 +43,8 @@ pub(crate) fn take_until_is<Arr, Tag, Input, Error: ParseError<Input>>(arr: Arr,
     }
 }
 
-/// Return the input slice up to the first occurrence of the parser
+/// Return the input slice up to the first occurrence of the parser,
+/// and the result of the parser on match.
 /// If the parser never matches, returns an error with code `ManyTill`
 pub(crate) fn take_up_to<Input, Output, Error:ParseError<Input>, P>(mut parser: P)
     -> impl FnMut(Input) -> IResult<Input, (Input, Output), Error>
@@ -97,7 +98,6 @@ macro_rules! make_brackets_tag {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests

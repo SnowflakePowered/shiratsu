@@ -41,7 +41,7 @@ pub enum NoIntroToken<'a>
     /// Use Version::into to convert into a more
     /// semantically useful struct.
     Version(Vec<(&'a str, &'a str, Option<&'a str>, Option<&'a str>, Option<Vec<&'a str>>)>),
-    Beta(Option<&'a str>),
+    Release(&'a str, Option<&'a str>),
 
     /// Part number
     Part(&'a str, &'a str),
@@ -69,6 +69,20 @@ impl <'a> From<Vec<NoIntroToken<'a>>> for NoIntroName<'a>
     }
 }
 
+impl <'a> From<NoIntroName<'a>> for Vec<NoIntroToken<'a>>
+{
+    fn from(name: NoIntroName<'a>) -> Self {
+        name.0
+    }
+}
+
+impl <'a> AsRef<Vec<NoIntroToken<'a>>> for NoIntroName<'a>
+{
+    fn as_ref(&self) -> &Vec<NoIntroToken<'a>> {
+        &self.0
+    }
+}
+
 impl <'a> ToNameInfo for NoIntroName<'a>
 {
     fn to_name_info(&self) -> NameInfo {
@@ -92,16 +106,15 @@ impl <'a> ToNameInfo for NoIntroName<'a>
                     name.entry_title = title.to_string()
                 }
                 NoIntroToken::Flag(_, "Kiosk")
-                | NoIntroToken::Flag(_, "Demo")
-                | NoIntroToken::Flag(_, "Sample")
-                | NoIntroToken::Flag(_, "Bonus Disc")
-                | NoIntroToken::Flag(_, "Bonus CD")
-                | NoIntroToken::Flag(_, "Taikenban")
-                | NoIntroToken::Flag(_, "Tentou Taikenban") => {
+                | NoIntroToken::Flag(_, "Kiosk Demo")
+                | NoIntroToken::Flag(_, "Bonus Game")
+                | NoIntroToken::Flag(_, "Taikenban Sample ROM")
+                | NoIntroToken::Release("Demo", _)
+                | NoIntroToken::Release("Sample", _) => {
                     name.is_demo = true
                 }
-                NoIntroToken::Beta(_) => { name.status = DevelopmentStatus::Prerelease }
-                NoIntroToken::Flag(_, "Proto") => { name.status = DevelopmentStatus::Prototype }
+                NoIntroToken::Release("Beta", _) => { name.status = DevelopmentStatus::Prerelease }
+                NoIntroToken::Release("Proto", _) => { name.status = DevelopmentStatus::Prototype }
                 NoIntroToken::Flag(_, "Unl") => { name.is_unlicensed = true }
                 NoIntroToken::Version(versions) => {
                     match versions.first() {

@@ -10,7 +10,8 @@ pub use common::{
     NamingConvention,
     tokens::{
         FlagType,
-        Version
+        Version,
+        TryIntoStrict
     },
 };
 

@@ -211,13 +211,21 @@ fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken>
     Ok((input, NoIntroToken::Version(nextvers)))
 }
 
-make_parens_tag!(parse_beta_tag, parse_beta, NoIntroToken);
-fn parse_beta(input: &str) -> IResult<&str, NoIntroToken>
+make_parens_tag!(parse_dev_status_tag, parse_dev_status, NoIntroToken);
+fn parse_dev_status(input: &str) -> IResult<&str, NoIntroToken>
 {
-    let (input, _) = tag("Beta")(input)?;
+    let (input, status) =
+        alt((
+            tag("Demo"),
+            tag("Beta"),
+            tag("Sample"),
+            tag("Prototype"),
+            tag("Proto"),
+
+        ))(input)?;
     let (input, beta) = opt(preceded(char(' '),
                                      take_while(|c: char| c.is_ascii_alphanumeric() || c == ' ')))(input)?;
-    Ok((input, NoIntroToken::Beta(beta)))
+    Ok((input, NoIntroToken::Release(status, beta)))
 }
 
 make_parens_tag!(parse_disc_tag, parse_disc, NoIntroToken);
@@ -309,7 +317,7 @@ fn parse_known_flags(input: &str) -> IResult<&str, NoIntroToken>
     let (input, tag) = alt((
                                 parse_language_tag,
                                 parse_version_tag,
-                                parse_beta_tag,
+                                parse_dev_status_tag,
                                 parse_disc_tag,
                                 parse_additional_tag
     ))(input)?;
@@ -444,14 +452,14 @@ mod tests
     #[test]
     fn parse_beta_test()
     {
-        assert_eq!(parse_beta_tag("(Beta)"),
-                   Ok(("", NoIntroToken::Beta(None))));
-        assert_eq!(parse_beta_tag("(Beta 3)"),
-                   Ok(("", NoIntroToken::Beta(Some("3")))));
-        assert_eq!(parse_beta_tag("(Beta 55)"),
-                   Ok(("", NoIntroToken::Beta(Some("55")))));
-        assert_eq!(parse_beta_tag("(Beta Phase 2)"),
-                   Ok(("", NoIntroToken::Beta(Some("Phase 2")))));
+        assert_eq!(parse_dev_status_tag("(Beta)"),
+                   Ok(("", NoIntroToken::Release("Beta", None))));
+        assert_eq!(parse_dev_status_tag("(Beta 3)"),
+                   Ok(("", NoIntroToken::Release("Beta", Some("3")))));
+        assert_eq!(parse_dev_status_tag("(Beta 55)"),
+                   Ok(("", NoIntroToken::Release("Beta", Some("55")))));
+        assert_eq!(parse_dev_status_tag("(Beta Phase 2)"),
+                   Ok(("", NoIntroToken::Release("Beta", Some("Phase 2")))));
     }
 
     #[test]
