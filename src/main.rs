@@ -11,7 +11,7 @@ use shiratsu_stone::{
 use shiratsu_parse::{
     error::*,
     dat::*,
-    dat::{nointro::*, redump::*, tosec::*},
+    dat::{nointro::*, redump::*, tosec::*, dats_site::*, opengood::*},
 };
 
 use anyhow::{anyhow, Error, Result};

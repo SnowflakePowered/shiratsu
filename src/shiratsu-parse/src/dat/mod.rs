@@ -5,6 +5,8 @@ pub(super) mod xml;
 pub mod nointro;
 pub mod redump;
 pub mod tosec;
+pub mod dats_site;
+pub mod opengood;
 pub mod generic;
 
 pub use common::GameEntry;

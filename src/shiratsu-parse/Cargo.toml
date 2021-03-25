@@ -17,6 +17,7 @@ legacy-parser = []
 lazy_static = "1.4"
 lazy-static-include = "2.2"
 phf = { version = "0.8", features = ["macros"] }
+paste = "1.0"
 
 # Serde
 serde = { version = "1.0", features = ["derive"] }

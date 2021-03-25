@@ -77,7 +77,7 @@ fn parse_unchecked_buf<R: std::io::BufRead>(f: R) -> Result<Vec<Result<GameEntry
         .collect())
 }
 
-/// Provides methods that parse an XML .dat files from [TOSEC](https://www.tosecdev.org/)
+/// Provides methods that parse an XML .dat files from Generic
 pub trait FromGeneric {
 
     /// Parses the contents of a generic DAT XML
