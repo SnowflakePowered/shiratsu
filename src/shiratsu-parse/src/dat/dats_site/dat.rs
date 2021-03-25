@@ -4,8 +4,7 @@ use std::convert::{TryFrom, TryInto};
 
 use crate::error::*;
 
-use crate::naming::NameInfo;
-use crate::naming::nointro::NoIntroNameable;
+use crate::naming::nointro::NoIntroName;
 
 #[derive(Debug, Deserialize, PartialEq)]
 struct Rom {
@@ -28,7 +27,7 @@ impl TryFrom<Game> for GameEntry {
         let rom = game.rom;
         let name = game.name;
         Ok(GameEntry {
-            info: Some(NameInfo::try_from_nointro(&name)?),
+            info: Some(NoIntroName::try_parse(&name)?.into()),
             entry_name: name,
             serials: vec![],
             rom_entries: rom.into_iter().map(|r| r.into()).collect(),

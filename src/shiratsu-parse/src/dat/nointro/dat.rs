@@ -1,4 +1,3 @@
-use crate::naming::*;
 use crate::error::*;
 
 use serde::Deserialize;
@@ -30,7 +29,7 @@ impl TryFrom<Game> for GameEntry {
         let rom = game.rom;
         let name = game.name;
         Ok(GameEntry {
-            info: Some(NameInfo::try_from_nointro(&name)?),
+            info: Some(NoIntroName::try_parse(&name)?.into()),
             entry_name: name,
             serials: rom
                 .iter()

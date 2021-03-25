@@ -1,10 +1,10 @@
-use crate::naming::*;
 use crate::error::*;
-use crate::naming::nointro::NoIntroNameable;
 
 use quick_xml::de::DeError as XmlError;
 use serde::Deserialize;
 use std::convert::{TryFrom, TryInto};
+use crate::naming::nointro::NoIntroName;
+
 #[derive(Debug, Deserialize, PartialEq)]
 struct Rom {
     name: String,
@@ -27,7 +27,7 @@ impl TryFrom<Game> for GameEntry {
         let rom = game.rom;
         let name = game.name;
         Ok(GameEntry {
-            info: Some(NameInfo::try_from_nointro(&name)?),
+            info: Some(NoIntroName::try_parse(&name)?.into()),
             entry_name: name,
             serials: game
                 .serial

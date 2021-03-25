@@ -2,9 +2,8 @@ use quick_xml::de::DeError as XmlError;
 use serde::Deserialize;
 use std::convert::{TryFrom, TryInto};
 
-use crate::naming::tosec::TOSECNameable;
-use crate::naming::*;
 use crate::error::*;
+use crate::naming::tosec::TOSECName;
 
 #[derive(Debug, Deserialize, PartialEq)]
 struct Rom {
@@ -27,7 +26,7 @@ impl TryFrom<Game> for GameEntry {
         let rom = game.rom;
         let name = game.name;
         Ok(GameEntry {
-            info: Some(NameInfo::try_from_tosec(&name)?),
+            info: Some(TOSECName::try_parse(&name)?.into()),
             entry_name: name,
             serials: vec![],
             rom_entries: rom.into_iter().map(|r| r.into()).collect(),

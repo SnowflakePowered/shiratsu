@@ -262,85 +262,6 @@ where
     }
 }
 
-fn compare<F>(event_fn: F) -> Result<()>
-    where
-        F: Fn(Event) -> (),
-{
-    let (root, filelog) = setup_logging("root.log",
-                                        "file.log");
-
-    for (platform_id, dir) in ingest::get_paths("dats").into_iter() {
-        let mut parse_errors = Vec::new();
-        let reader = BufReader::new(File::open(dir.path())?);
-        match get_entries(reader) {
-            Ok(Some((entries, source))) => {
-                let pb = ProgressBar::new(entries.len() as u64);
-                event_fn(Event::FoundDatFile(
-                    &pb,
-                    dir.path(),
-                    entries.len() as u64,
-                    platform_id,
-                    source,
-                    &root,
-                    &filelog,
-                ));
-
-                for game in entries.iter() {
-                    match game {
-                        Ok(game) => {
-                            event_fn(Event::ProcessEntry(
-                                &pb,
-                                platform_id,
-                                dir.path(),
-                                game.entry_name(),
-                                &root,
-                            ));
-
-                            let old_name = game.entry_name();
-                            if let Ok(res) = shiratsu_parse::naming::tosec::try_parse(old_name)
-                            {
-                                if res.has_warnings() {
-                                    eprintln!("{}", old_name);
-                                    eprintln!("{:?}", res);
-                                }
-                            }
-                        }
-                        Err(ParseError::BadFileNameError(NamingConvention::TOSEC, name)) => {
-                            if let Ok(res) = shiratsu_parse::naming::tosec::try_parse(name)
-                            {
-                                eprintln!("NAMERRROR=====");
-                                if res.has_warnings() {
-                                    eprintln!("{}", name);
-                                    eprintln!("{:?}", res);
-                                }
-                            }
-                        }
-                        Err(err) => parse_errors.push(Event::ParseEntryError(err, &root)),
-                    }
-
-                    event_fn(Event::ProcessEntrySuccess(&pb));
-                }
-
-                event_fn(Event::DatProcessingSuccess(
-                    &pb,
-                    platform_id,
-                    dir.path(),
-                    entries.len(),
-                    &root,
-                ));
-
-                for error in parse_errors.into_iter() {
-                    event_fn(error);
-                }
-            }
-            Ok(None) => event_fn(Event::NoEntriesFound(dir.file_name(), &root)),
-            Err(err) => return Err(err),
-        }
-    }
-    Ok(())
-}
-
-
 fn sort_dats<F>(event_fn: F) -> Result<()>
 where
     F: Fn(Event) -> (),
@@ -411,7 +332,6 @@ where
 
     match command.as_str() {
         "sort" => sort_dats(event_fn),
-        "compare" => compare(event_fn),
         save_path => create_db(save_path, event_fn),
     }
 }

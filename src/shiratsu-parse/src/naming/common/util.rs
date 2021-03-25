@@ -81,12 +81,6 @@ pub(crate) fn replace_hyphen_mut(title: &mut String) {
     }
 }
 
-pub(crate) fn trim_right_mut(string: &mut String) {
-    // We are only taking ASCII space characters, so count == len.
-    let space_count = string.chars().rev().take_while(|&c| c == ' ').count();
-    string.truncate(string.len() - space_count);
-}
-
 #[cfg(test)]
 mod tests
 {
