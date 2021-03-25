@@ -1,6 +1,6 @@
-use array_iterator::ArrayIterator;
 use indexmap::IndexSet;
 use phf::phf_map;
+use std::array;
 
 /// Region parsing errors
 #[derive(Debug)]
@@ -317,6 +317,7 @@ impl Region {
     ///
     /// - `World` is expanded to USA, Japan, and Europe.
     /// - `Scandinavia` is expanded to Denmark, Norway, and Sweden.
+    /// - `Latin America` is expanded to Mexico, Brazil, Argentina, Chile, and Peru
     /// # Arguments
     /// - `region_str` The region string.
     pub fn try_from_nointro_region<S: AsRef<str> + ?Sized>(region_str: &S) -> Result<Vec<Self>> {
@@ -575,8 +576,7 @@ fn parse_regions<T: AsRef<str>>(region_str: T) -> Vec<Region> {
         .map(|(_, res)| res)
         .unwrap_or(vec![Region::Unknown]);
     // thanks @Rantanen on the Rust discord
-    ArrayIterator::new([good_tools_try, nointro_try, tosec_try])
-        .into_iter()
+    array::IntoIter::new([good_tools_try, nointro_try, tosec_try])
         // Precalculate all the counts so they don't need to be calculated for
         // every single comparison.
         .map(|v| (v.iter().filter(|&r| *r != Region::Unknown).count(), v))

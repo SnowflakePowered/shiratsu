@@ -1,4 +1,4 @@
-//! A library that parses ROM entry file names from the most popular
+//! A library for parsing ROM entry file names from the most popular
 //! naming conventions used in ROM catalogue .dat files.
 
 /// Parsers and validators for region strings from various naming conventions.
