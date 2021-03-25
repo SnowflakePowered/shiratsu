@@ -30,6 +30,7 @@ pub enum TranslationStatus
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[repr(transparent)]
+/// A GoodTools format file name.
 pub struct GoodToolsName<'a>(Vec<GoodToolsToken<'a>>);
 
 impl GoodToolsName<'_>

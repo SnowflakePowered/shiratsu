@@ -215,6 +215,7 @@ impl TOSECToken<'_> {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[repr(transparent)]
+/// A TOSEC format file name.
 pub struct TOSECName<'a>(Vec<TOSECToken<'a>>);
 
 impl <'a> From<Vec<TOSECToken<'a>>> for TOSECName<'a>
@@ -317,6 +318,7 @@ impl TOSECName<'_> {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+/// A TOSEC format file name representing a Multi Image Set
 pub struct TOSECMultiSetName<'a>
 {
     tokens: Vec<Vec<TOSECToken<'a>>>,

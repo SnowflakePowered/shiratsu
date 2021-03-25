@@ -7,7 +7,7 @@ pub enum DevelopmentStatus {
     ///
     /// This is equivalent to a lack of a status tag in both NoIntro and TOSEC standards.
     /// If the (Sample) tag is present, the development status should be `DevelopmentStatus::Release`,
-    /// with `StructuredlyName::is_demo()` returning true.
+    /// with `NameInfo::is_demo()` returning true.
     Release,
     /// An unfinished, but mostly feature complete product, that may or may not have been intentionally released.
     ///

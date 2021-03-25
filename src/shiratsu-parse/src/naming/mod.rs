@@ -8,11 +8,7 @@ pub use common::{
     NameInfo,
     ToNameInfo,
     NamingConvention,
-    tokens::{
-        FlagType,
-        Version,
-        TryIntoStrict
-    },
+    tokens::FlagType,
 };
 
 pub(crate) use common::parsers;

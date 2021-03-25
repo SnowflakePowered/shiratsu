@@ -31,7 +31,7 @@ impl TryFrom<Game> for GameEntry {
             entry_name: name,
             serials: vec![],
             rom_entries: rom.into_iter().map(|r| r.into()).collect(),
-            source: "Generic",
+            source: "OpenGood",
         })
     }
 }

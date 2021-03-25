@@ -40,8 +40,6 @@ pub enum NoIntroToken<'a>
     Flag(FlagType, &'a str),
 
     /// The parsed version.
-    /// Use Version::into to convert into a more
-    /// semantically useful struct.
     Version(Vec<(&'a str, &'a str, Option<&'a str>, Option<&'a str>, Option<Vec<&'a str>>)>),
     Release(&'a str, Option<&'a str>),
 
@@ -62,6 +60,7 @@ pub enum NoIntroToken<'a>
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[repr(transparent)]
+/// A No-Intro format file name.
 pub struct NoIntroName<'a>(Vec<NoIntroToken<'a>>);
 impl NoIntroName<'_>
 {
