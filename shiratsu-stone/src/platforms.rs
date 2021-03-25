@@ -11,6 +11,7 @@ use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::io;
+use crate::file_ext::FileExt;
 
 type Result<T> = std::result::Result<T, StoneError>;
 
@@ -24,33 +25,42 @@ pub struct StonePlatforms {
 }
 
 impl StonePlatforms {
+    #[doc(hidden)]
     fn new(platform_info: HashMap<PlatformId, PlatformInfo>) -> StonePlatforms {
         StonePlatforms { platform_info }
     }
 
-    fn get_platform_id_ref(&self, id: &str) -> Option<&PlatformId> {
+    /// Gets the list of Stone platform definitions.
+    pub fn get() -> &'static StonePlatforms {
+        &STONE.0
+    }
+
+    /// Gets a reference to the Stone Platform ID matching the given string.
+    fn get_platform_id(&self, id: &str) -> Option<&PlatformId> {
         self.platform_info
             .keys()
             .find(|&platform_id| platform_id.0 == id)
     }
 
     /// Gets the platform with the specified platform ID.
-    /// Returns StoneError::NoSuchPlatform if it does not.
+    /// Returns `StoneError::NoSuchPlatform` if it does not.
     pub fn platform(&self, platform_id: &PlatformId) -> Result<&PlatformInfo> {
         self.platform_info
             .get(platform_id)
             .ok_or(StoneError::NoSuchPlatform(platform_id.clone()))
     }
-    
-    /// Gets a reference to the global list of Stone platforms embedded in the library.
-    pub fn get() -> &'static StonePlatforms {
-        &STONE.0
+
+    /// Get an iterator of PlatformIDs in the listed definitions.
+    pub fn ids(&self) -> impl Iterator<Item=&PlatformId> {
+        self.platform_info.keys()
     }
 
-    pub fn ids(&self) -> Vec<&PlatformId> {
-        self.platform_info.keys().collect()
+    /// Get an iterator of `PlatformInfo`s in the listed definitions.
+    pub fn infos(&self) -> impl Iterator<Item=&PlatformInfo> {
+        self.platform_info.values()
     }
 
+    /// Get the version of Stone.
     pub fn version() -> &'static str {
         &STONE.1
     }
@@ -84,7 +94,9 @@ impl std::fmt::Display for StoneError {
         write!(f, "{:?}", self)
     }
 }
+
 #[derive(Debug, Deserialize, Eq, PartialEq, Hash, Clone)]
+/// A Stone Platform ID.
 pub struct PlatformId(String);
 
 impl AsRef<str> for PlatformId {
@@ -97,7 +109,7 @@ impl TryFrom<String> for &'static PlatformId {
     type Error = StoneError;
     fn try_from(platform_id_str: String) -> Result<&'static PlatformId> {
         let stone = StonePlatforms::get();
-        if let Some(platform_id_ref) = stone.get_platform_id_ref(&platform_id_str) {
+        if let Some(platform_id_ref) = stone.get_platform_id(&platform_id_str) {
             Ok(platform_id_ref)
         } else {
             Err(StoneError::InvalidPlatformId(platform_id_str))
@@ -109,7 +121,7 @@ impl TryFrom<&String> for &'static PlatformId {
     type Error = StoneError;
     fn try_from(platform_id_str: &String) -> Result<&'static PlatformId> {
         let stone =StonePlatforms::get();
-        if let Some(platform_id_ref) = stone.get_platform_id_ref(&platform_id_str) {
+        if let Some(platform_id_ref) = stone.get_platform_id(&platform_id_str) {
             Ok(platform_id_ref)
         } else {
             Err(StoneError::InvalidPlatformId(String::from(platform_id_str)))
@@ -122,7 +134,7 @@ impl TryFrom<&str> for &'static PlatformId {
     fn try_from(platform_id_str: &str) -> Result<&'static PlatformId> {
         let result = platform_id_str;
         let stone = StonePlatforms::get();
-        if let Some(platform_id_ref) = stone.get_platform_id_ref(platform_id_str.as_ref()) {
+        if let Some(platform_id_ref) = stone.get_platform_id(platform_id_str.as_ref()) {
             Ok(platform_id_ref)
         } else {
             Err(StoneError::InvalidPlatformId(String::from(result)))
@@ -136,40 +148,61 @@ pub struct PlatformInfo {
     #[serde(rename(deserialize = "PlatformID"))]
     platform_id: PlatformId,
     #[serde(rename(deserialize = "FileTypes"))]
-    file_types: HashMap<String, String>,
-
-    // Don't need the rest, so we can save some space.
-
-    // #[serde(rename(deserialize = "MaximumInputs"))]
-    // maximum_inputs: i32,
+    file_types: HashMap<FileExt, String>,
+    #[serde(rename(deserialize = "MaximumInputs"))]
+    maximum_inputs: i32,
     #[serde(rename(deserialize = "BiosFiles"))]
     bios_files: Option<HashMap<String, HashSet<String>>>,
-    // #[serde(rename(deserialize = "FriendlyName"))]
-    // friendly_name: String,
-    // #[serde(rename(deserialize = "Metadata"))]
-    // metadata: HashMap<String, String>,
+    #[serde(rename(deserialize = "FriendlyName"))]
+    friendly_name: String,
+    #[serde(rename(deserialize = "Metadata"))]
+    metadata: HashMap<String, String>,
 }
 
 impl PlatformInfo {
-    /// Gets a reference to the 
+    /// Gets the Platform ID
     pub fn platform_id(&self) -> &PlatformId {
         &self.platform_id
     }
-    pub fn file_exts(&self) -> Vec<&str> {
-        self.file_types.keys().map(|s| s.as_str()).collect()
+    pub fn file_exts(&self) -> impl Iterator<Item=&str> {
+        self.file_types.keys().map(|s| s.as_ref())
     }
-    pub fn mimetypes(&self) -> Vec<&str> {
-        self.file_types.values().map(|s| s.as_str()).collect()
+
+    pub fn maximum_inputs(&self) -> i32 {
+        self.maximum_inputs
     }
-    pub fn get_mimetype_for_ext(&self, ext: &str) -> Option<&str> {
-        self.file_types.get(ext).map(|s| s.as_str())
+
+    pub fn metadata(&self) -> impl Iterator<Item=(&str, &str)>
+    {
+        self.metadata.iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
     }
-    pub fn friendly_name(&self) -> Vec<&str> {
-        self.file_types.values().map(|s| s.as_str()).collect()
+
+    pub fn mimetypes(&self) -> impl Iterator<Item=&str> {
+        self.file_types.values().map(|s| s.as_str())
     }
-    pub fn is_bios_md5(&self, hash: &str) -> bool {
+    pub fn bios_file_names(&self) -> impl Iterator<Item=&str> {
+        self.bios_files
+            .iter()
+            .flat_map(|s| s.keys())
+            .map(|s| s.as_str())
+    }
+    pub fn bios_file_hashes<'a, S: AsRef<str>>(&'a self, hash: &'a S) -> impl Iterator<Item=&'a str> {
+        self.bios_files
+            .iter()
+            .flat_map(move |s| s.get(hash.as_ref()))
+            .flat_map(|s| s)
+            .map(|s| s.as_str())
+    }
+    pub fn get_mimetype_for_ext<S: AsRef<str>>(&self, ext: S) -> Option<&str> {
+        self.file_types.get(&ext.as_ref().into()).map(|s| s.as_str())
+    }
+    pub fn friendly_name(&self) -> &str {
+        &self.friendly_name
+    }
+    pub fn is_bios_md5<S: AsRef<str>>(&self, hash: S) -> bool {
         if let Some(bios_files) = &self.bios_files {
-            bios_files.values().any(|v| v.contains(hash))
+            bios_files.values().any(|v| v.contains(hash.as_ref()))
         } else {
             false
         }
@@ -185,24 +218,8 @@ fn load_platform_info() -> Result<(StonePlatforms, String)> {
         .and_then(|val|val.as_str())
         .map(|val| String::from(val))
         .ok_or(StoneError::InvalidStoneFile)?;
-    let mut value =
+    let value =
         serde_json::from_value::<HashMap<PlatformId, PlatformInfo>>(platform_data.clone())?;
-    for (_id, platform) in value.iter_mut() {
-        let file_type_clone = platform.file_types.clone();
-        for (ext, mime) in file_type_clone.into_iter() {
-            if ext == "BIOS" || ext == "RSRC" {
-                // Skip BIOS or RSRC mimetype
-                continue;
-            }
-            // Duplicating the mimetypes once is cheap enough to easily support
-            // dotless extensions.
-            platform.file_types.insert(String::from(&ext[1..]), mime.clone());
 
-            // Duplicate mimetypes twice for uppercase support, so we don't have to
-            // unnecesarily duplicate a string for to_lowercase.
-            platform.file_types.insert(ext[1..].to_ascii_uppercase(), mime.clone());
-            platform.file_types.insert(ext.to_ascii_uppercase(), mime.clone());
-        }
-    }
     Ok((StonePlatforms::new(value), version))
 }

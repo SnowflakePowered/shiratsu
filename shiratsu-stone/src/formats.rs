@@ -1,7 +1,7 @@
 use crate::{StonePlatforms, PlatformId};
 use std::path::Path;
 
-pub fn find_mimetype<'a, 'b>(platform_id: &PlatformId, file_name: &'a str, md5: Option<&'a str>, )
+pub fn find_mimetype<'a, 'b>(platform_id: &PlatformId, file_name: &'a str, md5: Option<&'a str>)
     -> Option<&'b str>
 {
     StonePlatforms::get()
