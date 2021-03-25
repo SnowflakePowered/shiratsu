@@ -1,5 +1,8 @@
 use crate::region::Region;
-use crate::naming::FlagType;
+use crate::naming::{FlagType, NamingConvention, ToNameInfo, NameInfo, DevelopmentStatus};
+use crate::naming::goodtools::parsers::do_parse;
+use crate::error::{ParseError, Result};
+use crate::naming::util::{move_default_articles_mut, replace_hyphen_mut};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum GoodToolsToken<'a>
@@ -29,6 +32,62 @@ pub enum TranslationStatus
 #[repr(transparent)]
 pub struct GoodToolsName<'a>(Vec<GoodToolsToken<'a>>);
 
+impl GoodToolsName<'_>
+{
+    pub fn try_parse<S: AsRef<str> + ?Sized>(input: &S) -> Result<GoodToolsName> {
+        let (_, value) = do_parse(input.as_ref()).map_err(|_| {
+            ParseError::BadFileNameError(NamingConvention::GoodTools, input.as_ref().to_string())
+        })?;
+        Ok(value.into())
+    }
+}
+
+impl <'a> ToNameInfo for GoodToolsName<'a>
+{
+    fn to_name_info(&self) -> NameInfo {
+        let mut name = NameInfo {
+            entry_title: "".to_string(),
+            release_title: "".to_string(),
+            region: vec![Region::Unknown],
+            part_number: None,
+            version: None,
+            is_unlicensed: false,
+            is_demo: false,
+            is_system: false,
+            status: DevelopmentStatus::Release,
+            naming_convention: NamingConvention::NoIntro,
+        };
+        for token in self.0.iter() {
+            match token {
+                GoodToolsToken::Title(t) => name.entry_title = t.to_string(),
+                GoodToolsToken::Region(_, region) => name.region = region.clone(),
+                GoodToolsToken::Version(_, major, Some(minor)) =>
+                    name.version = Some(format!("{}.{}", major, minor)),
+                GoodToolsToken::Version(_, major, _) =>
+                    name.version = Some(major.to_string()),
+                GoodToolsToken::Flag(FlagType::Parenthesized, "Unl")
+                    => name.is_unlicensed = true,
+                GoodToolsToken::Flag(FlagType::Parenthesized, "Kiosk Demo")
+                    | GoodToolsToken::Flag(FlagType::Parenthesized, "Demo")
+                    => name.is_demo = true,
+                GoodToolsToken::Flag(FlagType::Parenthesized, "Beta")
+                    | GoodToolsToken::Flag(FlagType::Parenthesized, "Alpha")
+                    | GoodToolsToken::Flag(FlagType::Parenthesized, "Pre-Release")
+                => name.status = DevelopmentStatus::Prerelease,
+                GoodToolsToken::Flag(FlagType::Parenthesized, "Prototype")
+                    => name.status = DevelopmentStatus::Prototype,
+                _ => {}
+            }
+        }
+
+        let mut release_title = name.entry_title.clone();
+
+        move_default_articles_mut(&mut release_title);
+        replace_hyphen_mut(&mut release_title);
+        name.release_title = release_title;
+        name
+    }
+}
 
 impl <'a> From<Vec<GoodToolsToken<'a>>> for GoodToolsName<'a>
 {

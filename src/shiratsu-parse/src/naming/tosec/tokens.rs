@@ -2,6 +2,8 @@ use crate::region::Region;
 use crate::naming::{FlagType, ToNameInfo, NameInfo, DevelopmentStatus, NamingConvention};
 use crate::naming::util::*;
 use std::cmp::Ordering;
+use crate::error::{ParseError, Result};
+use crate::naming::tosec::parsers::{do_parse, do_parse_multiset};
 
 #[derive(Debug, Eq, Clone, Ord)]
 pub enum TOSECToken<'a>
@@ -304,6 +306,14 @@ impl TOSECName<'_> {
     {
         self.0.iter().filter(|e| match e { TOSECToken::Warning(_) => true, _ => false })
     }
+
+    pub fn try_parse<S: AsRef<str> + ?Sized>(input: &S) -> Result<TOSECName>
+    {
+        let (_, value) = do_parse(input.as_ref()).map_err(|_| {
+            ParseError::BadFileNameError(NamingConvention::TOSEC, input.as_ref().to_string())
+        })?;
+        Ok(value.into())
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -313,6 +323,15 @@ pub struct TOSECMultiSetName<'a>
     globals: Vec<TOSECToken<'a>>
 }
 
+impl TOSECMultiSetName<'_> {
+    pub fn try_parse<S: AsRef<str> + ?Sized>(input: &S) -> Result<TOSECMultiSetName>
+    {
+        let (_, value) = do_parse_multiset(input.as_ref()).map_err(|_| {
+            ParseError::BadFileNameError(NamingConvention::TOSEC, input.as_ref().to_string())
+        })?;
+        Ok(value.into())
+    }
+}
 impl <'a> From<(Vec<Vec<TOSECToken<'a>>>, Vec<TOSECToken<'a>>)> for TOSECMultiSetName<'a>
 {
     fn from(vecs: (Vec<Vec<TOSECToken<'a>>>, Vec<TOSECToken<'a>>)) -> Self {

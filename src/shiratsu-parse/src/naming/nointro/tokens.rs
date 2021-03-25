@@ -1,6 +1,8 @@
 use crate::region::Region;
 use crate::naming::{FlagType, NameInfo, ToNameInfo, DevelopmentStatus, NamingConvention};
 use crate::naming::util::*;
+use crate::error::{ParseError, Result};
+use crate::naming::nointro::parsers::do_parse;
 
 /// A parsed language code.
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -61,6 +63,16 @@ pub enum NoIntroToken<'a>
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct NoIntroName<'a>(Vec<NoIntroToken<'a>>);
+impl NoIntroName<'_>
+{
+    /// Tries to parse the name into a vector of tokens.
+    pub fn try_parse<S: AsRef<str> + ?Sized>(input: &S) -> Result<NoIntroName> {
+        let (_, value) = do_parse(input.as_ref()).map_err(|_| {
+            ParseError::BadFileNameError(NamingConvention::NoIntro, input.as_ref().to_string())
+        })?;
+        Ok(value.into())
+    }
+}
 
 impl <'a> From<Vec<NoIntroToken<'a>>> for NoIntroName<'a>
 {

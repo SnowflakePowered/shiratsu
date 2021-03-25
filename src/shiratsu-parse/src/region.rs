@@ -292,7 +292,7 @@ impl Region {
     ///
     /// # Arguments
     /// - `region_str` The region string.
-    pub fn try_from_tosec_region(region_str: &str) -> Result<Vec<Self>> {
+    pub fn try_from_tosec_region<S: AsRef<str> + ?Sized>(region_str: &S) -> Result<Vec<Self>> {
         let (_, region) = from_tosec_region(region_str)?;
         Ok(region)
     }
@@ -304,7 +304,7 @@ impl Region {
     ///
     /// # Arguments
     /// - `region_str` The region string.
-    pub fn try_from_tosec_region_with_strs(region_str: &str) -> Result<(Vec<&str>, Vec<Self>)>  {
+    pub fn try_from_tosec_region_with_strs<S: AsRef<str> + ?Sized>(region_str: &S) -> Result<(Vec<&str>, Vec<Self>)>  {
         from_tosec_region(region_str)
     }
 
@@ -319,7 +319,7 @@ impl Region {
     /// - `Scandinavia` is expanded to Denmark, Norway, and Sweden.
     /// # Arguments
     /// - `region_str` The region string.
-    pub fn try_from_nointro_region(region_str: &str) -> Result<Vec<Self>> {
+    pub fn try_from_nointro_region<S: AsRef<str> + ?Sized>(region_str: &S) -> Result<Vec<Self>> {
         let (_, region) = from_nointro_region(region_str)?;
         Ok(region)
     }
@@ -337,7 +337,7 @@ impl Region {
     /// - `Latin America` is expanded to Mexico, Brazil, Argentina, Chile, and Peru
     /// # Arguments
     /// - `region_str` The region string.
-    pub fn try_from_nointro_region_with_strs(region_str: &str) -> Result<(Vec<&str>, Vec<Self>)> {
+    pub fn try_from_nointro_region_with_strs<S: AsRef<str> + ?Sized>(region_str: &S) -> Result<(Vec<&str>, Vec<Self>)> {
         from_nointro_region(region_str)
     }
 
@@ -345,7 +345,7 @@ impl Region {
     ///
     /// # Arguments
     /// - `region_str` The region string.
-    pub fn try_from_goodtools_region(region_str: &str) -> Result<Vec<Self>> {
+    pub fn try_from_goodtools_region<S: AsRef<str> + ?Sized>(region_str: &S) -> Result<Vec<Self>> {
         let (_, region) = from_goodtools_region(region_str)?;
         Ok(region)
     }
@@ -354,7 +354,7 @@ impl Region {
     /// strings corresponding to each parsed region.
     /// # Arguments
     /// - `region_str` The region string.
-    pub fn try_from_goodtools_region_with_strs(region_str: &str) -> Result<(Vec<&str>, Vec<Self>)> {
+    pub fn try_from_goodtools_region_with_strs<S: AsRef<str> + ?Sized>(region_str: &S) -> Result<(Vec<&str>, Vec<Self>)> {
         from_goodtools_region(region_str)
     }
 
@@ -379,13 +379,13 @@ impl Region {
 ///
 /// # Arguments
 /// - `region_str` The region string.
-fn from_tosec_region<'a>(region_str: &str) -> Result<(Vec<&str>, Vec<Region>)> {
+fn from_tosec_region<S: AsRef<str> + ?Sized>(region_str: &S) -> Result<(Vec<&str>, Vec<Region>)> {
     let mut region_strings = Vec::new();
     let mut regions: IndexSet<Region> = IndexSet::new();
     let mut region_count = 0;
     let mut region_string_index = 0;
 
-    for region_code in region_str.split('-')
+    for region_code in region_str.as_ref().split('-')
     {
         let region = TOSEC_REGION.get(region_code);
         if region_code.len() != 2 {
@@ -417,14 +417,14 @@ fn from_tosec_region<'a>(region_str: &str) -> Result<(Vec<&str>, Vec<Region>)> {
 ///
 /// # Arguments
 /// - `region_str` The region string.
-fn from_goodtools_region(region_str: &str) -> Result<(Vec<&str>, Vec<Region>)> {
+fn from_goodtools_region<S: AsRef<str> + ?Sized>(region_str: &S) -> Result<(Vec<&str>, Vec<Region>)> {
     let mut regions = IndexSet::<Region>::new();
     let mut region_strings = Vec::new();
 
     let mut region_count = 0;
     let mut region_string_index = 0;
 
-    for region_code in region_str.split(",") {
+    for region_code in region_str.as_ref().split(",") {
         match region_code {
             "1" => {
                 regions.insert(Region::Japan);
@@ -451,7 +451,7 @@ fn from_goodtools_region(region_str: &str) -> Result<(Vec<&str>, Vec<Region>)> {
                 regions.insert(Region::Japan);
                 regions.insert(Region::UnitedStates);
             }
-            _ => match GOODTOOLS_REGION.get(region_str)
+            _ => match GOODTOOLS_REGION.get(region_code)
             {
                 Some(&region) => {
                     regions.insert(region);
@@ -490,14 +490,14 @@ fn from_goodtools_region(region_str: &str) -> Result<(Vec<&str>, Vec<Region>)> {
 /// - `Scandinavia` is expanded to Denmark, Norway, and Sweden.
 /// # Arguments
 /// - `region_str` The region string.
-fn from_nointro_region(region_str: &str) -> Result<(Vec<&str>, Vec<Region>)> {
+fn from_nointro_region<S: AsRef<str> + ?Sized>(region_str: &S)-> Result<(Vec<&str>, Vec<Region>)> {
     let mut regions = IndexSet::<Region>::new();
     let mut region_strings = Vec::new();
 
     let mut region_count = 0;
     let mut region_string_index = 0;
 
-    for region_code in region_str.split(", ") {
+    for region_code in region_str.as_ref().split(", ") {
         if !region_code.chars().all(|c| char::is_ascii_alphabetic(&c) || c == ' ') {
             return Err(RegionError::BadRegionCode(
                 RegionFormat::NoIntro,
