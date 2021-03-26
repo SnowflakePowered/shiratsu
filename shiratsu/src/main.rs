@@ -98,7 +98,7 @@ fn setup_logging<T: AsRef<Path>>(log_path: T, file_log_path: T) -> (slog::Logger
     (logger, file_logger)
 }
 
-lazy_static_include_str!(SORTING_RULES, "sortrules.yml");
+lazy_static_include_str!(SORTING_RULES, "../sortrules.yml");
 
 pub enum Event<'a> {
     CreatingFolderStructure,
