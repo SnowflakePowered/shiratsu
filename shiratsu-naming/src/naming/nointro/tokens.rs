@@ -3,6 +3,8 @@ use crate::naming::{FlagType, NamingConvention};
 use crate::error::{NameError, Result};
 use crate::naming::nointro::parsers::do_parse;
 use std::slice::Iter;
+use std::fmt::{Display, Formatter};
+use std::fmt;
 
 /// A parsed language code.
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -40,7 +42,8 @@ pub enum NoIntroToken<'a>
     Flag(FlagType, &'a str),
 
     /// The parsed version.
-    Version(Vec<(&'a str, &'a str, Option<&'a str>, Option<&'a str>, Option<Vec<&'a str>>)>),
+    Version(Vec<(&'a str, &'a str, Option<&'a str>, Option<&'a str>, Option<Vec<&'a str>>, Option<&'a str>)>),
+
     Release(&'a str, Option<&'a str>),
 
     /// Part number
@@ -98,5 +101,111 @@ impl <'a> AsRef<Vec<NoIntroToken<'a>>> for NoIntroName<'a>
 {
     fn as_ref(&self) -> &Vec<NoIntroToken<'a>> {
         &self.0
+    }
+}
+
+impl Display for NoIntroName<'_>
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut buf = String::new();
+
+        for token in self.iter()
+        {
+            match token {
+                NoIntroToken::Title(title) => {
+                    buf.push_str(title);
+                }
+                NoIntroToken::Region(rstrs, _) => {
+                    buf.push_str(" (");
+                    buf.push_str(&rstrs.join(", "));
+                    buf.push(')');
+                }
+                NoIntroToken::Flag(FlagType::Parenthesized, f) => {
+                    buf.push_str(" (");
+                    buf.push_str(f);
+                    buf.push(')')
+                }
+                NoIntroToken::Flag(FlagType::Bracketed, f) => {
+                    buf.push_str(" [");
+                    buf.push_str(f);
+                    buf.push(')');
+                }
+
+                NoIntroToken::Version(versions) => {
+                    buf.push_str(" (");
+
+                    for (ver, major, minor, prefix,
+                        suffixes, sep)
+                        in versions {
+                        if let Some(sep) = sep {
+                            buf.push_str(sep);
+                        }
+                        if let Some(prefix) = prefix
+                        {
+                            buf.push_str(prefix);
+                            buf.push(' ');
+                        }
+                        buf.push_str(ver);
+                        if ver != &"" && ver != &"v" {
+                            buf.push(' ');
+                        }
+
+                        buf.push_str(major);
+                        if let Some(minor) = minor {
+                            buf.push('.');
+                            buf.push_str(minor);
+                        }
+
+                        if let Some(suffixes) = suffixes {
+                            buf.push_str(&suffixes.join(" "));
+                        }
+                    }
+                    buf.push(')')
+                }
+                NoIntroToken::Release(beta, num) => {
+                    buf.push_str(" (");
+                    buf.push_str(beta);
+                    if let Some(num) = num {
+                        buf.push(' ');
+                        buf.push_str(num);
+                    }
+                    buf.push_str(")");
+                }
+                NoIntroToken::Part(part, num) => {
+                    buf.push_str(" (");
+                    buf.push_str(part);
+                    buf.push(' ');
+                    buf.push_str(num);
+                    buf.push_str(")");
+                }
+                NoIntroToken::Scene(num, prefix) => {
+                    if let Some(prefix) = prefix {
+                        buf.push_str(prefix)
+                    }
+                    buf.push_str(num);
+                    buf.push_str(" - ");
+                }
+                NoIntroToken::Languages(langs) => {
+                    buf.push_str(" (");
+
+                    for (lang, tag) in langs.iter() {
+                        buf.push_str(lang);
+                        if let Some(tag) = tag {
+                            buf.push_str("-");
+                            buf.push_str(tag);
+                        }
+                        buf.push_str(",")
+                    }
+
+                    // trim last comma
+                    if buf.ends_with(",") {
+                        buf.truncate(buf.len() - 1)
+                    }
+                    buf.push_str(")");
+                }
+            }
+        }
+
+        f.write_str(&buf)
     }
 }

@@ -16,8 +16,7 @@ use crate::naming::FlagType;
 use crate::naming::parsers::*;
 use crate::naming::nointro::tokens::*;
 
-
-use nom::multi::separated_list0;
+use nom::sequence::pair;
 
 fn parse_region(input: &str) -> IResult<&str, (Vec<&str>, Vec<Region>)>
 {
@@ -192,20 +191,27 @@ fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken>
              parse_revision_version,
              parse_unprefixed_dot_version))(input)?;
 
-    let (input, _) = opt(alt((tag(", "), tag(","), tag(" "))))(input)?;
+    let vers1 = (vers1.0, vers1.1, vers1.2, vers1.3, vers1.4, None);
 
-    let (input, mut nextvers) =
-        separated_list0(
-            alt((tag(", "), tag(","), tag(" "))),
-                alt((
-                    parse_playstation_version,
-                    parse_single_prefixed_version,
-                    parse_single_prefixed_version_with_full_tag,
-                    parse_revision_version,
-                    take_while_m_n(4, 4, |c: char| c.is_ascii_alphanumeric())
-                        .map(|s| ("", s, None, None, None)
-                )))
-        )(input)?;
+    let (input, nextvers) =
+        many0(pair(
+            opt(alt((tag(", "), tag(","), tag(" ")))),
+            alt((
+                parse_playstation_version,
+                parse_single_prefixed_version,
+                parse_single_prefixed_version_with_full_tag,
+                parse_revision_version,
+                take_while_m_n(4, 4, |c: char| c.is_ascii_alphanumeric())
+                    .map(|s| ("", s, None, None, None)
+                    )))
+        ))(input)?;
+
+
+    let mut nextvers: Vec<_> = nextvers
+        .into_iter()
+        .map(|(sep, (v, maj, min, pref, suff ))| {
+            (v, maj, min, pref, suff, sep)
+        }).collect();
 
     nextvers.insert(0, vers1);
     Ok((input, NoIntroToken::Version(nextvers)))
@@ -443,6 +449,19 @@ mod tests
     }
 
     #[test]
+    fn parse_to_string()
+    {
+        for string in &[
+            "Cube CD 20, The (40) - Testing (Europe) (Rev 10)",
+            "void tRrLM(); Void Terrarium (Japan)",
+            "FIFA 20 - Portuguese (Brazil) In-Game Commentary (World) (Version 10.5.6-10, PS3 v10.0) (Pt-BR) (DLC) (eShop)"
+        ]
+        {
+            assert_eq!(string,
+                       &NoIntroName::try_parse(string).unwrap().to_string())
+        }
+    }
+    #[test]
     fn parse_disc_test()
     {
         assert_eq!(parse_disc_tag("(Disc 5)"),
@@ -472,7 +491,7 @@ mod tests
                                "04/15/10",
                                "E"
                            ]
-                       ))
+                       ), None)
                    ]))));
         assert_eq!(parse_version_tag("(Version 4.5 05/25/00 A)"),
                    Ok(("", NoIntroToken::Version(vec![
@@ -481,7 +500,7 @@ mod tests
                                "05/25/00",
                                "A"
                            ]
-                       ))
+                       ), None)
                    ]))));
     }
 
@@ -489,63 +508,63 @@ mod tests
     fn parse_ver_test()
     {
         assert_eq!(parse_version_tag("(v10.XX)"),
-                   Ok(("", NoIntroToken::Version(vec![("v", "10", Some("XX"), None, None)]))));
+                   Ok(("", NoIntroToken::Version(vec![("v", "10", Some("XX"), None, None, None)]))));
         assert_eq!(parse_version_tag("(Version 10.5.6-10)"),
-                   Ok(("", NoIntroToken::Version(vec![("Version", "10", Some("5.6-10"), None, None)]))));
+                   Ok(("", NoIntroToken::Version(vec![("Version", "10", Some("5.6-10"), None, None, None)]))));
         assert_eq!(parse_version_tag("(Version 9)"),
-                   Ok(("", NoIntroToken::Version(vec![("Version", "9", None, None, None)]))));
+                   Ok(("", NoIntroToken::Version(vec![("Version", "9", None, None, None, None)]))));
         assert_eq!(parse_version_tag("(v1.0.0, v12342)"),
                    Ok(("", NoIntroToken::Version(vec![
-                       ("v", "1", Some("0.0"), None, None),
-                       ("v", "12342", None, None, None)
+                       ("v", "1", Some("0.0"), None, None, None),
+                       ("v", "12342", None, None, None, Some(", "))
                    ]))));
         assert_eq!(parse_version_tag("(Rev 10)"),
-                   Ok(("", NoIntroToken::Version(vec![("Rev", "10", None, None, None)]))));
+                   Ok(("", NoIntroToken::Version(vec![("Rev", "10", None, None, None, None)]))));
         assert_eq!(parse_version_tag("(Rev 10.08)"),
-                   Ok(("", NoIntroToken::Version(vec![("Rev", "10", Some("08"), None, None)]))));
+                   Ok(("", NoIntroToken::Version(vec![("Rev", "10", Some("08"), None, None, None)]))));
         assert_eq!(parse_version_tag("(Rev 5C21)"),
-                   Ok(("", NoIntroToken::Version(vec![("Rev", "5C21", None, None, None)]))));
+                   Ok(("", NoIntroToken::Version(vec![("Rev", "5C21", None, None, None, None)]))));
         assert_eq!(parse_version_tag("(0.01)"),
-                   Ok(("", NoIntroToken::Version(vec![("", "0", Some("01"), None, None)]))));
+                   Ok(("", NoIntroToken::Version(vec![("", "0", Some("01"), None, None, None)]))));
         assert_eq!(parse_version_tag("(v1.07 Rev 1)"),
                    Ok(("", NoIntroToken::Version(vec![
-                       ("v", "1", Some("07"), None, None),
-                       ("Rev", "1", None, None, None)
+                       ("v", "1", Some("07"), None, None, None),
+                       ("Rev", "1", None, None, None, Some(" "))
                    ]))));
         assert_eq!(parse_version_tag("(v1.07 1023)"),
                    Ok(("", NoIntroToken::Version(vec![
-                       ("v", "1", Some("07"), None, None),
-                       ("", "1023", None, None, None)
+                       ("v", "1", Some("07"), None, None, None),
+                       ("", "1023", None, None, None, Some(" "))
                    ]))));
         assert_eq!(parse_version_tag("(v1.07, 1023)"),
                    Ok(("", NoIntroToken::Version(vec![
-                       ("v", "1", Some("07"),None, None),
-                       ("", "1023", None, None, None)
+                       ("v", "1", Some("07"),None, None, None),
+                       ("", "1023", None, None, None, Some(", "))
                    ]))));
         assert_eq!(parse_version_tag("(v1.07, v1023)"),
                    Ok(("", NoIntroToken::Version(vec![
-                       ("v", "1", Some("07"),None, None),
-                       ("v", "1023", None, None, None)
+                       ("v", "1", Some("07"),None, None, None),
+                       ("v", "1023", None, None, None, Some(", "))
                    ]))));
         assert_eq!(parse_version_tag("(v1.07b, v1023)"),
                    Ok(("", NoIntroToken::Version(vec![
-                       ("v", "1", Some("07b"),None, None),
-                       ("v", "1023", None, None, None)
+                       ("v", "1", Some("07b"),None, None, None),
+                       ("v", "1023", None, None, None, Some(", "))
                    ]))));
         assert_eq!(parse_version_tag("(1984)"),
                    Err(nom::Err::Error(Error::new(")", ErrorKind::Char))));
         assert_eq!(parse_version_tag("(v1.07, v1023)"),
                    Ok(("", NoIntroToken::Version(vec![
-                       ("v", "1", Some("07"),None, None),
-                       ("v", "1023", None, None, None)
+                       ("v", "1", Some("07"),None, None, None),
+                       ("v", "1023", None, None, None, Some(", "))
                    ]))));
         assert_eq!(parse_version_tag("(v1.07, v1023, PS3 v1.70, PSP v5.51, v60 Alt)"),
                    Ok(("", NoIntroToken::Version(vec![
-                       ("v", "1", Some("07"),None, None),
-                       ("v", "1023", None, None, None),
-                       ("v", "1", Some("70"), Some("PS3"), None),
-                       ("v", "5", Some("51"), Some("PSP"), None),
-                       ("v", "60", None, None, Some(vec!["Alt"]))
+                       ("v", "1", Some("07"),None, None, None),
+                       ("v", "1023", None, None, None, Some(", ")),
+                       ("v", "1", Some("70"), Some("PS3"), None, Some(", ")),
+                       ("v", "5", Some("51"), Some("PSP"), None, Some(", ")),
+                       ("v", "60", None, None, Some(vec!["Alt"]), Some(", "))
                    ]))));
 
         assert_eq!(parse_version_tag("(Version 5.0 04/15/10 E)"),
@@ -555,7 +574,7 @@ mod tests
                                "04/15/10",
                                "E"
                            ]
-                       ))
+                       ), None)
                    ]))));
         assert_eq!(parse_version_tag("(Version 4.5 05/25/00 A)"),
                    Ok(("", NoIntroToken::Version(vec![
@@ -564,7 +583,7 @@ mod tests
                                "05/25/00",
                                "A"
                            ]
-                       ))
+                       ), None)
                    ]))));
 
         //

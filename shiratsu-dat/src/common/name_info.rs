@@ -112,8 +112,8 @@ impl <'a> ToNameInfo for NoIntroName<'a>
                 NoIntroToken::Flag(_, "Unl") => { name.is_unlicensed = true }
                 NoIntroToken::Version(versions) => {
                     match versions.first() {
-                        Some((_, major, None, _, _)) => { name.version = Some(major.to_string()) }
-                        Some((_, major, Some(minor), _, _)) => { name.version = Some(format!("{}.{}", major, minor)) }
+                        Some((_, major, None, _, _, _)) => { name.version = Some(major.to_string()) }
+                        Some((_, major, Some(minor), _, _, _)) => { name.version = Some(format!("{}.{}", major, minor)) }
                         _ => {}
                     }
                 }
