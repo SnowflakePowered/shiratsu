@@ -16,8 +16,9 @@ use crate::naming::FlagType;
 use crate::naming::parsers::*;
 use crate::naming::nointro::tokens::*;
 
-
-use nom::multi::separated_list0;
+use nom::sequence::pair;
+use nom::combinator::recognize;
+use nom::bytes::complete::take_until;
 
 fn parse_region(input: &str) -> IResult<&str, (Vec<&str>, Vec<Region>)>
 {
@@ -192,20 +193,27 @@ fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken>
              parse_revision_version,
              parse_unprefixed_dot_version))(input)?;
 
-    let (input, _) = opt(alt((tag(", "), tag(","), tag(" "))))(input)?;
+    let vers1 = (vers1.0, vers1.1, vers1.2, vers1.3, vers1.4, None);
 
-    let (input, mut nextvers) =
-        separated_list0(
-            alt((tag(", "), tag(","), tag(" "))),
-                alt((
-                    parse_playstation_version,
-                    parse_single_prefixed_version,
-                    parse_single_prefixed_version_with_full_tag,
-                    parse_revision_version,
-                    take_while_m_n(4, 4, |c: char| c.is_ascii_alphanumeric())
-                        .map(|s| ("", s, None, None, None)
-                )))
-        )(input)?;
+    let (input, nextvers) =
+        many0(pair(
+            opt(alt((tag(", "), tag(","), tag(" ")))),
+            alt((
+                parse_playstation_version,
+                parse_single_prefixed_version,
+                parse_single_prefixed_version_with_full_tag,
+                parse_revision_version,
+                take_while_m_n(4, 4, |c: char| c.is_ascii_alphanumeric())
+                    .map(|s| ("", s, None, None, None)
+                    )))
+        ))(input)?;
+
+
+    let mut nextvers: Vec<_> = nextvers
+        .into_iter()
+        .map(|(sep, (v, maj, min, pref, suff ))| {
+            (v, maj, min, pref, suff, sep)
+        }).collect();
 
     nextvers.insert(0, vers1);
     Ok((input, NoIntroToken::Version(nextvers)))
@@ -234,7 +242,7 @@ fn parse_disc(input: &str) -> IResult<&str, NoIntroToken>
     let (input, disc) = tag("Disc")(input)?;
     let (input, _) = char(' ')(input)?;
     let (input, number) = digit1(input)?;
-    Ok((input, NoIntroToken::Part(disc, number)))
+    Ok((input, NoIntroToken::Media(disc, number)))
 }
 
 fn parse_scene_number(input: &str) -> IResult<&str, NoIntroToken>
@@ -312,6 +320,26 @@ fn parse_additional_tag(input: &str) -> IResult<&str, NoIntroToken>
     Ok((input, NoIntroToken::Flag(FlagType::Parenthesized, add_tag)))
 }
 
+// No one ever told inner parens were allowed!
+fn parse_redump_multitap_flag(input: &str) -> IResult<&str, NoIntroToken>
+{
+    // (Multi Tap (SCPH-10090) Doukonban)
+
+    fn parse_redump_multitap_flag_inner(input: &str) -> IResult<&str, ()>
+    {
+        let (input, _) = tag("Multi Tap (")(input)?;
+        let (input, _) = take_until(")")(input)?;
+        let (input, _) = char(')')(input)?;
+        let (input, _) = take_until(")")(input)?;
+        Ok((input, ()))
+    }
+
+    let (input, _) = char('(')(input)?;
+    let (input, flag) = recognize(parse_redump_multitap_flag_inner)(input)?;
+    let (input, _) = char(')')(input)?;
+    Ok((input, NoIntroToken::Flag(FlagType::Parenthesized, flag)))
+}
+
 fn parse_known_flags(input: &str) -> IResult<&str, NoIntroToken>
 {
     let (input, tag) = alt((
@@ -319,6 +347,7 @@ fn parse_known_flags(input: &str) -> IResult<&str, NoIntroToken>
                                 parse_version_tag,
                                 parse_dev_status_tag,
                                 parse_disc_tag,
+                                parse_redump_multitap_flag,
                                 parse_additional_tag
     ))(input)?;
     Ok((input, tag))
@@ -389,12 +418,14 @@ mod tests
     use crate::naming::nointro::parsers::*;
     use crate::region::Region;
     use nom::error::{ErrorKind, Error};
+    use crate::naming::TokenizedName;
 
     #[test]
     fn parse_weird_beta()
     {
-        //Isle of Minno (Europe) (0.01) (Beta)
+        println!("{:?}", do_parse("Isle of Minno (Europe) (0.01) (Beta)").unwrap());
     }
+
     #[test]
     fn parse_scene_tags()
     {
@@ -443,10 +474,36 @@ mod tests
     }
 
     #[test]
+    fn parse_test_multitap()
+    {
+        assert_eq!(do_parse("Konjiki no Gashbell!! Go! Go! Mamono Fight!! (Japan) (Multi Tap (SCPH-10090) Doukonban)"),
+        Ok(("",
+        vec![
+            NoIntroToken::Title("Konjiki no Gashbell!! Go! Go! Mamono Fight!!"),
+            NoIntroToken::Region(vec!["Japan"], vec![Region::Japan]),
+            NoIntroToken::Flag(FlagType::Parenthesized, "Multi Tap (SCPH-10090) Doukonban")
+        ])))
+    }
+    #[test]
+    fn parse_to_string()
+    {
+        for string in &[
+            "Cube CD 20, The (40) - Testing (Europe) (Rev 10)",
+            "void tRrLM(); Void Terrarium (Japan)",
+            "FIFA 20 - Portuguese (Brazil) In-Game Commentary (World) (Version 10.5.6-10, PS3 v10.0) (Pt-BR) (DLC) (eShop)",
+            "Isle of Minno (Europe) (0.01) (Beta)",
+            "Isle of Minno (Europe) (v0.01) (Beta)",
+        ]
+        {
+            assert_eq!(string,
+                       &NoIntroName::try_parse(string).unwrap().to_string())
+        }
+    }
+    #[test]
     fn parse_disc_test()
     {
         assert_eq!(parse_disc_tag("(Disc 5)"),
-                   Ok(("", NoIntroToken::Part("Disc", "5"))));
+                   Ok(("", NoIntroToken::Media("Disc", "5"))));
     }
 
     #[test]
@@ -472,7 +529,7 @@ mod tests
                                "04/15/10",
                                "E"
                            ]
-                       ))
+                       ), None)
                    ]))));
         assert_eq!(parse_version_tag("(Version 4.5 05/25/00 A)"),
                    Ok(("", NoIntroToken::Version(vec![
@@ -481,7 +538,7 @@ mod tests
                                "05/25/00",
                                "A"
                            ]
-                       ))
+                       ), None)
                    ]))));
     }
 
@@ -489,63 +546,63 @@ mod tests
     fn parse_ver_test()
     {
         assert_eq!(parse_version_tag("(v10.XX)"),
-                   Ok(("", NoIntroToken::Version(vec![("v", "10", Some("XX"), None, None)]))));
+                   Ok(("", NoIntroToken::Version(vec![("v", "10", Some("XX"), None, None, None)]))));
         assert_eq!(parse_version_tag("(Version 10.5.6-10)"),
-                   Ok(("", NoIntroToken::Version(vec![("Version", "10", Some("5.6-10"), None, None)]))));
+                   Ok(("", NoIntroToken::Version(vec![("Version", "10", Some("5.6-10"), None, None, None)]))));
         assert_eq!(parse_version_tag("(Version 9)"),
-                   Ok(("", NoIntroToken::Version(vec![("Version", "9", None, None, None)]))));
+                   Ok(("", NoIntroToken::Version(vec![("Version", "9", None, None, None, None)]))));
         assert_eq!(parse_version_tag("(v1.0.0, v12342)"),
                    Ok(("", NoIntroToken::Version(vec![
-                       ("v", "1", Some("0.0"), None, None),
-                       ("v", "12342", None, None, None)
+                       ("v", "1", Some("0.0"), None, None, None),
+                       ("v", "12342", None, None, None, Some(", "))
                    ]))));
         assert_eq!(parse_version_tag("(Rev 10)"),
-                   Ok(("", NoIntroToken::Version(vec![("Rev", "10", None, None, None)]))));
+                   Ok(("", NoIntroToken::Version(vec![("Rev", "10", None, None, None, None)]))));
         assert_eq!(parse_version_tag("(Rev 10.08)"),
-                   Ok(("", NoIntroToken::Version(vec![("Rev", "10", Some("08"), None, None)]))));
+                   Ok(("", NoIntroToken::Version(vec![("Rev", "10", Some("08"), None, None, None)]))));
         assert_eq!(parse_version_tag("(Rev 5C21)"),
-                   Ok(("", NoIntroToken::Version(vec![("Rev", "5C21", None, None, None)]))));
+                   Ok(("", NoIntroToken::Version(vec![("Rev", "5C21", None, None, None, None)]))));
         assert_eq!(parse_version_tag("(0.01)"),
-                   Ok(("", NoIntroToken::Version(vec![("", "0", Some("01"), None, None)]))));
+                   Ok(("", NoIntroToken::Version(vec![("", "0", Some("01"), None, None, None)]))));
         assert_eq!(parse_version_tag("(v1.07 Rev 1)"),
                    Ok(("", NoIntroToken::Version(vec![
-                       ("v", "1", Some("07"), None, None),
-                       ("Rev", "1", None, None, None)
+                       ("v", "1", Some("07"), None, None, None),
+                       ("Rev", "1", None, None, None, Some(" "))
                    ]))));
         assert_eq!(parse_version_tag("(v1.07 1023)"),
                    Ok(("", NoIntroToken::Version(vec![
-                       ("v", "1", Some("07"), None, None),
-                       ("", "1023", None, None, None)
+                       ("v", "1", Some("07"), None, None, None),
+                       ("", "1023", None, None, None, Some(" "))
                    ]))));
         assert_eq!(parse_version_tag("(v1.07, 1023)"),
                    Ok(("", NoIntroToken::Version(vec![
-                       ("v", "1", Some("07"),None, None),
-                       ("", "1023", None, None, None)
+                       ("v", "1", Some("07"),None, None, None),
+                       ("", "1023", None, None, None, Some(", "))
                    ]))));
         assert_eq!(parse_version_tag("(v1.07, v1023)"),
                    Ok(("", NoIntroToken::Version(vec![
-                       ("v", "1", Some("07"),None, None),
-                       ("v", "1023", None, None, None)
+                       ("v", "1", Some("07"),None, None, None),
+                       ("v", "1023", None, None, None, Some(", "))
                    ]))));
         assert_eq!(parse_version_tag("(v1.07b, v1023)"),
                    Ok(("", NoIntroToken::Version(vec![
-                       ("v", "1", Some("07b"),None, None),
-                       ("v", "1023", None, None, None)
+                       ("v", "1", Some("07b"),None, None, None),
+                       ("v", "1023", None, None, None, Some(", "))
                    ]))));
         assert_eq!(parse_version_tag("(1984)"),
                    Err(nom::Err::Error(Error::new(")", ErrorKind::Char))));
         assert_eq!(parse_version_tag("(v1.07, v1023)"),
                    Ok(("", NoIntroToken::Version(vec![
-                       ("v", "1", Some("07"),None, None),
-                       ("v", "1023", None, None, None)
+                       ("v", "1", Some("07"),None, None, None),
+                       ("v", "1023", None, None, None, Some(", "))
                    ]))));
         assert_eq!(parse_version_tag("(v1.07, v1023, PS3 v1.70, PSP v5.51, v60 Alt)"),
                    Ok(("", NoIntroToken::Version(vec![
-                       ("v", "1", Some("07"),None, None),
-                       ("v", "1023", None, None, None),
-                       ("v", "1", Some("70"), Some("PS3"), None),
-                       ("v", "5", Some("51"), Some("PSP"), None),
-                       ("v", "60", None, None, Some(vec!["Alt"]))
+                       ("v", "1", Some("07"),None, None, None),
+                       ("v", "1023", None, None, None, Some(", ")),
+                       ("v", "1", Some("70"), Some("PS3"), None, Some(", ")),
+                       ("v", "5", Some("51"), Some("PSP"), None, Some(", ")),
+                       ("v", "60", None, None, Some(vec!["Alt"]), Some(", "))
                    ]))));
 
         assert_eq!(parse_version_tag("(Version 5.0 04/15/10 E)"),
@@ -555,7 +612,7 @@ mod tests
                                "04/15/10",
                                "E"
                            ]
-                       ))
+                       ), None)
                    ]))));
         assert_eq!(parse_version_tag("(Version 4.5 05/25/00 A)"),
                    Ok(("", NoIntroToken::Version(vec![
@@ -564,7 +621,7 @@ mod tests
                                "05/25/00",
                                "A"
                            ]
-                       ))
+                       ), None)
                    ]))));
 
         //

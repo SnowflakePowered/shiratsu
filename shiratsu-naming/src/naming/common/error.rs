@@ -5,7 +5,7 @@ use crate::region::RegionError;
 use crate::naming::*;
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 /// Name parsing errors.
 pub enum NameError {
     /// The file name could not be parsed with the given naming conventions.

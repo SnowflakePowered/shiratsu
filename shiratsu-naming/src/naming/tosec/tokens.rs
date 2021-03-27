@@ -1,34 +1,149 @@
 use crate::region::Region;
-use crate::naming::{FlagType, NamingConvention};
+use crate::naming::{FlagType, NamingConvention, TokenizedName};
 
-use crate::error::{NameError, Result};
+use crate::naming::common::error::{NameError, Result};
 use crate::naming::tosec::parsers::{do_parse, do_parse_multiset};
 
 use std::cmp::Ordering;
 use std::slice::Iter;
+use std::fmt::{Display, Formatter};
+use std::fmt;
 
+/// A token constituent within a `TOSECToken`.
+///
+/// Tokens are not guaranteed to have consistent semantics
+/// outside of a `NoIntroName`. The order of tokens in a
+/// `TOSECName` is significant in order of appearance in
+/// the input file name.
+///
+/// `TOSECToken` has a custom implementation of `PartialOrd` following the TOSEC Naming Convention.
 #[derive(Debug, Eq, Clone, Ord)]
 pub enum TOSECToken<'a>
 {
+    /// The title of the ROM.
     Title(&'a str),
+
+    /// A version flag.
+    ///
+    /// ## Tuple elements
+    /// 0. The version type.
+    ///     * If this is `Rev`, a space occurs between the version type and the major version.
+    /// 1. The major version.
+    /// 2. The minor version, if any.
     Version(&'a str, &'a str, Option<&'a str>),
+
+    /// A demo flag, preceding the `demo-` string.
+    ///
+    /// ## Examples
+    /// * `(demo)` parses as `Demo(None)`.
+    /// * `(demo-kiosk)` parses as `Demo(Some("kiosk"))`
     Demo(Option<&'a str>),
+
+    /// A date flag
+    ///
+    /// ## Tuple elements
+    /// 0. The year.
+    /// 1. The month, if any.
+    /// 2. The day, if any.
     Date(&'a str, Option<&'a str>, Option<&'a str>),
+
+    /// A publisher flag, with publishers separated by ` - ` if more than one.
+    ///
+    /// ## Examples
+    /// * `(-)` parses as `Publisher(None)`
+    /// * `(Publisher A - Doe, John)` parses as `Publisher(Some(vec!["Publisher A", "Doe, John"]))`
     Publisher(Option<Vec<&'a str>>),
+
+    /// A system flag.
+    ///
+    /// See the [TOSEC Naming Convention](https://www.tosecdev.org/tosec-naming-convention#_Toc302254951)
+    /// for a list of valid system flags.
     System(&'a str),
+
+    /// A video flag.
+    ///
+    /// See the [TOSEC Naming Convention](https://www.tosecdev.org/tosec-naming-convention#_Toc302254954)
+    /// for a list of valid video flags.
     Video(&'a str),
-    /// A list of parsed regions.
+
+    /// The region of the ROM.
+    ///
+    /// Because of the existence of GoodTools region codes in `ZZZ-UNK-` ROMs,
+    /// you may not assume a one-to-one correspondence between the string in the
+    /// region flag, and the list of parsed regions, since GoodTools regions may
+    /// go through expansion.
+    ///
+    /// ## Tuple elements
+    /// 0. The region strings that correspond to the parsed regions.
+    /// 1. The parsed regions.
     Region(Vec<&'a str>, Vec<Region>),
-    /// A vector of language tuples (Code, Variant).
+
+    /// A language flag.
+    ///
+    /// See the `TOSECLanguage` documentation for more details.
     Languages(TOSECLanguage<'a>),
+
+    /// A copyright status flag.
+    ///
+    /// See the [TOSEC Naming Convention](https://www.tosecdev.org/tosec-naming-convention#_Toc302254964)
+    /// for a list of valid copyright status flags.
     Copyright(&'a str),
+
+    /// A development status flag.
+    ///
+    /// See the [TOSEC Naming Convention](https://www.tosecdev.org/tosec-naming-convention#_Toc302254967)
+    /// for a list of valid development status flags.
     Development(&'a str),
+    /// A dump info flag.
+    ///
+    /// '`[more info]`' flags are parsed as `Flag(FlagType::Bracketed, &'a str)`, and not
+    /// `DumpInfo`.
+    ///
+    /// See the [TOSEC Naming Convention](https://www.tosecdev.org/tosec-naming-convention#_Toc302254975)
+    /// for a list of valid dump info flags.
+    ///
+    /// ## Tuple elements
+    /// 0. The letter or name of the dump flag.
+    /// 1. The number of the dump flag, if any.
+    /// 2. The arguments or additional information of the dump flag, if any.
+    ///    This is an opaque string, and is not specialized with the type of the dump flag.
+    ///
+    /// ## Example
+    /// * `[!]` parses as `DumpInfo("!", None, None)`
+    /// * `[f1 Fix Fixer]` parses as `DumpInfo("f", Some("1"), Some("Fix Fixer")`
     DumpInfo(&'a str, Option<&'a str>, Option<&'a str>),
-    /// Media parts
+
+    /// A media part number flag.
+    ///
+    /// There may be multiple media parts in a flag, separated by a space.
+    ///
+    /// Media type flags are parsed as `Flag(FlagType::Parenthesized, &'a str)`, and not
+    /// `Media`.
+    ///
+    /// ## Tuple elements
+    /// 0. The media part name
+    /// 1. The number of the media part.
+    /// 2. The total parts of the media, if any.
+    ///
+    /// ## Examples
+    /// * `(Side A)` parses to `Media(vec![("Side", "A", None)])`.
+    /// * `(Disc 1 of 2 Side B)` parses to `Media(vec[("Disc", "1", Some("2")), ("Side", "B", None)])`.
     Media(Vec<(&'a str, &'a str, Option<&'a str>)>),
-    /// An unspecified regular flag
+
+    /// A generic, non-defined, or unknown flag.
     Flag(FlagType, &'a str),
-    /// A warning occurred
+
+    /// Indicates an unexpected deviations from the
+    /// TOSEC Naming convention.
+    ///
+    /// Warnings may be lexical (appearing in the input string) or non-lexical,
+    /// depending on the warning.
+    ///
+    /// Warnings are always associated with the token following
+    /// the warning in the resulting `TOSECName` token stream.
+    ///
+    /// This also means that lexical warnings occur in the order of appearance
+    /// in the input string.
     Warning(TOSECWarn<'a>)
 }
 
@@ -99,7 +214,7 @@ impl PartialOrd for TOSECToken<'_>
                 TOSECToken::Flag(FlagType::Parenthesized, _) => 12,
                 TOSECToken::DumpInfo(_, _, _) => 13,
                 TOSECToken::Flag(FlagType::Bracketed, _) => 14,
-                TOSECToken::Warning(_) => usize::max_value()
+                TOSECToken::Warning(_) => usize::MAX,
             }
         }
 
@@ -118,7 +233,7 @@ impl PartialOrd for TOSECToken<'_>
                 "b" => 10,
                 "a" => 11,
                 "!" => 12,
-                _ => usize::max_value()
+                _ => usize::MAX,
             }
         }
 
@@ -178,46 +293,147 @@ impl PartialOrd for TOSECToken<'_>
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
+/// A token that represents a warning or inconsistency in a TOSEC Naming Convention
+/// file name.
+///
+/// Warnings may be lexical (and are emitted in the input stream), or
+/// non-lexical, which serves as a warning.
+///
+/// Warnings may modify how a token is re-serialized depending on the order
+/// they appear in the `TOSECName`. A warning always occurs before the associated token.
 pub enum TOSECWarn<'a>
 {
+    /// This file name starts with `ZZZ-UNK-`.
+    ///
+    /// This warning is lexical and will emit the string `ZZZ-UNK-`
     ZZZUnknown,
+
+    /// The date placeholder in the following date token is
+    /// malformed, often because it is upper cased.
+    ///
+    /// A date such as `19XX` will produce this warning.
+    ///
+    /// If multiple date segments are malformed, multiple warnings will
+    /// be emitted in the order year, month, date.
+    ///
+    /// This warning is non-lexical.
     MalformedDatePlaceholder(&'a str),
+
+    /// The development status flag in the following development
+    /// status token is malformed, often because it is upper cased.
+    ///
+    /// A development status such as `Beta` will produce this warning.
+    ///
+    /// This warning is non-lexical.
     MalformedDevelopmentStatus(&'a str),
+
+    /// The following date token is undelimited with hyphens.
+    ///
+    /// A date such as `20001231` will produce this warning.
+    ///
+    /// This warning is lexical and will modify the re-serialization
+    /// of the following date token. This warning always occurs after all
+    /// `MalformedDatePlaceholder` warnings.
     UndelimitedDate(&'a str),
+
+    /// The required date token is missing.
+    ///
+    /// This warning is non-lexical.
     MissingDate,
+
+    /// The required publisher token is missing.
+    ///
+    /// This warning is non-lexical.
     MissingPublisher,
+
+    /// A space was expected between the preceding and following
+    /// token of this warning.
+    ///
+    /// This warning is lexical and will ensure that there are
+    /// no spaces between the preceding and following non-warning token.
     MissingSpace,
+
+    /// A space occurred between the preceding and following token
+    /// of this warning.
+    ///
+    /// This warning is lexical and will ensure that a space occurs
+    /// between the preceding and following non-warning token.
     UnexpectedSpace,
+
+    /// The following publisher token is preceded by the string 'by'.
+    ///
+    /// This may occur in `ZZZ-UNK-` names such as
+    /// `ZZZ-UNK-Micro Font Dumper by Schick, Bastian`.
+    ///
+    /// This warning is lexical and will emit the string `by `.
     ByPublisher,
+
+    /// The publisher flag occurred before the date flag.
+    ///
+    /// This often occurs if a `ByPublisher` warning is emitted.
+    /// If so, this token is always emitted before `ByPublisher` is emitted.
+    ///
+    /// This warning is non-lexical.
     PublisherBeforeDate,
+
+    /// A GoodTool region code occurred rather than an ISO region.
+    ///
+    /// This warning is non-lexical, however the following region token
+    /// will contain the GoodTools region string, and not a valid TOSEC
+    /// ISO region string.
+    ///
+    /// `TOSECName::as_strict` will transform GoodTools region tokens into
+    /// ISO region string tokens.
     GoodToolsRegionCode(&'a str),
+
+    /// A version occurred wrap in parentheses as a flag.
+    ///
+    /// This warning is lexical and will cause the following version token
+    /// to be emitted within parentheses.
     VersionInFlag,
+
+    /// When parsing a TOSEC name, the name is expected to be complete.
+    ///
+    /// If not, then this warning will be emitted containing the remainder of the string.
+    /// This often occurs because of unbalanced parentheses or braces.
+    ///
+    /// If this warning is emitted, it should be the last token in the token string, and
+    /// thus have no associated token.
+    ///
+    /// This warning is lexical and will emit the remainder string segment.
+    /// This can be removed with `TOSECName::without_trailing`.
     NotEof(&'a str)
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+/// A language flag parsed from a TOSEC Naming Convention file name.
 pub enum TOSECLanguage<'a>
 {
-    /// A single language code
+    /// A flag with a single language.
     Single(&'a str),
-    /// A double language
+    /// A flag with two languages, in the order they appear, separated by a hyphen (`-`).
+    ///
+    /// ## Tuple elements
+    /// 0. The first language.
+    /// 1. The second language.
     Double(&'a str, &'a str),
-    /// A multi-language indicator without the leading 'M'
+    /// A multi-language indicator, following the character `M`.
+    ///
+    /// ## Examples
+    /// * `(M6)` parses to `Count("6")`.
     Count(&'a str),
-}
-
-impl TOSECToken<'_> {
-    pub fn is_warning(&self) -> bool {
-        match self {
-            TOSECToken::Warning(_) => true,
-            _ => false,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 /// A TOSEC format file name.
+///
+/// The order of tokens in a
+/// `TOSECName` is significant in order of appearance in the input file name.
+///
+/// They are also not guaranteed to be strictly conforming to the
+/// TOSEC naming convention, but can be made so
+/// using `TOSECName::as_strict`.
 pub struct TOSECName<'a>(Vec<TOSECToken<'a>>);
 
 impl <'a> From<Vec<TOSECToken<'a>>> for TOSECName<'a>
@@ -227,27 +443,17 @@ impl <'a> From<Vec<TOSECToken<'a>>> for TOSECName<'a>
     }
 }
 
-impl <'a> From<TOSECName<'a>> for Vec<TOSECToken<'a>>
+impl TOSECName<'_>
 {
-    fn from(name: TOSECName<'a>) -> Self {
-        name.0
-    }
-}
-
-impl <'a> AsRef<Vec<TOSECToken<'a>>> for TOSECName<'a>
-{
-    fn as_ref(&self) -> &Vec<TOSECToken<'a>> {
-        &self.0
-    }
-}
-
-impl TOSECName<'_> {
-
-    #[inline]
-    /// Returns an iterator over the tokens of this name.
-    pub fn iter(&self) -> Iter<'_, TOSECToken>
-    {
-        self.0.iter()
+    /// Removes any trailing unparsed string segments from the name.
+    pub fn without_trailing(mut self) -> Self {
+        self.0.retain(|t| {
+            match t {
+                TOSECToken::Warning(TOSECWarn::NotEof(_)) => false,
+                _ => true
+            }
+        });
+        self
     }
 
     /// Makes the name conform strictly to the TOSEC naming conventions.
@@ -267,6 +473,19 @@ impl TOSECName<'_> {
     ///   ```
     /// - The date '19XX' is changed into '19xx'
     /// - Uppercased development tags are lowercased
+    ///
+    /// # Zero-copy guarantee
+    ///
+    /// This method consumes the tokenized name and remains zero-copy.
+    /// The zero-copy nature of the parsed tokens mean that some fixes can not be done, such
+    /// as reorganizing individual publisher names into `Surname, Given Name` format.
+    ///
+    /// As a result, the strict name may not always confirm to the strictest reading of the
+    /// TOSEC naming convention, especially with regards to alphabetization or malformed
+    /// flags that were not explicitly specified in listed fixes.
+    ///
+    /// The fixes that are done are only possible by converting the tokenized `&'a str` into
+    /// a known `&'static str`.
     pub fn into_strict(mut self) -> Self {
         if !self.0.iter().any(|e| match e { TOSECToken::Date(_, _, _) => true, _ => false })
         {
@@ -309,26 +528,37 @@ impl TOSECName<'_> {
             .collect())
     }
 
-    pub fn has_warnings(&self) -> bool {
-        self.0.iter().any(|e| e.is_warning())
+}
+
+impl <'a> TokenizedName<'a, TOSECToken<'a>> for TOSECName<'a>
+{
+    fn title(&self) -> Option<&'a str> {
+        self.iter()
+            .find_map(|f| match f {
+                TOSECToken::Title(t) => Some(*t),
+                _ => None
+            })
     }
 
-    pub fn warnings(&self) -> impl Iterator<Item=&TOSECToken> + '_
+    fn iter(&self) -> Iter<'_, TOSECToken<'a>>
     {
-        self.0.iter().filter(|e| match e { TOSECToken::Warning(_) => true, _ => false })
+        self.0.iter()
     }
 
-    pub fn try_parse<S: AsRef<str> + ?Sized>(input: &S) -> Result<TOSECName>
-    {
+    fn try_parse<S: AsRef<str> + ?Sized>(input: &'a S) -> Result<Self> {
         let (_, value) = do_parse(input.as_ref()).map_err(|_| {
             NameError::ParseError(NamingConvention::TOSEC, input.as_ref().to_string())
         })?;
         Ok(value.into())
     }
+
+    fn naming_convention() -> NamingConvention {
+        NamingConvention::TOSEC
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-/// A TOSEC format file name representing a Multi Image Set
+/// A TOSEC format file name representing a multi-image set.
 pub struct TOSECMultiSetName<'a>
 {
     tokens: Vec<Vec<TOSECToken<'a>>>,
@@ -336,6 +566,7 @@ pub struct TOSECMultiSetName<'a>
 }
 
 impl TOSECMultiSetName<'_> {
+    /// Tries to parse a multi-image set name with the TOSEC naming convention.
     pub fn try_parse<S: AsRef<str> + ?Sized>(input: &S) -> Result<TOSECMultiSetName>
     {
         let (_, value) = do_parse_multiset(input.as_ref())
@@ -370,5 +601,236 @@ impl <'a> TOSECMultiSetName<'a> {
     {
         self.get_combined_iter(index)
             .map(|i| i.cloned().collect::<Vec<TOSECToken<'a>>>().into())
+    }
+}
+
+fn write_tosec_string(buf: &mut String, vec: &Vec<TOSECToken<'_>>)
+{
+    for (i, token) in vec.iter().enumerate() {
+        match token {
+            TOSECToken::Title(t) => {
+                buf.push_str(t);
+                buf.push(' ');
+            }
+            TOSECToken::Version(tag, maj, min) => {
+                if let Some(TOSECToken::Warning(TOSECWarn::VersionInFlag)) =
+                vec.get(i - 1)  {
+                    buf.push('(');
+                }
+                buf.push_str(tag);
+                if tag == &"Rev" {
+                    buf.push(' ');
+                }
+                buf.push_str(maj);
+                if let Some(min) = min {
+                    buf.push('.');
+                    buf.push_str(min);
+                }
+                if let Some(TOSECToken::Warning(TOSECWarn::VersionInFlag)) =
+                vec.get(i - 1)  {
+                    buf.push(')');
+                }
+                buf.push(' ');
+            }
+            TOSECToken::Demo(ty) => {
+                buf.push_str("(demo");
+                if let Some(ty) = ty {
+                    buf.push('-');
+                    buf.push_str(ty);
+                }
+                buf.push_str(") ");
+            }
+            TOSECToken::Date(y, m, d) => {
+                buf.push('(');
+                if let Some(TOSECToken::Warning(TOSECWarn::UndelimitedDate(s))) =
+                vec.get(i - 1)  {
+                    buf.push_str(s);
+                } else {
+                    buf.push_str(y);
+                    if let Some(m) = m {
+                        buf.push('-');
+                        buf.push_str(m);
+                    }
+                    if let Some(d) = d {
+                        buf.push('-');
+                        buf.push_str(d);
+                    }
+                }
+                buf.push(')');
+            }
+            TOSECToken::Publisher(pubs) => {
+                let emit_params = match vec.get(i - 1)  {
+                    Some(TOSECToken::Warning(TOSECWarn::ByPublisher)) => {
+                        buf.push_str("by ");
+                        false
+                    }
+                    _ => true
+                };
+                if emit_params {
+                    buf.push('(');
+                }
+                if let Some(pubs) = pubs {
+                    for pubs in pubs.iter() {
+                        buf.push_str(pubs);
+                        buf.push_str(" - ");
+                    }
+
+                    // trim the end
+                    if buf.ends_with(" - ")
+                    {
+                        buf.truncate(buf.len() - " - ".len());
+                    }
+                } else {
+                    buf.push('-');
+                }
+                if emit_params {
+                    buf.push(')');
+                } else {
+                    buf.push(' ')
+                }
+            }
+            TOSECToken::System(s) => {
+                buf.push('(');
+                buf.push_str(s);
+                buf.push(')');
+            }
+            TOSECToken::Video(v) => {
+                buf.push('(');
+                buf.push_str(v);
+                buf.push(')');
+            }
+            TOSECToken::Region(rs, _) => {
+                buf.push('(');
+                for region in rs.iter()
+                {
+                    buf.push_str(region);
+                    buf.push('-');
+                }
+
+                if buf.ends_with("-")
+                {
+                    buf.truncate(buf.len() - "-".len());
+                }
+
+                buf.push(')');
+            }
+            TOSECToken::Languages(l) => {
+                buf.push('(');
+                match l {
+                    TOSECLanguage::Single(s) => { buf.push_str(s); },
+                    TOSECLanguage::Double(a, b) => {
+                        buf.push_str(a);
+                        buf.push('-');
+                        buf.push_str(b);
+                    }
+                    TOSECLanguage::Count(c) => { buf.push_str(c); },
+                }
+                buf.push(')');
+            }
+            TOSECToken::Copyright(c) => {
+                buf.push('(');
+                buf.push_str(c);
+                buf.push(')');
+            }
+            TOSECToken::Development(de) => {
+                buf.push('(');
+                buf.push_str(de);
+                buf.push(')');
+            }
+            TOSECToken::DumpInfo(code, num, info) => {
+                buf.push('[');
+                buf.push_str(code);
+
+                if let Some(num) = num {
+                    buf.push_str(num);
+                }
+
+                if let Some(info) = info {
+                    buf.push(' ');
+                    buf.push_str(info);
+                }
+                buf.push(']');
+            }
+            TOSECToken::Media(m) => {
+                buf.push('(');
+                for (title, number, of) in m.iter() {
+                    buf.push_str(title);
+                    buf.push(' ');
+                    buf.push_str(number);
+                    if let Some(of) = of {
+                        buf.push_str(" of ");
+                        buf.push_str(of);
+                    }
+
+                    buf.push(' ');
+                }
+
+                if buf.ends_with(" ")
+                {
+                    buf.truncate(buf.len() - " ".len());
+                }
+
+                buf.push(')');
+            }
+            TOSECToken::Flag(FlagType::Parenthesized, f) => {
+                buf.push('(');
+                buf.push_str(f);
+                buf.push(')');
+            }
+            TOSECToken::Flag(FlagType::Bracketed, f) => {
+                buf.push('[');
+                buf.push_str(f);
+                buf.push(']');
+            }
+            TOSECToken::Warning(w) => {
+                match w {
+                    TOSECWarn::ZZZUnknown => {
+                        buf.push_str("ZZZ-UNK-");
+                    }
+                    TOSECWarn::MissingSpace => {
+                        if buf.ends_with(" ") {
+                            buf.truncate(buf.len() - " ".len())
+                        }
+                    }
+                    TOSECWarn::UnexpectedSpace => {
+                        buf.push(' ');
+                    }
+                    TOSECWarn::NotEof(remainder) => {
+                        buf.push_str(remainder);
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
+impl Display for TOSECName<'_>
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut buf = String::new();
+        write_tosec_string(&mut buf, &self.0);
+        f.write_str(buf.trim())
+    }
+}
+
+impl Display for TOSECMultiSetName<'_>
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut buf = String::new();
+        for title in &self.tokens {
+            write_tosec_string(&mut buf, title);
+            buf.push_str(" & ");
+        }
+
+        if buf.ends_with(" & ") {
+            buf.truncate(buf.len() - " & ".len())
+        }
+
+        if !self.globals.is_empty() {
+            buf.push('-');
+            write_tosec_string(&mut buf, &self.globals);
+        }
+        f.write_str(&buf.trim())
     }
 }

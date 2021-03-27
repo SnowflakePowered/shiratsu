@@ -1,10 +1,10 @@
 use shiratsu_naming::region::Region;
 use crate::DevelopmentStatus;
-use shiratsu_naming::naming::{NamingConvention, FlagType};
+use shiratsu_naming::naming::{NamingConvention, FlagType, TokenizedName};
 use shiratsu_naming::naming::nointro::*;
 use crate::common::util::{move_default_articles_mut, replace_hyphen_mut};
-use shiratsu_naming::naming::goodtools::{GoodToolsToken, GoodToolsName};
-use shiratsu_naming::naming::tosec::{TOSECToken, TOSECName};
+use shiratsu_naming::naming::goodtools::*;
+use shiratsu_naming::naming::tosec::*;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct NameInfo {
@@ -112,12 +112,12 @@ impl <'a> ToNameInfo for NoIntroName<'a>
                 NoIntroToken::Flag(_, "Unl") => { name.is_unlicensed = true }
                 NoIntroToken::Version(versions) => {
                     match versions.first() {
-                        Some((_, major, None, _, _)) => { name.version = Some(major.to_string()) }
-                        Some((_, major, Some(minor), _, _)) => { name.version = Some(format!("{}.{}", major, minor)) }
+                        Some((_, major, None, _, _, _)) => { name.version = Some(major.to_string()) }
+                        Some((_, major, Some(minor), _, _, _)) => { name.version = Some(format!("{}.{}", major, minor)) }
                         _ => {}
                     }
                 }
-                NoIntroToken::Part(_, part) => { name.part_number = part.parse::<i32>().ok() }
+                NoIntroToken::Media(_, part) => { name.part_number = part.parse::<i32>().ok() }
                 NoIntroToken::Region(_, region) => { name.region = region.clone() }
                 NoIntroToken::Flag(_, "BIOS") => { name.is_system = true }
                 _ => {}
