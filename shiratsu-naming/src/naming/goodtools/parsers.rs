@@ -152,7 +152,7 @@ fn parse_multilanguage(input: &str) -> IResult<&str, GoodToolsToken>
 {
     let (input, _m) = tag("M")(input)?;
     let (input, count) = take_while_m_n(1, 2, |c: char| c.is_ascii_digit())(input)?;
-    Ok((input, GoodToolsToken::Multilanguage(count)))
+    Ok((input, GoodToolsToken::MultiLanguage(count)))
 }
 
 make_parens_tag!(parse_vol_tag, parse_volume, GoodToolsToken);
@@ -313,7 +313,27 @@ mod test
     use crate::naming::goodtools::tokens::{GoodToolsToken, TranslationStatus};
     use crate::region::Region;
     use nom::error::ErrorKind;
+    use crate::naming::goodtools::GoodToolsName;
 
+    #[test]
+    fn test_to_string()
+    {
+        for string in &[
+            "2 Pak Special (Magenta) - Cavern Blaster, City War (1992) (HES) (PAL) [!]",
+            "Abstract [Preview] (90)",
+            "Space Duel (VFinal_NTSC)",
+            "Bombjack by Dennis Munsie (V_unfinished) (PD)",
+            "007 - Nightfire (UE) (M3) [T+Rus_Pirate][f_5]",
+            "Eien no Filerna (J) [h1+2C]",
+            "Aggressive Inline (U) [h1C]"
+        ]
+        {
+            assert_eq!(
+                GoodToolsName::try_parse(string).map(|e| e.to_string()),
+                Ok(String::from(*string))
+            )
+        }
+    }
 
     #[test]
     fn test_parse()
