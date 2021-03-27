@@ -558,6 +558,7 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
                     {
                         tokens[0] = title; // replace title.
                         tokens.insert(1, TOSECToken::Publisher(publisher));
+
                         tokens.insert(1,
                                       TOSECToken::Warning(TOSECWarn::ByPublisher));
                         tokens.insert(1,
@@ -566,6 +567,8 @@ fn parse_tosec_name(input: &str) -> IResult<&str, Vec<TOSECToken>>
                     }
                     else if let Ok((input, (_, publisher))) = parse_by_publisher(input)
                     {
+                        // publisher happens after tags, so we have an unexpected space.
+                        tokens.push(TOSECToken::Warning(TOSECWarn::UnexpectedSpace));
                         tokens.push(TOSECToken::Warning(TOSECWarn::ByPublisher));
                         tokens.push(publisher);
                         input
@@ -775,8 +778,7 @@ mod test
     {
         assert_eq!(do_parse("ZZZ-UNK-Loopz (U) (Beta) (v0.06)")
                        .map(|(i, e)| (i, e.into()))
-                       .map(|(i, e): (&str, TOSECName)| (i, e.into_strict()))
-                       .map(|(i, e)| (i, e.into())),
+                       .map(|(i, e): (&str, TOSECName)| (i, e.into_strict())),
                    Ok(("", vec![
                        TOSECToken::Title("Loopz"),
                        TOSECToken::Version("v", "0", Some("06")),
@@ -784,7 +786,7 @@ mod test
                        TOSECToken::Publisher(None),
                        TOSECToken::Region(vec!["US"], vec![Region::UnitedStates]),
                        TOSECToken::Development("beta")
-                   ])));
+                   ].into())));
     }
     #[test]
     fn test_parse_multi()
@@ -909,6 +911,39 @@ mod test
                 TOSECToken::Publisher(Some(vec!["Jum Hig"])),
                 TOSECToken::Copyright("PD")])
             ));
+    }
+
+    #[test]
+    fn parse_to_string()
+    {
+        for string in &[
+            "ZZZ-UNK-Befok#Packraw (20021012) by Jum Hig (PD)",
+            "ZZZ-UNK-ATARI",
+            "ZZZ-UNK-Clicks! (test) by Domin, Matthias (2001) (PD)",
+            "Bombsawa (Jumpman Selected levels)(19XX)(-)(JP)(ja)(PD)[cr3 +test][h][test flag]",
+            "Dune - The Battle for Arrakis Demo Hack (2009-04-03)(Ti_)[h Dune - The Battle for Arrakis]"
+        ]
+        {
+            assert_eq!(
+                TOSECName::try_parse(string).map(|e| e.to_string()),
+                Ok(String::from(*string))
+            )
+        }
+    }
+
+
+    #[test]
+    fn globals_to_string()
+    {
+        for string in &[
+            "Amidar (19xx)(Devstudio) & Amigos (1987)(Mr. Tosec)-(PD)(Disk 1 of 2)[a]"
+        ]
+        {
+            assert_eq!(
+                TOSECMultiSetName::try_parse(string).map(|e| e.to_string()),
+                Ok(String::from(*string))
+            )
+        }
     }
 
     #[test]

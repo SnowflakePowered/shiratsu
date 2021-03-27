@@ -17,6 +17,8 @@ use crate::naming::parsers::*;
 use crate::naming::nointro::tokens::*;
 
 use nom::sequence::pair;
+use nom::combinator::recognize;
+use nom::bytes::complete::take_until;
 
 fn parse_region(input: &str) -> IResult<&str, (Vec<&str>, Vec<Region>)>
 {
@@ -318,6 +320,26 @@ fn parse_additional_tag(input: &str) -> IResult<&str, NoIntroToken>
     Ok((input, NoIntroToken::Flag(FlagType::Parenthesized, add_tag)))
 }
 
+// No one ever told inner parens were allowed!
+fn parse_redump_multitap_flag(input: &str) -> IResult<&str, NoIntroToken>
+{
+    // (Multi Tap (SCPH-10090) Doukonban)
+
+    fn parse_redump_multitap_flag_inner(input: &str) -> IResult<&str, ()>
+    {
+        let (input, _) = tag("Multi Tap (")(input)?;
+        let (input, _) = take_until(")")(input)?;
+        let (input, _) = char(')')(input)?;
+        let (input, _) = take_until(")")(input)?;
+        Ok((input, ()))
+    }
+
+    let (input, _) = char('(')(input)?;
+    let (input, flag) = recognize(parse_redump_multitap_flag_inner)(input)?;
+    let (input, _) = char(')')(input)?;
+    Ok((input, NoIntroToken::Flag(FlagType::Parenthesized, flag)))
+}
+
 fn parse_known_flags(input: &str) -> IResult<&str, NoIntroToken>
 {
     let (input, tag) = alt((
@@ -325,6 +347,7 @@ fn parse_known_flags(input: &str) -> IResult<&str, NoIntroToken>
                                 parse_version_tag,
                                 parse_dev_status_tag,
                                 parse_disc_tag,
+                                parse_redump_multitap_flag,
                                 parse_additional_tag
     ))(input)?;
     Ok((input, tag))
@@ -448,6 +471,17 @@ mod tests
         assert_eq!(Some(&NoIntroToken::Title("void tRrLM(); Void Terrarium")), stuff.first())
     }
 
+    #[test]
+    fn parse_test_multitap()
+    {
+        assert_eq!(do_parse("Konjiki no Gashbell!! Go! Go! Mamono Fight!! (Japan) (Multi Tap (SCPH-10090) Doukonban)"),
+        Ok(("",
+        vec![
+            NoIntroToken::Title("Konjiki no Gashbell!! Go! Go! Mamono Fight!!"),
+            NoIntroToken::Region(vec!["Japan"], vec![Region::Japan]),
+            NoIntroToken::Flag(FlagType::Parenthesized, "Multi Tap (SCPH-10090) Doukonban")
+        ])))
+    }
     #[test]
     fn parse_to_string()
     {

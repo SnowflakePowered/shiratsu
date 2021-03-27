@@ -3,7 +3,7 @@ use phf::phf_map;
 use std::array;
 
 /// Region parsing errors
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum RegionError {
     /// A parsing error occurred.
     ///
@@ -25,7 +25,7 @@ impl std::fmt::Display for RegionError {
 type Result<T> = std::result::Result<T, RegionError>;
 
 /// Possible region conventions.
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum RegionFormat {
     /// TOSEC naming standards (using appended ISO country codes)
     TOSEC,

@@ -6,6 +6,8 @@ use crate::naming::tosec::parsers::{do_parse, do_parse_multiset};
 
 use std::cmp::Ordering;
 use std::slice::Iter;
+use std::fmt::{Display, Formatter};
+use std::fmt;
 
 #[derive(Debug, Eq, Clone, Ord)]
 pub enum TOSECToken<'a>
@@ -99,7 +101,7 @@ impl PartialOrd for TOSECToken<'_>
                 TOSECToken::Flag(FlagType::Parenthesized, _) => 12,
                 TOSECToken::DumpInfo(_, _, _) => 13,
                 TOSECToken::Flag(FlagType::Bracketed, _) => 14,
-                TOSECToken::Warning(_) => usize::max_value()
+                TOSECToken::Warning(_) => usize::MAX,
             }
         }
 
@@ -118,7 +120,7 @@ impl PartialOrd for TOSECToken<'_>
                 "b" => 10,
                 "a" => 11,
                 "!" => 12,
-                _ => usize::max_value()
+                _ => usize::MAX,
             }
         }
 
@@ -224,20 +226,6 @@ impl <'a> From<Vec<TOSECToken<'a>>> for TOSECName<'a>
 {
     fn from(vec: Vec<TOSECToken<'a>>) -> Self {
         TOSECName(vec)
-    }
-}
-
-impl <'a> From<TOSECName<'a>> for Vec<TOSECToken<'a>>
-{
-    fn from(name: TOSECName<'a>) -> Self {
-        name.0
-    }
-}
-
-impl <'a> AsRef<Vec<TOSECToken<'a>>> for TOSECName<'a>
-{
-    fn as_ref(&self) -> &Vec<TOSECToken<'a>> {
-        &self.0
     }
 }
 
@@ -370,5 +358,225 @@ impl <'a> TOSECMultiSetName<'a> {
     {
         self.get_combined_iter(index)
             .map(|i| i.cloned().collect::<Vec<TOSECToken<'a>>>().into())
+    }
+}
+
+fn write_tosec_string(buf: &mut String, vec: &Vec<TOSECToken<'_>>)
+{
+    for (i, token) in vec.iter().enumerate() {
+        match token {
+            TOSECToken::Title(t) => {
+                buf.push_str(t);
+                buf.push(' ');
+            }
+            TOSECToken::Version(tag, maj, min) => {
+                buf.push_str(tag);
+                if tag == &"Rev" {
+                    buf.push(' ');
+                }
+                buf.push_str(maj);
+                if let Some(min) = min {
+                    buf.push('.');
+                    buf.push_str(min);
+                }
+                buf.push(' ');
+            }
+            TOSECToken::Demo(ty) => {
+                buf.push_str("(demo");
+                if let Some(ty) = ty {
+                    buf.push('-');
+                    buf.push_str(ty);
+                }
+                buf.push_str(") ");
+            }
+            TOSECToken::Date(y, m, d) => {
+                buf.push('(');
+                if let Some(TOSECToken::Warning(TOSECWarn::UndelimitedDate(s))) =
+                vec.get(i - 1)  {
+                    buf.push_str(s);
+                } else {
+                    buf.push_str(y);
+                    if let Some(m) = m {
+                        buf.push('-');
+                        buf.push_str(m);
+                    }
+                    if let Some(d) = d {
+                        buf.push('-');
+                        buf.push_str(d);
+                    }
+                }
+                buf.push(')');
+            }
+            TOSECToken::Publisher(pubs) => {
+                let emit_params = match vec.get(i - 1)  {
+                    Some(TOSECToken::Warning(TOSECWarn::ByPublisher)) => {
+                        buf.push_str("by ");
+                        false
+                    }
+                    _ => true
+                };
+                if emit_params {
+                    buf.push('(');
+                }
+                if let Some(pubs) = pubs {
+                    for pubs in pubs.iter() {
+                        buf.push_str(pubs);
+                        buf.push_str(" - ");
+                    }
+
+                    // trim the end
+                    if buf.ends_with(" - ")
+                    {
+                        buf.truncate(buf.len() - " - ".len());
+                    }
+                } else {
+                    buf.push('-');
+                }
+                if emit_params {
+                    buf.push(')');
+                } else {
+                    buf.push(' ')
+                }
+            }
+            TOSECToken::System(s) => {
+                buf.push('(');
+                buf.push_str(s);
+                buf.push(')');
+            }
+            TOSECToken::Video(v) => {
+                buf.push('(');
+                buf.push_str(v);
+                buf.push(')');
+            }
+            TOSECToken::Region(rs, _) => {
+                buf.push('(');
+                for region in rs.iter()
+                {
+                    buf.push_str(region);
+                    buf.push('-');
+                }
+
+                if buf.ends_with("-")
+                {
+                    buf.truncate(buf.len() - "-".len());
+                }
+
+                buf.push(')');
+            }
+            TOSECToken::Languages(l) => {
+                buf.push('(');
+                match l {
+                    TOSECLanguage::Single(s) => { buf.push_str(s); },
+                    TOSECLanguage::Double(a, b) => {
+                        buf.push_str(a);
+                        buf.push('-');
+                        buf.push_str(b);
+                    }
+                    TOSECLanguage::Count(c) => { buf.push_str(c); },
+                }
+                buf.push(')');
+            }
+            TOSECToken::Copyright(c) => {
+                buf.push('(');
+                buf.push_str(c);
+                buf.push(')');
+            }
+            TOSECToken::Development(de) => {
+                buf.push('(');
+                buf.push_str(de);
+                buf.push(')');
+            }
+            TOSECToken::DumpInfo(code, num, info) => {
+                buf.push('[');
+                buf.push_str(code);
+
+                if let Some(num) = num {
+                    buf.push_str(num);
+                }
+
+                if let Some(info) = info {
+                    buf.push(' ');
+                    buf.push_str(info);
+                }
+                buf.push(']');
+            }
+            TOSECToken::Media(m) => {
+                buf.push('(');
+                for (title, number, of) in m.iter() {
+                    buf.push_str(title);
+                    buf.push(' ');
+                    buf.push_str(number);
+                    if let Some(of) = of {
+                        buf.push_str(" of ");
+                        buf.push_str(of);
+                    }
+
+                    buf.push(' ');
+                }
+
+                if buf.ends_with(" ")
+                {
+                    buf.truncate(buf.len() - " ".len());
+                }
+
+                buf.push(')');
+            }
+            TOSECToken::Flag(FlagType::Parenthesized, f) => {
+                buf.push('(');
+                buf.push_str(f);
+                buf.push(')');
+            }
+            TOSECToken::Flag(FlagType::Bracketed, f) => {
+                buf.push('[');
+                buf.push_str(f);
+                buf.push(']');
+            }
+            TOSECToken::Warning(w) => {
+                match w {
+                    TOSECWarn::ZZZUnknown => {
+                        buf.push_str("ZZZ-UNK-");
+                    }
+                    TOSECWarn::MissingSpace => {
+                        if buf.ends_with(" ") {
+                            buf.truncate(buf.len() - " ".len())
+                        }
+                    }
+                    TOSECWarn::UnexpectedSpace => {
+                        buf.push(' ');
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
+impl Display for TOSECName<'_>
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut buf = String::new();
+        write_tosec_string(&mut buf, &self.0);
+        f.write_str(buf.trim())
+    }
+}
+
+impl Display for TOSECMultiSetName<'_>
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut buf = String::new();
+        for title in &self.tokens {
+            write_tosec_string(&mut buf, title);
+            buf.push_str(" & ");
+        }
+
+        if buf.ends_with(" & ") {
+            buf.truncate(buf.len() - " & ".len())
+        }
+
+        if !self.globals.is_empty() {
+            buf.push('-');
+            write_tosec_string(&mut buf, &self.globals);
+        }
+        f.write_str(&buf.trim())
     }
 }

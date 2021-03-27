@@ -90,20 +90,6 @@ impl <'a> From<Vec<NoIntroToken<'a>>> for NoIntroName<'a>
     }
 }
 
-impl <'a> From<NoIntroName<'a>> for Vec<NoIntroToken<'a>>
-{
-    fn from(name: NoIntroName<'a>) -> Self {
-        name.0
-    }
-}
-
-impl <'a> AsRef<Vec<NoIntroToken<'a>>> for NoIntroName<'a>
-{
-    fn as_ref(&self) -> &Vec<NoIntroToken<'a>> {
-        &self.0
-    }
-}
-
 impl Display for NoIntroName<'_>
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {

@@ -3,6 +3,8 @@ use crate::naming::{FlagType, NamingConvention};
 use crate::naming::goodtools::parsers::do_parse;
 use crate::error::{NameError, Result};
 use std::slice::Iter;
+use std::fmt::{Display, Formatter};
+use std::fmt;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum GoodToolsToken<'a>
@@ -56,16 +58,30 @@ impl <'a> From<Vec<GoodToolsToken<'a>>> for GoodToolsName<'a>
     }
 }
 
-impl <'a> From<GoodToolsName<'a>> for Vec<GoodToolsToken<'a>>
+impl Display for GoodToolsName<'_>
 {
-    fn from(name: GoodToolsName<'a>) -> Self {
-        name.0
-    }
-}
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut buf = String::new();
 
-impl <'a> AsRef<Vec<GoodToolsToken<'a>>> for GoodToolsName<'a>
-{
-    fn as_ref(&self) -> &Vec<GoodToolsToken<'a>> {
-        &self.0
+        unimplemented!();
+
+        for token in self.iter() {
+            match token {
+                GoodToolsToken::Title(_) => {}
+                GoodToolsToken::Region(_, _) => {}
+                GoodToolsToken::Year(_) => {}
+                GoodToolsToken::Multilanguage(_) => {}
+                GoodToolsToken::Translation(_, _) => {}
+                GoodToolsToken::Version(_, _, _) => {}
+                GoodToolsToken::Volume(_) => {}
+                GoodToolsToken::NInOne(_, _) => {}
+                GoodToolsToken::DumpCode(_, _, _, _, _, _) => {}
+                GoodToolsToken::GameHack(_) => {}
+                GoodToolsToken::Media(_, _, _) => {}
+                GoodToolsToken::Flag(_, _) => {}
+            }
+        }
+
+        f.write_str(buf.trim())
     }
 }
