@@ -23,6 +23,7 @@ mod tests {
     use shiratsu_naming::naming::tosec::TOSECName;
     use shiratsu_naming::region::Region;
     use shiratsu_naming::naming::nointro::NoIntroName;
+    use shiratsu_naming::naming::TokenizedName;
 
     #[test]
     fn nointro_region_parses() {

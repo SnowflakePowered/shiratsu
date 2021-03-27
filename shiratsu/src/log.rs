@@ -4,7 +4,7 @@ use console::style;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use lazy_static::lazy_static;
 use rusqlite::backup::Progress;
-use shiratsu_naming::NameError;
+use shiratsu_naming::naming::NameError;
 use slog::{error, info, warn};
 use shiratsu_dat::DatError;
 

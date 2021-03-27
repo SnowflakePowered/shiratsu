@@ -907,6 +907,7 @@ mod test
                 TOSECToken::Title("Befok#Packraw"),
                 TOSECToken::Warning(TOSECWarn::UndelimitedDate("20021012")),
                 TOSECToken::Date("2002", Some("10"), Some("12")),
+                TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
                 TOSECToken::Warning(TOSECWarn::ByPublisher),
                 TOSECToken::Publisher(Some(vec!["Jum Hig"])),
                 TOSECToken::Copyright("PD")])
@@ -921,7 +922,8 @@ mod test
             "ZZZ-UNK-ATARI",
             "ZZZ-UNK-Clicks! (test) by Domin, Matthias (2001) (PD)",
             "Bombsawa (Jumpman Selected levels)(19XX)(-)(JP)(ja)(PD)[cr3 +test][h][test flag]",
-            "Dune - The Battle for Arrakis Demo Hack (2009-04-03)(Ti_)[h Dune - The Battle for Arrakis]"
+            "Dune - The Battle for Arrakis Demo Hack (2009-04-03)(Ti_)[h Dune - The Battle for Arrakis]",
+            "ZZZ-UNK-Raiden (U) (CES Version) (v3.0)"
         ]
         {
             assert_eq!(

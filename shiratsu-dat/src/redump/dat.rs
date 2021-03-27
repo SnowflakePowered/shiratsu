@@ -5,6 +5,7 @@ use serde::Deserialize;
 use std::convert::{TryFrom, TryInto};
 
 use shiratsu_naming::naming::nointro::NoIntroName;
+use shiratsu_naming::naming::TokenizedName;
 
 #[derive(Debug, Deserialize, PartialEq)]
 struct Rom {

@@ -242,7 +242,7 @@ fn parse_disc(input: &str) -> IResult<&str, NoIntroToken>
     let (input, disc) = tag("Disc")(input)?;
     let (input, _) = char(' ')(input)?;
     let (input, number) = digit1(input)?;
-    Ok((input, NoIntroToken::Part(disc, number)))
+    Ok((input, NoIntroToken::Media(disc, number)))
 }
 
 fn parse_scene_number(input: &str) -> IResult<&str, NoIntroToken>
@@ -418,12 +418,14 @@ mod tests
     use crate::naming::nointro::parsers::*;
     use crate::region::Region;
     use nom::error::{ErrorKind, Error};
+    use crate::naming::TokenizedName;
 
     #[test]
     fn parse_weird_beta()
     {
-        //Isle of Minno (Europe) (0.01) (Beta)
+        println!("{:?}", do_parse("Isle of Minno (Europe) (0.01) (Beta)").unwrap());
     }
+
     #[test]
     fn parse_scene_tags()
     {
@@ -488,7 +490,9 @@ mod tests
         for string in &[
             "Cube CD 20, The (40) - Testing (Europe) (Rev 10)",
             "void tRrLM(); Void Terrarium (Japan)",
-            "FIFA 20 - Portuguese (Brazil) In-Game Commentary (World) (Version 10.5.6-10, PS3 v10.0) (Pt-BR) (DLC) (eShop)"
+            "FIFA 20 - Portuguese (Brazil) In-Game Commentary (World) (Version 10.5.6-10, PS3 v10.0) (Pt-BR) (DLC) (eShop)",
+            "Isle of Minno (Europe) (0.01) (Beta)",
+            "Isle of Minno (Europe) (v0.01) (Beta)",
         ]
         {
             assert_eq!(string,
@@ -499,7 +503,7 @@ mod tests
     fn parse_disc_test()
     {
         assert_eq!(parse_disc_tag("(Disc 5)"),
-                   Ok(("", NoIntroToken::Part("Disc", "5"))));
+                   Ok(("", NoIntroToken::Media("Disc", "5"))));
     }
 
     #[test]

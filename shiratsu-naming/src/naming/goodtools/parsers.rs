@@ -1,7 +1,7 @@
 use crate::region::*;
 use nom::{IResult, Slice};
 use nom::error::{ErrorKind, Error};
-use crate::naming::goodtools::tokens::{GoodToolsToken, TranslationStatus};
+use crate::naming::goodtools::tokens::{GoodToolsToken, GoodToolsTranslationStatus};
 use crate::naming::parsers::*;
 use nom::bytes::complete::{is_not, take_until, take_while1, take_while_m_n, take_while, take_till1};
 use nom::bytes::complete::tag;
@@ -55,8 +55,8 @@ fn parse_translation_tag(input: &str) -> IResult<&str, GoodToolsToken>
     let (input, _) = char('[')(input)?;
     let (input, _) = char('T')(input)?;
     let (input, status) = alt((
-        char('+').map(|_| TranslationStatus::Recent),
-        char('-').map(|_| TranslationStatus::Outdated)
+        char('+').map(|_| GoodToolsTranslationStatus::Recent),
+        char('-').map(|_| GoodToolsTranslationStatus::Outdated)
     ))(input)?;
     let (input, remain) = take_until("]")(input)?;
     let (input, _) = char(']')(input)?;
@@ -310,10 +310,11 @@ pub(super) fn do_parse(input: &str) -> IResult<&str, Vec<GoodToolsToken>>
 mod test
 {
     use crate::naming::goodtools::parsers::*;
-    use crate::naming::goodtools::tokens::{GoodToolsToken, TranslationStatus};
+    use crate::naming::goodtools::tokens::{GoodToolsToken, GoodToolsTranslationStatus};
     use crate::region::Region;
     use nom::error::ErrorKind;
     use crate::naming::goodtools::GoodToolsName;
+    use crate::naming::common::tokens::TokenizedName;
 
     #[test]
     fn test_to_string()
@@ -459,7 +460,7 @@ mod test
     {
         assert_eq!(parse_translation_tag("[T+Eng10%]"),
                    Ok(("", GoodToolsToken::Translation(
-                       TranslationStatus::Recent, "Eng10%"))));
+                       GoodToolsTranslationStatus::Recent, "Eng10%"))));
 
     }
 

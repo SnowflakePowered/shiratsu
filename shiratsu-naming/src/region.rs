@@ -2,7 +2,7 @@ use indexmap::IndexSet;
 use phf::phf_map;
 use std::array;
 
-/// Region parsing errors
+/// Region parsing errors.
 #[derive(Debug, PartialEq)]
 pub enum RegionError {
     /// A parsing error occurred.

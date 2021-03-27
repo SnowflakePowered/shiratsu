@@ -6,6 +6,7 @@ use std::convert::{TryFrom, TryInto};
 use quick_xml::de::DeError as XmlError;
 
 use shiratsu_naming::naming::nointro::*;
+use shiratsu_naming::naming::TokenizedName;
 
 #[derive(Debug, Deserialize, PartialEq)]
 struct Rom {

@@ -1,29 +1,103 @@
 use crate::region::Region;
-use crate::naming::{FlagType, NamingConvention};
+use crate::naming::{FlagType, NamingConvention, TokenizedName};
 use crate::naming::goodtools::parsers::do_parse;
-use crate::error::{NameError, Result};
+use crate::naming::common::error::{NameError, Result};
 use std::slice::Iter;
 use std::fmt::{Display, Formatter};
 use std::fmt;
 
+/// A token constituent within a `GoodToolsName`.
+///
+/// Tokens are not guaranteed to have consistent semantics
+/// outside of a `GoodToolsName`. The order of tokens in a
+/// `GoodToolsName` is significant in order of appearance in
+/// the input file name.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum GoodToolsToken<'a>
 {
+    /// The title of the ROM.
     Title(&'a str),
+
+    /// The region of the ROM.
+    ///
+    /// There is no one-to-one correspondence between the string in the
+    /// region flag, and the list of parsed regions, since regions may
+    /// go through expansion.
+    ///
+    /// ## Tuple elements
+    /// 0. The region strings that correspond to the parsed regions.
+    /// 1. The parsed regions.
     Region(Vec<&'a str>, Vec<Region>),
+
+    /// The year the ROM was released.
     Year(&'a str),
+
+    /// A multi-language flag in the form `(M#)`.
     MultiLanguage(&'a str), // (M#)
-    Translation(TranslationStatus, &'a str), // [T(+/-)...]
+
+    /// A translation flag in the form `[T(+/-)...]`
+    ///
+    /// ## Tuple elements
+    /// 0. The status of the translation, mapping either to a `+` or `-` in the flag.
+    /// 1. The remaining arguments in the translation flag.
+    Translation(GoodToolsTranslationStatus, &'a str), // [T(+/-)...]
+
+    /// The version of the ROM.
+    ///
+    /// ## Tuple elements
+    /// 0. The version prefix, such as `REV`, `V` etc.
+    /// 1. The major version number.
+    /// 2. The minor version number, separated by a dot (`.`) or underscore (`_`) if the major version is `Final`
     Version(&'a str, &'a str, Option<&'a str>), // (REV/V/V /V_ ...)
+
+    /// The volume of the ROM, for the form `(Vol #)`
     Volume(&'a str), // (Vol #)
+
+    /// A `(#-in-1)` flag.
+    ///
+    /// ## Tuple elements
+    /// 0. The #-in-1 entries that appear in the flag.
+    /// 1. The separator, if any, separating multiple #-in-1 entries in a single flag.
     NInOne(Vec<&'a str>, Option<&'a str>), // list, sep (either + or ,)
 
-    /// A dump code in brackets
-    ///  [codeNumberTypeSeparatorNumArg]
-    /// `(code, number, type, separator, argnumber, args)`
+    /// A dump code in brackets.
+    ///
+    /// ## Tuple elements
+    /// 0. The code letter, such as `a`, or `h`.
+    /// 1. The number of the dump code.
+    /// 2. The type of the dump code.
+    /// 3. If present, a separator between the dump code and it's arguments.
+    /// 4. The number of the dump code arguments.
+    /// 5. The dump code arguments.
+    ///
+    /// ## Examples
+    /// * `[a]` parses to `DumpCode("a", None, None, None, None, None)`.
+    /// * `[a1]` parses to `DumpCode("a", Some("1"), None, None, None, None)`.
+    /// * `[hIR]` parses to `DumpCode("h", None, Some("IR"), None, None, None)`.
+    /// * `[h1+2C]` parses to `DumpCode("h", Some("1"), None, Some("+"), Some("2"), Some("C"))`.
     DumpCode(&'a str, Option<&'a str>, Option<&'a str>, Option<&'a str>, Option<&'a str>, Option<&'a str>),
+
+    /// A `(Hack)` flag.
+    ///
+    /// If a game was specified, then it will be parsed in the first element of the tuple.
+    ///
+    /// ## Examples
+    /// * `(Hack)` parses to `GameHack(None)`
+    /// * `(Adventure Hack)` parses to `GameHack(Some("Adventure"))`
     GameHack(Option<&'a str>), // (... Hack)
+
+    /// A media parts string.
+    ///
+    /// ## Tuple elements
+    /// 0. The name of the media part.
+    /// 1. The number of the media part.
+    /// 2. The total parts of the media, if any.
+    ///
+    /// ## Examples
+    /// * `(Disk 1 of 2)` parses to `Media("Disk", "1", Some("2"))`.
     Media(&'a str, &'a str, Option<&'a str>),
+
+    /// A generic, non-defined, or unknown flag.
     Flag(FlagType, &'a str),
 }
 
@@ -38,31 +112,50 @@ impl GoodToolsToken<'_> {
     }
 }
 
+/// The status of a translation in a GoodTools file name.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum TranslationStatus
+pub enum GoodToolsTranslationStatus
 {
+    /// This translation is recent (`T+`)
     Recent,
+
+    /// This translation is known to be outdated (`T-`)
     Outdated,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 /// A GoodTools format file name.
+///
+/// The order of tokens in a
+/// `GoodToolsName` is significant in order of appearance in
+/// the input file name.
 pub struct GoodToolsName<'a>(Vec<GoodToolsToken<'a>>);
 
-impl GoodToolsName<'_>
+impl <'a> TokenizedName<'a, GoodToolsToken<'a>> for GoodToolsName<'a>
 {
-    /// Returns an iterator over the tokens of this name.
-    pub fn iter(&self) -> Iter<'_, GoodToolsToken>
-    {
+    fn title(&self) -> Option<&'a str> {
+        self.iter()
+            .find_map(|f| match f {
+                GoodToolsToken::Title(t) => Some(*t),
+                _ => None
+            })
+    }
+
+    #[inline]
+    fn iter(&self) -> Iter<'_, GoodToolsToken<'a>> {
         self.0.iter()
     }
 
-    pub fn try_parse<S: AsRef<str> + ?Sized>(input: &S) -> Result<GoodToolsName> {
+    fn try_parse<S: AsRef<str> + ?Sized>(input: &'a S) -> Result<GoodToolsName<'a>> {
         let (_, value) = do_parse(input.as_ref()).map_err(|_| {
             NameError::ParseError(NamingConvention::GoodTools, input.as_ref().to_string())
         })?;
         Ok(value.into())
+    }
+
+    fn naming_convention() -> NamingConvention {
+        NamingConvention::GoodTools
     }
 }
 
@@ -111,8 +204,8 @@ impl Display for GoodToolsName<'_>
                     }
                     buf.push_str("[T");
                     match t {
-                        TranslationStatus::Recent => buf.push('+'),
-                        TranslationStatus::Outdated => buf.push('-'),
+                        GoodToolsTranslationStatus::Recent => buf.push('+'),
+                        GoodToolsTranslationStatus::Outdated => buf.push('-'),
                     }
                     buf.push_str(tags);
                     buf.push(']');

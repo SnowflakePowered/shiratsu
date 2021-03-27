@@ -70,6 +70,8 @@
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/syn-85b9576dae7b50f3/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/syn-8dfbc0bfbbedb606/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/syn-9d33a8663707813f/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/anyhow-cfc36c5f1fe26f46/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/syn-08ecc5641eb6a30b/out" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />
