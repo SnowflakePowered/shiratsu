@@ -20,9 +20,9 @@ pub enum NoIntroToken<'a>
 
     /// The region of the ROM.
     ///
-    /// There is no one-to-one correspondence between the string in the
+    /// There is no one-to-one correspondence between the strings in the
     /// region flag, and the list of parsed regions, since regions may
-    /// go through expansion.
+    /// undergo expansion.
     ///
     /// ## Tuple elements
     /// 0. The region strings that correspond to the parsed regions.
@@ -31,7 +31,7 @@ pub enum NoIntroToken<'a>
 
     /// A version flag.
     ///
-    /// A version flag may contain one or more languages, separated by a separator.
+    /// A version flag may contain one or more versions, separated by a separator.
     ///
     /// ## Tuple elements
     /// Each tuple in the contained vector has the following format.

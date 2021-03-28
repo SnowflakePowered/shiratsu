@@ -20,9 +20,9 @@ pub enum GoodToolsToken<'a>
 
     /// The region of the ROM.
     ///
-    /// There is no one-to-one correspondence between the string in the
+    /// There is no one-to-one correspondence between the strings in the
     /// region flag, and the list of parsed regions, since regions may
-    /// go through expansion.
+    /// undergo expansion.
     ///
     /// ## Tuple elements
     /// 0. The region strings that correspond to the parsed regions.

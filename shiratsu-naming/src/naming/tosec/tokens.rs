@@ -69,7 +69,7 @@ pub enum TOSECToken<'a>
     /// The region of the ROM.
     ///
     /// Because of the existence of GoodTools region codes in `ZZZ-UNK-` ROMs,
-    /// you may not assume a one-to-one correspondence between the string in the
+    /// you may not assume a one-to-one correspondence between the strings in the
     /// region flag, and the list of parsed regions, since GoodTools regions may
     /// go through expansion.
     ///
