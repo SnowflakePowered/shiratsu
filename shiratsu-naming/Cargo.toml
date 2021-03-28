@@ -3,8 +3,10 @@ name = "shiratsu-naming"
 version = "0.1.0"
 authors = ["Ronny Chan <ronny@ronnychan.ca>"]
 edition = "2018"
-repository = "https://github.com/SnowflakePowered/shiratsu"
+repository = "https://github.com/SnowflakePowered/shiratsu/tree/master/shiratsu-naming"
 license = "MIT"
+categories = ["parser-implementations", "parsing", "emulators", "text-processing", "games"]
+readme = "README.md"
 
 [dependencies]
 # Statics
