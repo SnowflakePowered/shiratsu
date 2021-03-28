@@ -382,7 +382,7 @@ pub enum TOSECWarn<'a>
     /// will contain the GoodTools region string, and not a valid TOSEC
     /// ISO region string.
     ///
-    /// `TOSECName::as_strict` will transform GoodTools region tokens into
+    /// `TOSECName::into_strict()` will transform GoodTools region tokens into
     /// ISO region string tokens.
     GoodToolsRegionCode(&'a str),
 
@@ -433,7 +433,7 @@ pub enum TOSECLanguage<'a>
 ///
 /// They are also not guaranteed to be strictly conforming to the
 /// TOSEC naming convention, but can be made so
-/// using `TOSECName::as_strict`.
+/// using `TOSECName::into_strict()`.
 pub struct TOSECName<'a>(Vec<TOSECToken<'a>>);
 
 impl <'a> From<Vec<TOSECToken<'a>>> for TOSECName<'a>
@@ -462,17 +462,17 @@ impl TOSECName<'_>
     ///
     /// # Fixes
     /// - If there is no date, 19xx is added as the date.
-    /// - If there is no publisher, the unknown publisher (-) is added
-    /// - GoodTools region codes are converted into the ISO equivalent
-    /// - Publishers are sorted lexicographically
+    /// - If there is no publisher, the unknown publisher (-) is added.
+    /// - GoodTools region codes are converted into the ISO equivalent.
+    /// - Publishers are sorted lexicographically.
     /// - Tags are put in the order
     ///    ```order
     ///   Title version (demo) (date)(publisher)(system)(video)(country)(language)
     ///   (copyright status)(development status)(media type)(media label)
     ///   [cr][f][h][m][p][t][tr][o][u][v][b][a][!][more info]
     ///   ```
-    /// - The date '19XX' is changed into '19xx'
-    /// - Uppercased development tags are lowercased
+    /// - The date '19XX' is changed into '19xx'.
+    /// - Uppercased development tags are lowercased.
     ///
     /// # Zero-copy guarantee
     ///
@@ -480,7 +480,7 @@ impl TOSECName<'_>
     /// The zero-copy nature of the parsed tokens mean that some fixes can not be done, such
     /// as reorganizing individual publisher names into `Surname, Given Name` format.
     ///
-    /// As a result, the strict name may not always confirm to the strictest reading of the
+    /// As a result, the strict name may not always conform to the strictest reading of the
     /// TOSEC naming convention, especially with regards to alphabetization or malformed
     /// flags that were not explicitly specified in listed fixes.
     ///
@@ -575,20 +575,8 @@ impl TOSECMultiSetName<'_> {
         })?;
         Ok(value.into())
     }
-}
-impl <'a> From<(Vec<Vec<TOSECToken<'a>>>, Vec<TOSECToken<'a>>)> for TOSECMultiSetName<'a>
-{
-    fn from(vecs: (Vec<Vec<TOSECToken<'a>>>, Vec<TOSECToken<'a>>)) -> Self {
-        TOSECMultiSetName {
-            tokens: vecs.0,
-            globals: vecs.1,
-        }
-    }
-}
 
-impl <'a> TOSECMultiSetName<'a> {
-
-    fn get_combined_iter(&self, index: usize) -> Option<impl Iterator<Item=&TOSECToken<'a>>>
+    fn get_combined_iter(&self, index: usize) -> Option<impl Iterator<Item=&TOSECToken<'_>>>
     {
         // todo: ensure the order of global flags.
         self.tokens.get(index)
@@ -597,10 +585,26 @@ impl <'a> TOSECMultiSetName<'a> {
             })
     }
 
-    pub fn get_single(&self, index: usize) -> Option<TOSECName<'a>>
+    /// Gets a `TOSECName` from a multi-set name.
+    ///
+    /// This method will clone tokens and string slices
+    /// to include global flags, but does not clone the
+    /// underlying string segments.
+    pub fn get_single(&self, index: usize) -> Option<TOSECName>
     {
         self.get_combined_iter(index)
-            .map(|i| i.cloned().collect::<Vec<TOSECToken<'a>>>().into())
+            .map(|i| i.cloned()
+                .collect::<Vec<TOSECToken>>().into())
+            .map(|i: TOSECName| i.into_strict())
+    }
+}
+impl <'a> From<(Vec<Vec<TOSECToken<'a>>>, Vec<TOSECToken<'a>>)> for TOSECMultiSetName<'a>
+{
+    fn from(vecs: (Vec<Vec<TOSECToken<'a>>>, Vec<TOSECToken<'a>>)) -> Self {
+        TOSECMultiSetName {
+            tokens: vecs.0,
+            globals: vecs.1,
+        }
     }
 }
 

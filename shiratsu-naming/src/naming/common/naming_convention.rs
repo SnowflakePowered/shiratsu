@@ -21,7 +21,8 @@ pub enum NamingConvention {
     NoIntro,
     /// The naming convention used by GoodTools.
     ///
-    /// Defined loosely by [GoodCodes.txt](https://raw.githubusercontent.com/SnowflakePowered/shiratsu/f5b668c44d9087204d0ec94b3002c643a5d82109/shiratsu-naming/src/naming/goodtools/GoodCodes.txt)
+    /// Defined loosely by [GoodCodes.txt](https://raw.githubusercontent.com/SnowflakePowered/shiratsu/f5b668c44d9087204d0ec94b3002c643a5d82109/shiratsu-naming/src/naming/goodtools/GoodCodes.txt).
+    ///
     /// Also uses information from [Emulation GameTech Wiki](https://emulation.gametechwiki.com/index.php/GoodTools)
     ///
     /// Specifically guarantees support for the 2016-04-03 GoodTools release,
