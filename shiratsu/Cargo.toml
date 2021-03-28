@@ -1,6 +1,6 @@
 [package]
 name = "shiratsu"
-version = "2.1.0"
+version = "3.0.0"
 authors = ["Ronny Chan <ronny@ronnychan.ca>"]
 edition = "2018"
 

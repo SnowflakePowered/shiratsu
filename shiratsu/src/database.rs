@@ -18,6 +18,8 @@ use std::{io, io::ErrorKind};
 
 use uuid::Uuid;
 
+const SCHEMA_VERSION: &'static str = "3.0.0";
+
 pub struct ShiratsuDatabase {
     memory_connection: Connection,
 }
@@ -114,7 +116,7 @@ fn write_meta_table(conn: &mut Connection) -> SqliteResult<(String, String)> {
                                         VALUES(:shiragame, :schema_version, :stone_version, :generated, :release, :aggregator)",
                     named_params! {
                         ":shiragame": "shiragame",
-                        ":schema_version": "2.1.0",
+                        ":schema_version": SCHEMA_VERSION,
                         ":stone_version": StonePlatforms::version(),
                         ":generated": time,
                         ":release": uuid,

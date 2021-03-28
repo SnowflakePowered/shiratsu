@@ -57,6 +57,18 @@ fn get_entries<R: BufRead + Seek>(
         Err(DatError::HeaderMismatchError(_, _)) => {}
         Err(err) => return Err(Error::new(err)),
     }
+    reader.seek(SeekFrom::Start(0))?;
+    match GameEntry::try_from_opengood_buf(reader.by_ref()) {
+        Ok(entries) => return Ok(Some((entries, "OpenGood"))),
+        Err(DatError::HeaderMismatchError(_, _)) => {}
+        Err(err) => return Err(Error::new(err)),
+    }
+    reader.seek(SeekFrom::Start(0))?;
+    match GameEntry::try_from_dats_site_buf(reader.by_ref()) {
+        Ok(entries) => return Ok(Some((entries, "dats.site"))),
+        Err(DatError::HeaderMismatchError(_, _)) => {}
+        Err(err) => return Err(Error::new(err)),
+    }
     Err(anyhow!("Did not match any known cataloguing organization."))
 }
 
