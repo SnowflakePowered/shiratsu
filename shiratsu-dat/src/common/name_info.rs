@@ -147,7 +147,7 @@ impl <'a> ToNameInfo for GoodToolsName<'a>
             is_demo: false,
             is_system: false,
             status: DevelopmentStatus::Release,
-            naming_convention: NamingConvention::NoIntro,
+            naming_convention: NamingConvention::GoodTools,
         };
         for token in self.iter() {
             match token {

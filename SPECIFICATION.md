@@ -1,7 +1,7 @@
 # shiragame database specification
 
-**Schema Version:** `2.1.0`
-**Stone Version:** `^10.0.0`
+**Schema Version:** `3.0.0`
+**Stone Version:** `^11.2.0`
 
 This document defines the schema and semantics of the shiragame games database. 
 
@@ -156,7 +156,6 @@ The following changes to the schema do not incur an API breakage, and the MINOR 
 
 * Adding a new column or table.
 * Changing an existing **normalization rule** for serial numbers.
-* Editing the internal sorting rules.
 * Any sufficiently small change to the schema as decided by the project maintainers.
 
 The following changes to the schema do not incur an API breakage, and the PATCH version number MUST be incremented.
@@ -178,6 +177,8 @@ shiragame does not process Parent-Clone relationships.
 * [No-Intro](https://www.no-intro.org/)
 * [Redump](http://redump.org/)
 * [TOSEC](https://www.tosecdev.org/)
+* [dats.site Custom DATs](https://dats.site/custom_system_datslist.php)
+* [OpenGood](https://github.com/SnowflakePowered/OpenGood)
 
 This MAY change in future releases of shiragame.
 

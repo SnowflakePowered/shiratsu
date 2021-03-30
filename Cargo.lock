@@ -665,7 +665,7 @@ dependencies = [
 
 [[package]]
 name = "shiratsu"
-version = "2.1.0"
+version = "3.0.0"
 dependencies = [
  "anyhow",
  "colored",
@@ -706,7 +706,7 @@ dependencies = [
 
 [[package]]
 name = "shiratsu-naming"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "indexmap",
  "nom",
