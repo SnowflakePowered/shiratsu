@@ -1,22 +1,26 @@
 ARCADE_MAME: []
 ATARI_2600: 
+  - "Open2600.dat"
   - "Atari - 2600 (*).dat"
   - "Atari 2600 & VCS - Applications (TOSEC-*).dat"
   - "Atari 2600 & VCS - Demos (TOSEC-*).dat"
   - "Atari 2600 & VCS - Educational (TOSEC-*).dat"
   - "Atari 2600 & VCS - Games (TOSEC-*).dat"
 ATARI_5200: 
+  - "Open5200.dat"
   - "Atari - 5200 (*).dat"
   - "Atari 5200 - Applications (TOSEC-*).dat"
   - "Atari 5200 - Demos (TOSEC-*).dat"
   - "Atari 5200 - Games (TOSEC-*).dat"
   - "Atari 5200 - Firmware (TOSEC-*).dat"
 ATARI_7800: 
+  - "Open7800.dat"
   - "Atari - 7800 (*).dat"
   - "Atari 7800 - Applications (TOSEC-*).dat"
   - "Atari 7800 - Games (TOSEC-*).dat"
   - "Atari 7800 - Firmware (TOSEC-*).dat"
 ATARI_JAGUAR: 
+  - "OpenJag.dat"
   - "Atari - Jaguar (J64) (*).dat"
   - "Atari - Jaguar (ROM) (*).dat"
   - "Atari Jaguar - Games - [[]*[]] (TOSEC-*).dat"
@@ -28,20 +32,24 @@ ATARI_JAGUAR_CD:
   - "Atari Jaguar CD - Homebrew - Games - [[]???[]] (TOSEC-*).dat"
   - "Atari - Jaguar CD Interactive Multimedia System - Datfile*.dat"
 ATARI_LYNX: 
+  - "OpenLynx.dat"
   - "Atari - Lynx (*).dat"
   - "Atari Lynx - Applications (TOSEC-*).dat"
   - "Atari Lynx - Demos (TOSEC-*).dat"
   - "Atari Lynx - Games (TOSEC-*).dat"
   - "Atari Lynx - Firmware (TOSEC-*).dat"
 BANDAI_WS: 
+  - "OpenWSx.WS.dat"
   - "Bandai - WonderSwan (*).dat"
   - "Bandai WonderSwan - Demos (TOSEC-*).dat"
   - "Bandai WonderSwan - Games (TOSEC-*).dat"
 BANDAI_WSC: 
+  - "OpenWSx.WSC.dat"
   - "Bandai - WonderSwan Color (*).dat"
   - "Bandai WonderSwan Color - Demos (TOSEC-*).dat"
   - "Bandai WonderSwan Color - Games (TOSEC-*).dat"
 COLECO_CV: 
+  - "OpenCol.dat"
   - "Coleco - ColecoVision (*).dat"
   - "Coleco ColecoVision - Applications (TOSEC-*).dat"
   - "Coleco ColecoVision - Demos (TOSEC-*).dat"
@@ -58,6 +66,7 @@ FUJITSU_FMT:
   - "Fujitsu FM Towns - Operating Systems - [[]???[]] (TOSEC-*).dat"
   - "Fujitsu - FM-Towns - Datfile*.dat"
 GCE_VECTREX: 
+  - "OpenVECT.dat"
   - "GCE - Vectrex (*).dat"
   - "GCE Vectrex - Demos - * (TOSEC-*).dat"
   - "GCE Vectrex - Compilations (TOSEC-*).dat"
@@ -70,6 +79,7 @@ MAGNAVOX_O2:
   - "Magnavox Odyssey2 - Educational (TOSEC-*).dat"
   - "Magnavox Odyssey2 - Games (TOSEC-*).dat"
 MATTEL_INT: 
+  - "OpenINTV.dat"
   - "Mattel - Intellivision (*).dat"
   - "Mattel Intellivision - Applications (TOSEC-*)"
   - "Mattel Intellivision - Demos - [[]*[]] (TOSEC-*)"
@@ -94,6 +104,7 @@ NEC_SGFX:
   - "NEC SuperGrafx - Games (TOSEC-*).dat"
   - "NEC - PC Engine SuperGrafx (*).dat"
 NEC_TG16: 
+  - "OpenPCE.dat"
   - "NEC - PC Engine - TurboGrafx 16 (*).dat"
   - "NEC PC-Engine & TurboGrafx-16 - Samplers (TOSEC-*).dat"
   - "NEC PC-Engine & TurboGrafx-16 - Applications (TOSEC-*).dat"
@@ -132,22 +143,30 @@ NINTENDO_FDS:
   - "Nintendo Famicom Disk System - Games (TOSEC-*).dat"
   - "Nintendo Famicom Disk System - Firmware (TOSEC-*).dat"
 NINTENDO_GB: 
+  - "OpenGBx.GB.dat"
   - "Nintendo - Game Boy (*).dat"
   - "Nintendo Game Boy - Demos (TOSEC-*).dat"
   - "Nintendo Game Boy - Games (TOSEC-*).dat"
   - "Nintendo Game Boy - Firmware (TOSEC-*).dat"
 NINTENDO_GBA: 
+  - "OpenGBA.GBA.dat"
+  - "OpenGBA.MB.dat"
   - "Nintendo - Game Boy Advance (*).dat"
   - "Nintendo - Game Boy Advance (Multiboot) (*).dat"
   - "Nintendo Game Boy Advance - Applications (TOSEC-*).dat"
   - "Nintendo Game Boy Advance - Demos (TOSEC-*).dat"
   - "Nintendo Game Boy Advance - Games (TOSEC-*).dat"
 NINTENDO_GBC: 
+  - "OpenGBx.GBC.dat"
   - "Nintendo - Game Boy Color (*).dat"
   - "Nintendo Game Boy Color - Demos (TOSEC-*).dat"
   - "Nintendo Game Boy Color - Games (TOSEC-*).dat"
   - "Nintendo Game Boy Color - Firmware (TOSEC-*).dat"
 NINTENDO_GCN: 
+  - "Nintendo_-_GameCube_-_NASOS_(*)_(*).dat"
+  - "Nintendo_-_GameCube_-_NKit_GCZ_(*)_(*).dat"
+  - "Nintendo_-_GameCube_-_NKit_ISO_(*)_(*).dat"
+  - "Nintendo_-_GameCube_-_nNASOS_(*)_(*).dat"
   - "Nintendo GameCube - Applications (TOSEC-*).dat"
   - "Nintendo GameCube - Games (TOSEC-*).dat"
   - "Nintendo GameCube - Samplers (TOSEC-*).dat"
@@ -157,6 +176,7 @@ NINTENDO_N3DS:
   - "Nintendo - New Nintendo 3DS (Decrypted) (*).dat"
   - "Nintendo - New Nintendo 3DS (Encrypted) (*).dat"
 NINTENDO_N64: 
+  - "OpenN64.N64.dat"
   - "Nintendo - Nintendo 64 (BigEndian) (*).dat"
   - "Nintendo - Nintendo 64 (ByteSwapped) (*).dat"
   - "Nintendo 64 - Firmware (TOSEC-*).dat"
@@ -166,6 +186,7 @@ NINTENDO_N64:
   - "Nintendo 64 - Games (TOSEC-*).dat"
   - "Nintendo 64 - Educational (TOSEC-*).dat"
 NINTENDO_N64DD: 
+  - "OpenN64.64DD.dat"
   - "Nintendo - Nintendo 64DD (*).dat"
   - "Nintendo 64DD - Applications (TOSEC-*).dat"
   - "Nintendo 64DD - Firmware (TOSEC-*).dat"
@@ -175,6 +196,7 @@ NINTENDO_NDS:
   - "Nintendo - Nintendo DS (Encrypted) (*).dat"
   - "Nintendo - Nintendo DS (Download Play) (*).dat"
 NINTENDO_NES: 
+  - "OpenNES.dat"
   - "Nintendo - Nintendo Entertainment System (*).dat"
   - "Nintendo Famicom & Entertainment System - Applications - [[]???[]] (TOSEC-*).dat"
   - "Nintendo Famicom & Entertainment System - Demos - [[]???[]] (TOSEC-*).dat"
@@ -186,8 +208,10 @@ NINTENDO_NSW:
   - "Nintendo - Nintendo Switch (Digital) (NSP) (20[2-9][0-9][0-1][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]).dat"
   - "Nintendo - Nintendo Switch (Digital) (CDN) (20[2-9][0-9][0-1][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]).dat"
 NINTENDO_SFT: 
+  - "OpenSNES.ST.dat"
   - "Nintendo - Sufami Turbo (*).dat"
 NINTENDO_SNES: 
+  - "OpenSNES.SNES.dat"
   - "Nintendo - Super Nintendo Entertainment System (Combined) (*).dat"
   - "Nintendo - Super Nintendo Entertainment System (Split) (*).dat"
   - "Nintendo Super Famicom & Super Entertainment System - Demos (TOSEC-*).dat"
@@ -195,18 +219,25 @@ NINTENDO_SNES:
   - "Nintendo Super Famicom & Super Entertainment System - Firmware (TOSEC-*).dat"
   - "Nintendo Super Famicom & Super Entertainment System - Games (TOSEC-*).dat"
 NINTENDO_BS: 
+  - "OpenSNES.BS.dat"
   - "Nintendo - Satellaview (*).dat"
 NINTENDO_VB: 
+  - "OpenVBoy.dat"
   - "Nintendo - Virtual Boy (*).dat"
   - "Nintendo Virtual Boy - Demos (TOSEC-*).dat"
   - "Nintendo Virtual Boy - Games (TOSEC-*).dat"
   - "Nintendo Virtual Boy - Applications (TOSEC-*).dat"
   - "Nintendo Virtual Boy - Samplers (TOSEC-*).dat"
 NINTENDO_WII: 
+  - "Nintendo_-_Wii_-_NASOS_(*)_(*).dat"
+  - "Nintendo_-_Wii_-_NKit_GCZ_(*)_(*).dat"
+  - "Nintendo_-_Wii_-_NKit_ISO_(*)_(*).dat"
+  - "Nintendo_-_Wii_-_nNASOS_(*)_(*).dat"
   - "Nintendo - Wii (Digital) (Split DLC) (WAD) (*).dat"
   - "Nintendo - Wii (Digital) (WAD) (*).dat"
   - "Nintendo - Wii - Datfile*.dat"
 NINTENDO_WIIU: 
+  - "Nintendo_-_Wii_U_-_WUX_(*)_(*).dat"
   - "Nintendo - Wii U (Digital) ([0-9]*).dat"
   - "Nintendo - Wii U - Datfile*.dat"
 PANASONIC_3DO: 
@@ -226,6 +257,7 @@ PHILIPS_CDI:
   - "Phillips CD-i - Homebrew - * (TOSEC-*).dat"
   - "Philips - CD-i - Datfile*.dat"
 SEGA_32X: 
+  - "OpenGen.32X.dat"
   - "Sega - 32X (*).dat"
   - "Sega 32X - Games (TOSEC-*).dat"
   - "Sega 32X - Applications (TOSEC-*).dat"
@@ -250,6 +282,7 @@ SEGA_DC:
   - "Sega Dreamcast - Various Unverified Dumps (TOSEC-*).dat"
   - "Sega - Dreamcast - Datfile*.dat"
 SEGA_GEN: 
+  - "OpenGen.Gen.dat"
   - "Sega - Mega Drive - Genesis (*).dat"
   - "Sega Mega Drive & Genesis - Applications - [[]*[]] (TOSEC-*).dat"
   - "Sega Mega Drive & Genesis - Demos (TOSEC-*).dat"
@@ -258,6 +291,7 @@ SEGA_GEN:
   - "Sega Mega Drive & Genesis - Games - [[]*[]] (TOSEC-*).dat"
   - "Sega Mega Drive & Genesis - Compilations (TOSEC-*).dat"
 SEGA_GG: 
+  - "OpenGen.GG.dat"
   - "Sega - Game Gear (*).dat"
   - "Sega Game Gear - Applications (TOSEC-*).dat"
   - "Sega Game Gear - Demos (TOSEC-*).dat"
@@ -277,6 +311,7 @@ SEGA_SG1000:
   - "Sega Game 1000 - Demos (TOSEC-*).dat"
   - "Sega Game 1000 - Games (TOSEC-*).dat"
 SEGA_SMS: 
+  - "OpenSMS.dat"
   - "Sega - Master System - Mark III (*).dat"
   - "Sega Mark III & Master System - Applications (TOSEC-*).dat"
   - "Sega Mark III & Master System - Demos (TOSEC-*).dat"
@@ -292,9 +327,11 @@ SNK_NGCD:
   - "SNK Neo-Geo CD - Samplers - [[]*[]] (TOSEC-*).dat"
   - "SNK - Neo Geo CD - Datfile*.dat"
 SNK_NGP: 
+  - "OpenNGPx.NGP.dat"
   - "SNK - Neo Geo Pocket (*).dat"
   - "SNK Neo-Geo Pocket - * (TOSEC-*).dat"
 SNK_NGPC: 
+  - "OpenNGPx.NGC.dat"
   - "SNK - Neo Geo Pocket Color (*).dat"
   - "SNK Neo-Geo Pocket Color - * (TOSEC-*).dat"
 SONY_PS2: 
@@ -334,3 +371,6 @@ SONY_PSX:
   - "Sony PlayStation - Firmware (TOSEC-*).dat"
   - "Sony - PlayStation - BIOS Datfile*.dat"
   - "Sony - PlayStation - Datfile*.dat"
+WATARA_SV:
+  - "OpenSV.dat"
+  - "Watara - Supervision (*).dat"
