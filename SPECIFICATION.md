@@ -171,7 +171,7 @@ shiratsu's constituent libraries (such as `shiratsu-naming`) MAY be versioned in
 Each MAJOR.MINOR version of the shiratsu application MUST generate a shiragame database with the same MAJOR.MINOR schema version. Effectively, this means that shiragame schema versions are tied to the shiratsu implementation. In the case where this document and shiratsu differ, it should be considered a bug in the specification.
 
 ## Data Sources
-Currently, shiragame sources data from Standard DATs published by three *cataloguing organizations*. 
+Currently, shiragame sources data from Standard DATs published by *cataloguing organizations*. 
 shiragame does not process Parent-Clone relationships.
 
 * [No-Intro](https://www.no-intro.org/)
