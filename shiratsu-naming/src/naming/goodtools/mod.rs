@@ -2,7 +2,7 @@
 //!
 //! Defined loosely by [GoodCodes.txt](https://raw.githubusercontent.com/SnowflakePowered/shiratsu/25f2c858dc3a9373e27de3df559cd00931d8e55f/shiratsu-naming/src/naming/goodtools/GoodCodes.txt).
 //!
-//! Also uses information from [Emulation GameTech Wiki](https://emulation.gametechwiki.com/index.php/GoodTools)
+//! Also uses information from [Emulation GameTech Wiki](https://emulation.gametechwiki.com/index.php/GoodTools).
 //!
 //! Specifically guarantees support for the 2016-04-03 GoodTools release,
 //! using DAT files from [OpenGood](https://github.com/SnowflakePowered/opengood).

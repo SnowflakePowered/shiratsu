@@ -38,6 +38,7 @@ pub enum RegionFormat {
 static TOSEC_REGION: phf::Map<&'static str, Region> = phf_map! {
     "AE" => Region::UnitedArabEmirates,
     "AL" => Region::Albania,
+    "AR" => Region::Argentina,
     "AS" => Region::Asia,
     "AT" => Region::Austria,
     "AU" => Region::Australia,
@@ -600,6 +601,7 @@ impl From<&Region> for &str {
         match region {
             Region::UnitedArabEmirates => "AE",
             Region::Albania => "AL",
+            Region::Argentina => "AR",
             Region::Asia => "AS",
             Region::Austria => "AT",
             Region::Australia => "AU",
@@ -666,7 +668,6 @@ impl From<&Region> for &str {
             Region::Vietnam => "VN",
             Region::Yugoslavia => "YU",
             Region::SouthAfrica => "ZA",
-            Region::Argentina => "AR",
             Region::Unknown => "ZZ",
         }
     }

@@ -631,6 +631,23 @@ mod tests
     }
 
     #[test]
+    fn parse_argentina()
+    {
+        assert_eq!(do_parse("Truco '96 (Argentina) (Unl)"),
+        Ok(("",
+            vec![NoIntroToken::Title("Truco '96"),
+            NoIntroToken::Region(vec!["Argentina"], vec![Region::Argentina]),
+            NoIntroToken::Flag(FlagType::Parenthesized, "Unl")]
+        )));
+
+        assert_eq!(Ok(String::from("Truco '96 (Argentina) (Unl)")), NoIntroName
+            ::try_parse("Truco '96 (Argentina) (Unl)").map(|s| s.to_string()));
+
+        assert_eq!("AR", Region::Argentina.as_ref());
+        assert_eq!(Ok(vec![Region::Argentina]), Region::try_from_tosec_region("AR"));
+    }
+
+    #[test]
     fn parse_region_test()
     {
         assert_eq!(parse_region("Japan, Europe, Australia, New Zealand"),
