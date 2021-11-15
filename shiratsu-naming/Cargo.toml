@@ -13,5 +13,5 @@ description = "Zero-copy file name parser for No-Intro, TOSEC, and GoodTools nam
 phf = { version = "0.8", features = ["macros"] }
 
 # Parsing
-nom = { version = "6", features = ["alloc"] }
+nom = { version = "7", features = ["alloc"] }
 indexmap = "1"
