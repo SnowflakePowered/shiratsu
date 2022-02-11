@@ -1,6 +1,5 @@
 use indexmap::IndexSet;
 use phf::phf_map;
-use std::array;
 
 /// Region parsing errors.
 #[derive(Debug, PartialEq)]
@@ -579,7 +578,7 @@ fn parse_regions<T: AsRef<str>>(region_str: T) -> Vec<Region> {
         .map(|(_, res)| res)
         .unwrap_or(vec![Region::Unknown]);
     // thanks @Rantanen on the Rust discord
-    array::IntoIter::new([good_tools_try, nointro_try, tosec_try])
+   [good_tools_try, nointro_try, tosec_try].iter()
         // Precalculate all the counts so they don't need to be calculated for
         // every single comparison.
         .map(|v| (v.iter().filter(|&r| *r != Region::Unknown).count(), v))
@@ -587,7 +586,7 @@ fn parse_regions<T: AsRef<str>>(region_str: T) -> Vec<Region> {
         .max_by_key(|(count, _)| *count)
         // Map the (count, vec) tuple back to the vec.
         // The count has served its purpose.
-        .map(|(_, v)| v)
+        .map(|(_, v)| v.to_vec())
         // In case the option was none (the input Vec was empty), return empty vec.
         .unwrap_or_else(|| vec![Region::Unknown])
 }
