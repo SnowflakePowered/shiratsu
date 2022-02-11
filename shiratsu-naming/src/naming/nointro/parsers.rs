@@ -708,7 +708,7 @@ mod tests
             do_parse("Double Dragon (Export) (En,Ja)");
         assert_eq!(stuff, Ok(("",
                               vec![NoIntroToken::Title("Double Dragon"),
-                                   NoIntroToken::Region(vec!["Export"], vec![Region::UnitedStates, Region::Japan]),
+                                   NoIntroToken::Region(vec!["Export"], vec![Region::UnitedStates, Region::Japan, Region::Europe]),
                                    NoIntroToken::Languages(vec![("En", None), ("Ja", None)])]
         )));
     }
