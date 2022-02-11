@@ -1,6 +1,6 @@
 [package]
 name = "shiratsu-naming"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["Ronny Chan <ronny@ronnychan.ca>"]
 edition = "2018"
 repository = "https://github.com/SnowflakePowered/shiratsu/tree/master/shiratsu-naming"

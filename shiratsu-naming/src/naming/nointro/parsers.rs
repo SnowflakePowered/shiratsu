@@ -688,4 +688,28 @@ mod tests
     {
         assert_eq!(parse_additional_tag("(Unl)"), Ok(("", NoIntroToken::Flag(FlagType::Parenthesized, "Unl"))))
     }
+
+    #[test]
+    fn parse_uae()
+    {
+        let stuff =
+            do_parse("Call of Duty - Advanced Warfare (United Arab Emirates) (En,Ar)");
+        assert_eq!(stuff, Ok(("",
+            vec![NoIntroToken::Title("Call of Duty - Advanced Warfare"),
+                 NoIntroToken::Region(vec!["United Arab Emirates"], vec![Region::UnitedArabEmirates]),
+                 NoIntroToken::Languages(vec![("En", None), ("Ar", None)])]
+        )));
+    }
+
+    #[test]
+    fn parse_export()
+    {
+        let stuff =
+            do_parse("Double Dragon (Export) (En,Ja)");
+        assert_eq!(stuff, Ok(("",
+                              vec![NoIntroToken::Title("Double Dragon"),
+                                   NoIntroToken::Region(vec!["Export"], vec![Region::UnitedStates, Region::Japan]),
+                                   NoIntroToken::Languages(vec![("En", None), ("Ja", None)])]
+        )));
+    }
 }

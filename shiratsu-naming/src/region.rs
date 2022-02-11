@@ -159,6 +159,7 @@ static NOINTRO_REGION: phf::Map<&'static str, Region> = phf_map! {
     "USA" => Region::UnitedStates,
     "UK" => Region::UnitedKingdom,
     "United Kingdom" => Region::UnitedKingdom,
+    "United Arab Emirates" => Region::UnitedArabEmirates,
     "Asia" => Region::Asia,
     "Poland" => Region::Poland,
     "Portugal" => Region::Portugal,
@@ -509,7 +510,8 @@ fn from_nointro_region<S: AsRef<str> + ?Sized>(region_str: &S)-> Result<(Vec<&st
         }
 
         match region_code {
-            "World" | "World (guessed)" | "World (Guessed)" => {
+            // Export is a redump-only region that gets expanded to UJE.
+            "World" | "World (guessed)" | "World (Guessed)" | "Export" => {
                 regions.insert(Region::UnitedStates);
                 regions.insert(Region::Japan);
                 regions.insert(Region::Europe);
