@@ -12,13 +12,13 @@ use nom::{
         bytes::complete::{take_while, take_while_m_n, take_till1},
 };
 
-use crate::naming::FlagType;
 use crate::naming::parsers::*;
 use crate::naming::nointro::tokens::*;
 
 use nom::sequence::pair;
 use nom::combinator::recognize;
 use nom::bytes::complete::take_until;
+use crate::naming::FlagType;
 
 fn parse_region(input: &str) -> IResult<&str, (Vec<&str>, Vec<Region>)>
 {
@@ -418,7 +418,9 @@ mod tests
     use crate::naming::nointro::parsers::*;
     use crate::region::Region;
     use nom::error::{ErrorKind, Error};
+    use crate::naming::FlagType::Parenthesized;
     use crate::naming::TokenizedName;
+    use crate::region::Region::{Europe, Japan, UnitedStates};
 
     #[test]
     fn parse_weird_beta()
@@ -677,11 +679,16 @@ mod tests
     {
         // FIFA 20 - Portuguese (Brazil) In-Game Commentary (World) (Pt-BR) (DLC) (eShop)
         // bruh this is dumb.
-        let (input, stuff) =
-            do_parse("FIFA 20 - Portuguese (Brazil) In-Game Commentary (World) (Pt-BR) (DLC) (eShop)").unwrap();
-        assert_eq!("", input);
-        assert_eq!(Some(
-            &NoIntroToken::Title("FIFA 20 - Portuguese (Brazil) In-Game Commentary")), stuff.first())
+        let parse =
+            do_parse("FIFA 20 - Portuguese (Brazil) In-Game Commentary (World) (Pt-BR) (DLC) (eShop)");
+        assert_eq!(parse, Ok(("",
+            vec![
+                NoIntroToken::Title("FIFA 20 - Portuguese (Brazil) In-Game Commentary"),
+                NoIntroToken::Region(vec!["World"], vec![Region::UnitedStates, Region::Japan, Region::Europe]),
+                NoIntroToken::Languages(vec![("Pt", Some("BR"))]),
+                NoIntroToken::Flag(FlagType::Parenthesized, "DLC"),
+                NoIntroToken::Flag(FlagType::Parenthesized, "eShop")
+            ])));
     }
     #[test]
     fn parse_unl()
