@@ -1,5 +1,3 @@
-
-
 /// Naming convention commonly used by DAT producers.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum NamingConvention {
@@ -46,5 +44,5 @@ impl From<&NamingConvention> for &str {
 impl AsRef<str> for NamingConvention {
     fn as_ref(&self) -> &str {
         self.into()
-    } 
+    }
 }

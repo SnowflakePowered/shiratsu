@@ -305,7 +305,9 @@ impl Region {
     ///
     /// # Arguments
     /// - `region_str` The region string.
-    pub fn try_from_tosec_region_with_strs<S: AsRef<str> + ?Sized>(region_str: &S) -> Result<(Vec<&str>, Vec<Self>)>  {
+    pub fn try_from_tosec_region_with_strs<S: AsRef<str> + ?Sized>(
+        region_str: &S,
+    ) -> Result<(Vec<&str>, Vec<Self>)> {
         from_tosec_region(region_str)
     }
 
@@ -339,7 +341,9 @@ impl Region {
     /// - `Latin America` is expanded to Mexico, Brazil, Argentina, Chile, and Peru
     /// # Arguments
     /// - `region_str` The region string.
-    pub fn try_from_nointro_region_with_strs<S: AsRef<str> + ?Sized>(region_str: &S) -> Result<(Vec<&str>, Vec<Self>)> {
+    pub fn try_from_nointro_region_with_strs<S: AsRef<str> + ?Sized>(
+        region_str: &S,
+    ) -> Result<(Vec<&str>, Vec<Self>)> {
         from_nointro_region(region_str)
     }
 
@@ -356,7 +360,9 @@ impl Region {
     /// strings corresponding to each parsed region.
     /// # Arguments
     /// - `region_str` The region string.
-    pub fn try_from_goodtools_region_with_strs<S: AsRef<str> + ?Sized>(region_str: &S) -> Result<(Vec<&str>, Vec<Self>)> {
+    pub fn try_from_goodtools_region_with_strs<S: AsRef<str> + ?Sized>(
+        region_str: &S,
+    ) -> Result<(Vec<&str>, Vec<Self>)> {
         from_goodtools_region(region_str)
     }
 
@@ -384,32 +390,33 @@ impl Region {
 fn from_tosec_region<S: AsRef<str> + ?Sized>(region_str: &S) -> Result<(Vec<&str>, Vec<Region>)> {
     let mut region_strings = Vec::new();
     let mut regions: IndexSet<Region> = IndexSet::new();
-    let mut region_count = 0;
     let mut region_string_index = 0;
 
-    for region_code in region_str.as_ref().split('-')
-    {
+    for (region_count, region_code) in region_str.as_ref().split('-').enumerate() {
         let region = TOSEC_REGION.get(region_code);
         if region_code.len() != 2 {
-            return Err(RegionError::BadRegionCode(RegionFormat::TOSEC,
-                                                  region_count,
-                                                  region_string_index))
+            return Err(RegionError::BadRegionCode(
+                RegionFormat::TOSEC,
+                region_count,
+                region_string_index,
+            ));
         }
         if let Some(region) = region {
             regions.insert(*region);
             region_strings.push(region_code);
-            region_count += 1;
             region_string_index += region_code.len();
             region_string_index += "-".len();
         } else {
-            return Err(RegionError::BadRegionCode(RegionFormat::TOSEC,
-                                                  region_count,
-                                                  region_string_index))
+            return Err(RegionError::BadRegionCode(
+                RegionFormat::TOSEC,
+                region_count,
+                region_string_index,
+            ));
         }
     }
 
     if regions.is_empty() {
-         Err(RegionError::NoRegions(RegionFormat::TOSEC))
+        Err(RegionError::NoRegions(RegionFormat::TOSEC))
     } else {
         Ok((region_strings, regions.into_iter().collect::<Vec<Region>>()))
     }
@@ -419,14 +426,15 @@ fn from_tosec_region<S: AsRef<str> + ?Sized>(region_str: &S) -> Result<(Vec<&str
 ///
 /// # Arguments
 /// - `region_str` The region string.
-fn from_goodtools_region<S: AsRef<str> + ?Sized>(region_str: &S) -> Result<(Vec<&str>, Vec<Region>)> {
+fn from_goodtools_region<S: AsRef<str> + ?Sized>(
+    region_str: &S,
+) -> Result<(Vec<&str>, Vec<Region>)> {
     let mut regions = IndexSet::<Region>::new();
     let mut region_strings = Vec::new();
 
-    let mut region_count = 0;
     let mut region_string_index = 0;
 
-    for region_code in region_str.as_ref().split(",") {
+    for (region_count, region_code) in region_str.as_ref().split(',').enumerate() {
         match region_code {
             "1" => {
                 regions.insert(Region::Japan);
@@ -453,21 +461,22 @@ fn from_goodtools_region<S: AsRef<str> + ?Sized>(region_str: &S) -> Result<(Vec<
                 regions.insert(Region::Japan);
                 regions.insert(Region::UnitedStates);
             }
-            _ => match GOODTOOLS_REGION.get(region_code)
-            {
+            _ => match GOODTOOLS_REGION.get(region_code) {
                 Some(&region) => {
                     regions.insert(region);
                 }
-                None => return Err(
-                    RegionError::BadRegionCode(RegionFormat::GoodTools,
-                                               region_count, region_string_index)
-                )
-            }
+                None => {
+                    return Err(RegionError::BadRegionCode(
+                        RegionFormat::GoodTools,
+                        region_count,
+                        region_string_index,
+                    ))
+                }
+            },
         }
 
         region_strings.push(region_code);
         // If there was error we would have deleted..
-        region_count += 1;
         region_string_index += region_code.len();
         region_string_index += ", ".len();
     }
@@ -492,15 +501,17 @@ fn from_goodtools_region<S: AsRef<str> + ?Sized>(region_str: &S) -> Result<(Vec<
 /// - `Scandinavia` is expanded to Denmark, Norway, and Sweden.
 /// # Arguments
 /// - `region_str` The region string.
-fn from_nointro_region<S: AsRef<str> + ?Sized>(region_str: &S)-> Result<(Vec<&str>, Vec<Region>)> {
+fn from_nointro_region<S: AsRef<str> + ?Sized>(region_str: &S) -> Result<(Vec<&str>, Vec<Region>)> {
     let mut regions = IndexSet::<Region>::new();
     let mut region_strings = Vec::new();
 
-    let mut region_count = 0;
     let mut region_string_index = 0;
 
-    for region_code in region_str.as_ref().split(", ") {
-        if !region_code.chars().all(|c| char::is_ascii_alphabetic(&c) || c == ' ') {
+    for (region_count, region_code) in region_str.as_ref().split(", ").enumerate() {
+        if !region_code
+            .chars()
+            .all(|c| char::is_ascii_alphabetic(&c) || c == ' ')
+        {
             return Err(RegionError::BadRegionCode(
                 RegionFormat::NoIntro,
                 region_count,
@@ -531,15 +542,17 @@ fn from_nointro_region<S: AsRef<str> + ?Sized>(region_str: &S)-> Result<(Vec<&st
                 Some(&region) => {
                     regions.insert(region);
                 }
-                None => return Err(
-                    RegionError::BadRegionCode(RegionFormat::NoIntro,
-                                               region_count, region_string_index)
-                ),
+                None => {
+                    return Err(RegionError::BadRegionCode(
+                        RegionFormat::NoIntro,
+                        region_count,
+                        region_string_index,
+                    ))
+                }
             },
         }
         region_strings.push(region_code);
         // If there was error we would have deleted..
-        region_count += 1;
         region_string_index += region_code.len();
         region_string_index += ", ".len();
     }
@@ -570,15 +583,15 @@ fn to_normalized_region_string(regions: &[Region]) -> String {
 fn parse_regions<T: AsRef<str>>(region_str: T) -> Vec<Region> {
     let good_tools_try = from_goodtools_region(&region_str.as_ref())
         .map(|(_, res)| res)
-        .unwrap_or(vec![Region::Unknown]);
+        .unwrap_or_else(|_| vec![Region::Unknown]);
     let nointro_try = from_nointro_region(&region_str.as_ref())
         .map(|(_, res)| res)
-        .unwrap_or(vec![Region::Unknown]);
+        .unwrap_or_else(|_| vec![Region::Unknown]);
     let tosec_try = from_tosec_region(&region_str.as_ref())
         .map(|(_, res)| res)
-        .unwrap_or(vec![Region::Unknown]);
-    // thanks @Rantanen on the Rust discord
-   [good_tools_try, nointro_try, tosec_try].iter()
+        .unwrap_or_else(|_| vec![Region::Unknown]);
+    [good_tools_try, nointro_try, tosec_try]
+        .iter()
         // Precalculate all the counts so they don't need to be calculated for
         // every single comparison.
         .map(|v| (v.iter().filter(|&r| *r != Region::Unknown).count(), v))
@@ -594,7 +607,7 @@ fn parse_regions<T: AsRef<str>>(region_str: T) -> Vec<Region> {
 impl AsRef<str> for Region {
     fn as_ref(&self) -> &str {
         self.into()
-    } 
+    }
 }
 
 impl From<&Region> for &str {

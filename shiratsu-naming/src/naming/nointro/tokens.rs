@@ -1,10 +1,10 @@
-use crate::region::Region;
-use crate::naming::{FlagType, NamingConvention, TokenizedName};
 use crate::naming::common::error::{NameError, Result};
 use crate::naming::nointro::parsers::do_parse;
-use std::slice::Iter;
-use std::fmt::{Display, Formatter};
+use crate::naming::{FlagType, NamingConvention, TokenizedName};
+use crate::region::Region;
 use std::fmt;
+use std::fmt::{Display, Formatter};
+use std::slice::Iter;
 
 /// A token constituent within a `NoIntroName`.
 ///
@@ -13,8 +13,7 @@ use std::fmt;
 /// `NoIntroName` is significant in order of appearance in
 /// the input file name.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum NoIntroToken<'a>
-{
+pub enum NoIntroToken<'a> {
     /// The title of the ROM.
     Title(&'a str),
 
@@ -52,7 +51,16 @@ pub enum NoIntroToken<'a>
     /// * `(v1.0, PS3 v3.35 Alt)`
     ///    parses to `Version(vec![("v", "1", Some("0"), ...),
     ///    ("v", "3", Some("35"), Some("PS3"), Some(vec!["Alt"]), Some(", ")`
-    Version(Vec<(&'a str, &'a str, Option<&'a str>, Option<&'a str>, Option<Vec<&'a str>>, Option<&'a str>)>),
+    Version(
+        Vec<(
+            &'a str,
+            &'a str,
+            Option<&'a str>,
+            Option<&'a str>,
+            Option<Vec<&'a str>>,
+            Option<&'a str>,
+        )>,
+    ),
 
     /// A release status flag, such as `(Sample)` or `(Beta)`
     ///
@@ -111,19 +119,16 @@ pub enum NoIntroToken<'a>
 /// the input file name.
 pub struct NoIntroName<'a>(Vec<NoIntroToken<'a>>);
 
-impl <'a> TokenizedName<'a, NoIntroToken<'a>> for NoIntroName<'a>
-{
+impl<'a> TokenizedName<'a, NoIntroToken<'a>> for NoIntroName<'a> {
     fn title(&self) -> Option<&'a str> {
-        self.iter()
-            .find_map(|f| match f {
-                NoIntroToken::Title(t) => Some(*t),
-                _ => None
-            })
+        self.iter().find_map(|f| match f {
+            NoIntroToken::Title(t) => Some(*t),
+            _ => None,
+        })
     }
 
     #[inline]
-    fn iter(&self) -> Iter<'_, NoIntroToken<'a>>
-    {
+    fn iter(&self) -> Iter<'_, NoIntroToken<'a>> {
         self.0.iter()
     }
 
@@ -139,20 +144,17 @@ impl <'a> TokenizedName<'a, NoIntroToken<'a>> for NoIntroName<'a>
     }
 }
 
-impl <'a> From<Vec<NoIntroToken<'a>>> for NoIntroName<'a>
-{
+impl<'a> From<Vec<NoIntroToken<'a>>> for NoIntroName<'a> {
     fn from(vec: Vec<NoIntroToken<'a>>) -> Self {
         NoIntroName(vec)
     }
 }
 
-impl Display for NoIntroName<'_>
-{
+impl Display for NoIntroName<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let mut buf = String::new();
 
-        for token in self.iter()
-        {
+        for token in self.iter() {
             match token {
                 NoIntroToken::Title(title) => {
                     buf.push_str(title);
@@ -176,14 +178,11 @@ impl Display for NoIntroName<'_>
                 NoIntroToken::Version(versions) => {
                     buf.push_str(" (");
 
-                    for (ver, major, minor, prefix,
-                        suffixes, sep)
-                        in versions {
+                    for (ver, major, minor, prefix, suffixes, sep) in versions {
                         if let Some(sep) = sep {
                             buf.push_str(sep);
                         }
-                        if let Some(prefix) = prefix
-                        {
+                        if let Some(prefix) = prefix {
                             buf.push_str(prefix);
                             buf.push(' ');
                         }
@@ -211,14 +210,14 @@ impl Display for NoIntroName<'_>
                         buf.push(' ');
                         buf.push_str(num);
                     }
-                    buf.push_str(")");
+                    buf.push(')');
                 }
                 NoIntroToken::Media(part, num) => {
                     buf.push_str(" (");
                     buf.push_str(part);
                     buf.push(' ');
                     buf.push_str(num);
-                    buf.push_str(")");
+                    buf.push(')');
                 }
                 NoIntroToken::Scene(num, prefix) => {
                     if let Some(prefix) = prefix {
@@ -233,17 +232,17 @@ impl Display for NoIntroName<'_>
                     for (lang, tag) in langs.iter() {
                         buf.push_str(lang);
                         if let Some(tag) = tag {
-                            buf.push_str("-");
+                            buf.push('-');
                             buf.push_str(tag);
                         }
-                        buf.push_str(",")
+                        buf.push(',')
                     }
 
                     // trim last comma
-                    if buf.ends_with(",") {
+                    if buf.ends_with(',') {
                         buf.truncate(buf.len() - 1)
                     }
-                    buf.push_str(")");
+                    buf.push(')');
                 }
             }
         }

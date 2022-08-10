@@ -1,6 +1,6 @@
 [package]
 name = "shiratsu-naming"
-version = "0.1.5"
+version = "0.1.6"
 authors = ["Ronny Chan <ronny@ronnychan.ca>"]
 edition = "2018"
 repository = "https://github.com/SnowflakePowered/shiratsu/tree/master/shiratsu-naming"
@@ -10,7 +10,7 @@ readme = "README.md"
 description = "Zero-copy file name parser for No-Intro, TOSEC, and GoodTools named ROM files."
 [dependencies]
 # Statics
-phf = { version = "0.8", features = ["macros"] }
+phf = { version = "0.11", features = ["macros"] }
 
 # Parsing
 nom = { version = "7", features = ["alloc"] }

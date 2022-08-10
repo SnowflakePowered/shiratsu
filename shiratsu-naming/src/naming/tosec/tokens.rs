@@ -1,13 +1,13 @@
-use crate::region::Region;
 use crate::naming::{FlagType, NamingConvention, TokenizedName};
+use crate::region::Region;
 
 use crate::naming::common::error::{NameError, Result};
 use crate::naming::tosec::parsers::{do_parse, do_parse_multiset};
 
 use std::cmp::Ordering;
-use std::slice::Iter;
-use std::fmt::{Display, Formatter};
 use std::fmt;
+use std::fmt::{Display, Formatter};
+use std::slice::Iter;
 
 /// A token constituent within a `TOSECToken`.
 ///
@@ -18,8 +18,7 @@ use std::fmt;
 ///
 /// `TOSECToken` has a custom implementation of `PartialOrd` following the TOSEC Naming Convention.
 #[derive(Debug, Eq, Clone, Ord)]
-pub enum TOSECToken<'a>
-{
+pub enum TOSECToken<'a> {
     /// The title of the ROM.
     Title(&'a str),
 
@@ -144,11 +143,10 @@ pub enum TOSECToken<'a>
     ///
     /// This also means that lexical warnings occur in the order of appearance
     /// in the input string.
-    Warning(TOSECWarn<'a>)
+    Warning(TOSECWarn<'a>),
 }
 
-impl PartialEq for TOSECToken<'_>
-{
+impl PartialEq for TOSECToken<'_> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (TOSECToken::Title(t), TOSECToken::Title(o)) => t.eq(o),
@@ -193,8 +191,7 @@ impl PartialEq for TOSECToken<'_>
     }
 }
 
-impl PartialOrd for TOSECToken<'_>
-{
+impl PartialOrd for TOSECToken<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         fn get_priority(token: &TOSECToken) -> usize {
             match token {
@@ -237,42 +234,34 @@ impl PartialOrd for TOSECToken<'_>
             }
         }
 
-        let self_priority = get_priority(&self);
-        let other_priority = get_priority(&other);
+        let self_priority = get_priority(self);
+        let other_priority = get_priority(other);
         if self_priority != other_priority {
             return self_priority.partial_cmp(&other_priority);
         }
         match (self, other) {
             (TOSECToken::Title(t), TOSECToken::Title(o)) => t.partial_cmp(o),
-            (TOSECToken::Version(a, b, c),
-                TOSECToken::Version(e, f, g))
-                => (a, b, c).partial_cmp(&(e, f, g)),
-            (TOSECToken::Demo(t), TOSECToken::Demo(o))
-                => t.partial_cmp(o),
-            (TOSECToken::Date(y, m, d),
-                TOSECToken::Date(y2, m2, d2))
-                => (y, m, d).partial_cmp(&(y2, m2, d2)),
-            (TOSECToken::Publisher(a), TOSECToken::Publisher(b))
-                => a.partial_cmp(b),
-            (TOSECToken::System(a), TOSECToken::System(b))
-                => a.partial_cmp(b),
-            (TOSECToken::Video(a), TOSECToken::Video(b))
-                => a.partial_cmp(b),
-            (TOSECToken::Region(a, _), TOSECToken::Region(b, _))
-                => a.partial_cmp(b),
-            (TOSECToken::Languages(a), TOSECToken::Languages(b))
-                => a.partial_cmp(b),
-            (TOSECToken::Copyright(a), TOSECToken::Copyright(b))
-                => a.partial_cmp(b),
-            (TOSECToken::Development(a), TOSECToken::Development(b))
-                => a.partial_cmp(b),
-            (TOSECToken::Media(a), TOSECToken::Media(b))
-                => a.partial_cmp(b),
+            (TOSECToken::Version(a, b, c), TOSECToken::Version(e, f, g)) => {
+                (a, b, c).partial_cmp(&(e, f, g))
+            }
+            (TOSECToken::Demo(t), TOSECToken::Demo(o)) => t.partial_cmp(o),
+            (TOSECToken::Date(y, m, d), TOSECToken::Date(y2, m2, d2)) => {
+                (y, m, d).partial_cmp(&(y2, m2, d2))
+            }
+            (TOSECToken::Publisher(a), TOSECToken::Publisher(b)) => a.partial_cmp(b),
+            (TOSECToken::System(a), TOSECToken::System(b)) => a.partial_cmp(b),
+            (TOSECToken::Video(a), TOSECToken::Video(b)) => a.partial_cmp(b),
+            (TOSECToken::Region(a, _), TOSECToken::Region(b, _)) => a.partial_cmp(b),
+            (TOSECToken::Languages(a), TOSECToken::Languages(b)) => a.partial_cmp(b),
+            (TOSECToken::Copyright(a), TOSECToken::Copyright(b)) => a.partial_cmp(b),
+            (TOSECToken::Development(a), TOSECToken::Development(b)) => a.partial_cmp(b),
+            (TOSECToken::Media(a), TOSECToken::Media(b)) => a.partial_cmp(b),
             // Presumably media type
-            (TOSECToken::Flag(FlagType::Parenthesized, a), TOSECToken::Flag(FlagType::Parenthesized, b))
-                => a.partial_cmp(b),
-            (TOSECToken::DumpInfo(a, n, f),
-                TOSECToken::DumpInfo(a1, n2, f2)) => {
+            (
+                TOSECToken::Flag(FlagType::Parenthesized, a),
+                TOSECToken::Flag(FlagType::Parenthesized, b),
+            ) => a.partial_cmp(b),
+            (TOSECToken::DumpInfo(a, n, f), TOSECToken::DumpInfo(a1, n2, f2)) => {
                 if a == a1 {
                     if n != n2 {
                         n.partial_cmp(n2)
@@ -282,12 +271,13 @@ impl PartialOrd for TOSECToken<'_>
                 } else {
                     get_dumpinfo_priority(a).partial_cmp(&get_dumpinfo_priority(a1))
                 }
-            },
-            (TOSECToken::Flag(FlagType::Bracketed, a), TOSECToken::Flag(FlagType::Bracketed, b))
-                => a.partial_cmp(b),
-            (TOSECToken::Warning(a), TOSECToken::Warning(b)) =>
-                a.partial_cmp(b),
-            _ => unreachable!()
+            }
+            (
+                TOSECToken::Flag(FlagType::Bracketed, a),
+                TOSECToken::Flag(FlagType::Bracketed, b),
+            ) => a.partial_cmp(b),
+            (TOSECToken::Warning(a), TOSECToken::Warning(b)) => a.partial_cmp(b),
+            _ => unreachable!(),
         }
     }
 }
@@ -301,8 +291,7 @@ impl PartialOrd for TOSECToken<'_>
 ///
 /// Warnings may modify how a token is re-serialized depending on the order
 /// they appear in the `TOSECName`. A warning always occurs before the associated token.
-pub enum TOSECWarn<'a>
-{
+pub enum TOSECWarn<'a> {
     /// This file name starts with `ZZZ-UNK-`.
     ///
     /// This warning is lexical and will emit the string `ZZZ-UNK-`
@@ -402,13 +391,12 @@ pub enum TOSECWarn<'a>
     ///
     /// This warning is lexical and will emit the remainder string segment.
     /// This can be removed with `TOSECName::without_trailing`.
-    NotEof(&'a str)
+    NotEof(&'a str),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 /// A language flag parsed from a TOSEC Naming Convention file name.
-pub enum TOSECLanguage<'a>
-{
+pub enum TOSECLanguage<'a> {
     /// A flag with a single language.
     Single(&'a str),
     /// A flag with two languages, in the order they appear, separated by a hyphen (`-`).
@@ -436,23 +424,17 @@ pub enum TOSECLanguage<'a>
 /// using `TOSECName::into_strict()`.
 pub struct TOSECName<'a>(Vec<TOSECToken<'a>>);
 
-impl <'a> From<Vec<TOSECToken<'a>>> for TOSECName<'a>
-{
+impl<'a> From<Vec<TOSECToken<'a>>> for TOSECName<'a> {
     fn from(vec: Vec<TOSECToken<'a>>) -> Self {
         TOSECName(vec)
     }
 }
 
-impl TOSECName<'_>
-{
+impl TOSECName<'_> {
     /// Removes any trailing unparsed string segments from the name.
     pub fn without_trailing(mut self) -> Self {
-        self.0.retain(|t| {
-            match t {
-                TOSECToken::Warning(TOSECWarn::NotEof(_)) => false,
-                _ => true
-            }
-        });
+        self.0
+            .retain(|t| !matches!(t, TOSECToken::Warning(TOSECWarn::NotEof(_))));
         self
     }
 
@@ -487,61 +469,61 @@ impl TOSECName<'_>
     /// The fixes that are done are only possible by converting the tokenized `&'a str` into
     /// a known `&'static str`.
     pub fn into_strict(mut self) -> Self {
-        if !self.0.iter().any(|e| match e { TOSECToken::Date(_, _, _) => true, _ => false })
+        if !self
+            .0
+            .iter()
+            .any(|e| matches!(e, TOSECToken::Date(_, _, _)))
         {
             self.0.push(TOSECToken::Date("19xx", None, None));
         }
 
-        if !self.0.iter().any(|e| match e { TOSECToken::Publisher(_) => true, _ => false })
-        {
+        if !self.0.iter().any(|e| matches!(e, TOSECToken::Publisher(_))) {
             self.0.push(TOSECToken::Publisher(None));
         }
 
         self.0.sort();
-        TOSECName(self.0.into_iter()
-            .filter_map(|t| match t {
-                TOSECToken::Publisher(Some(mut publishers)) => {
-                    publishers.sort();
-                    Some(TOSECToken::Publisher(Some(publishers)))
-                }
-                TOSECToken::Date("19XX", m, d) =>
-                    Some(TOSECToken::Date("19xx", m, d)),
-                TOSECToken::Development("Alpha") => Some(TOSECToken::Development("alpha")),
-                TOSECToken::Development("Beta") => Some(TOSECToken::Development("beta")),
-                TOSECToken::Development("Preview") => Some(TOSECToken::Development("preview")),
-                TOSECToken::Development("Pre-Release") => Some(TOSECToken::Development("pre-release")),
-                TOSECToken::Development("Proto")
-                    |  TOSECToken::Development("Prototype") => Some(TOSECToken::Development("proto")),
-                TOSECToken::Region(_, regions) => {
-                    // Convert GoodTools region into TOSEC regions.
-                    // The lifetime of the region strings change from 'a to 'static.
+        TOSECName(
+            self.0
+                .into_iter()
+                .filter_map(|t| match t {
+                    TOSECToken::Publisher(Some(mut publishers)) => {
+                        publishers.sort();
+                        Some(TOSECToken::Publisher(Some(publishers)))
+                    }
+                    TOSECToken::Date("19XX", m, d) => Some(TOSECToken::Date("19xx", m, d)),
+                    TOSECToken::Development("Alpha") => Some(TOSECToken::Development("alpha")),
+                    TOSECToken::Development("Beta") => Some(TOSECToken::Development("beta")),
+                    TOSECToken::Development("Preview") => Some(TOSECToken::Development("preview")),
+                    TOSECToken::Development("Pre-Release") => {
+                        Some(TOSECToken::Development("pre-release"))
+                    }
+                    TOSECToken::Development("Proto") | TOSECToken::Development("Prototype") => {
+                        Some(TOSECToken::Development("proto"))
+                    }
+                    TOSECToken::Region(_, regions) => {
+                        // Convert GoodTools region into TOSEC regions.
+                        // The lifetime of the region strings change from 'a to 'static.
 
-                    let region_str = regions
-                        .iter()
-                        .map(|r| r.into())
-                        .collect::<Vec<&str>>();
-                    Some(TOSECToken::Region(region_str, regions))
-                }
-                TOSECToken::Warning(_) => None,
-                _ => Some(t)
-            })
-            .collect())
+                        let region_str = regions.iter().map(|r| r.into()).collect::<Vec<&str>>();
+                        Some(TOSECToken::Region(region_str, regions))
+                    }
+                    TOSECToken::Warning(_) => None,
+                    _ => Some(t),
+                })
+                .collect(),
+        )
     }
-
 }
 
-impl <'a> TokenizedName<'a, TOSECToken<'a>> for TOSECName<'a>
-{
+impl<'a> TokenizedName<'a, TOSECToken<'a>> for TOSECName<'a> {
     fn title(&self) -> Option<&'a str> {
-        self.iter()
-            .find_map(|f| match f {
-                TOSECToken::Title(t) => Some(*t),
-                _ => None
-            })
+        self.iter().find_map(|f| match f {
+            TOSECToken::Title(t) => Some(*t),
+            _ => None,
+        })
     }
 
-    fn iter(&self) -> Iter<'_, TOSECToken<'a>>
-    {
+    fn iter(&self) -> Iter<'_, TOSECToken<'a>> {
         self.0.iter()
     }
 
@@ -559,30 +541,25 @@ impl <'a> TokenizedName<'a, TOSECToken<'a>> for TOSECName<'a>
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 /// A TOSEC format file name representing a multi-image set.
-pub struct TOSECMultiSetName<'a>
-{
+pub struct TOSECMultiSetName<'a> {
     tokens: Vec<Vec<TOSECToken<'a>>>,
-    globals: Vec<TOSECToken<'a>>
+    globals: Vec<TOSECToken<'a>>,
 }
 
 impl TOSECMultiSetName<'_> {
     /// Tries to parse a multi-image set name with the TOSEC naming convention.
-    pub fn try_parse<S: AsRef<str> + ?Sized>(input: &S) -> Result<TOSECMultiSetName>
-    {
-        let (_, value) = do_parse_multiset(input.as_ref())
-            .map_err(|_| {
-                NameError::ParseError(NamingConvention::TOSEC, input.as_ref().to_string())
+    pub fn try_parse<S: AsRef<str> + ?Sized>(input: &S) -> Result<TOSECMultiSetName> {
+        let (_, value) = do_parse_multiset(input.as_ref()).map_err(|_| {
+            NameError::ParseError(NamingConvention::TOSEC, input.as_ref().to_string())
         })?;
         Ok(value.into())
     }
 
-    fn get_combined_iter(&self, index: usize) -> Option<impl Iterator<Item=&TOSECToken<'_>>>
-    {
+    fn get_combined_iter(&self, index: usize) -> Option<impl Iterator<Item = &TOSECToken<'_>>> {
         // todo: ensure the order of global flags.
-        self.tokens.get(index)
-            .map(|tokens| {
-                tokens.iter().chain(self.globals.iter())
-            })
+        self.tokens
+            .get(index)
+            .map(|tokens| tokens.iter().chain(self.globals.iter()))
     }
 
     /// Gets a `TOSECName` from a multi-set name.
@@ -590,16 +567,13 @@ impl TOSECMultiSetName<'_> {
     /// This method will clone tokens and string slices
     /// to include global flags, but does not clone the
     /// underlying string segments.
-    pub fn get_single(&self, index: usize) -> Option<TOSECName>
-    {
+    pub fn get_single(&self, index: usize) -> Option<TOSECName> {
         self.get_combined_iter(index)
-            .map(|i| i.cloned()
-                .collect::<Vec<TOSECToken>>().into())
+            .map(|i| i.cloned().collect::<Vec<TOSECToken>>().into())
             .map(|i: TOSECName| i.into_strict())
     }
 }
-impl <'a> From<(Vec<Vec<TOSECToken<'a>>>, Vec<TOSECToken<'a>>)> for TOSECMultiSetName<'a>
-{
+impl<'a> From<(Vec<Vec<TOSECToken<'a>>>, Vec<TOSECToken<'a>>)> for TOSECMultiSetName<'a> {
     fn from(vecs: (Vec<Vec<TOSECToken<'a>>>, Vec<TOSECToken<'a>>)) -> Self {
         TOSECMultiSetName {
             tokens: vecs.0,
@@ -608,17 +582,15 @@ impl <'a> From<(Vec<Vec<TOSECToken<'a>>>, Vec<TOSECToken<'a>>)> for TOSECMultiSe
     }
 }
 
-fn write_tosec_string(buf: &mut String, vec: &Vec<TOSECToken<'_>>)
-{
-    for (i, token) in vec.iter().enumerate() {
+fn write_tosec_string(buf: &mut String, tokens: &[TOSECToken<'_>]) {
+    for (i, token) in tokens.iter().enumerate() {
         match token {
             TOSECToken::Title(t) => {
                 buf.push_str(t);
                 buf.push(' ');
             }
             TOSECToken::Version(tag, maj, min) => {
-                if let Some(TOSECToken::Warning(TOSECWarn::VersionInFlag)) =
-                vec.get(i - 1)  {
+                if let Some(TOSECToken::Warning(TOSECWarn::VersionInFlag)) = tokens.get(i - 1) {
                     buf.push('(');
                 }
                 buf.push_str(tag);
@@ -630,8 +602,7 @@ fn write_tosec_string(buf: &mut String, vec: &Vec<TOSECToken<'_>>)
                     buf.push('.');
                     buf.push_str(min);
                 }
-                if let Some(TOSECToken::Warning(TOSECWarn::VersionInFlag)) =
-                vec.get(i - 1)  {
+                if let Some(TOSECToken::Warning(TOSECWarn::VersionInFlag)) = tokens.get(i - 1) {
                     buf.push(')');
                 }
                 buf.push(' ');
@@ -646,8 +617,8 @@ fn write_tosec_string(buf: &mut String, vec: &Vec<TOSECToken<'_>>)
             }
             TOSECToken::Date(y, m, d) => {
                 buf.push('(');
-                if let Some(TOSECToken::Warning(TOSECWarn::UndelimitedDate(s))) =
-                vec.get(i - 1)  {
+                if let Some(TOSECToken::Warning(TOSECWarn::UndelimitedDate(s))) = tokens.get(i - 1)
+                {
                     buf.push_str(s);
                 } else {
                     buf.push_str(y);
@@ -663,12 +634,12 @@ fn write_tosec_string(buf: &mut String, vec: &Vec<TOSECToken<'_>>)
                 buf.push(')');
             }
             TOSECToken::Publisher(pubs) => {
-                let emit_params = match vec.get(i - 1)  {
+                let emit_params = match tokens.get(i - 1) {
                     Some(TOSECToken::Warning(TOSECWarn::ByPublisher)) => {
                         buf.push_str("by ");
                         false
                     }
-                    _ => true
+                    _ => true,
                 };
                 if emit_params {
                     buf.push('(');
@@ -680,8 +651,7 @@ fn write_tosec_string(buf: &mut String, vec: &Vec<TOSECToken<'_>>)
                     }
 
                     // trim the end
-                    if buf.ends_with(" - ")
-                    {
+                    if buf.ends_with(" - ") {
                         buf.truncate(buf.len() - " - ".len());
                     }
                 } else {
@@ -705,14 +675,12 @@ fn write_tosec_string(buf: &mut String, vec: &Vec<TOSECToken<'_>>)
             }
             TOSECToken::Region(rs, _) => {
                 buf.push('(');
-                for region in rs.iter()
-                {
+                for region in rs.iter() {
                     buf.push_str(region);
                     buf.push('-');
                 }
 
-                if buf.ends_with("-")
-                {
+                if buf.ends_with('-') {
                     buf.truncate(buf.len() - "-".len());
                 }
 
@@ -721,13 +689,17 @@ fn write_tosec_string(buf: &mut String, vec: &Vec<TOSECToken<'_>>)
             TOSECToken::Languages(l) => {
                 buf.push('(');
                 match l {
-                    TOSECLanguage::Single(s) => { buf.push_str(s); },
+                    TOSECLanguage::Single(s) => {
+                        buf.push_str(s);
+                    }
                     TOSECLanguage::Double(a, b) => {
                         buf.push_str(a);
                         buf.push('-');
                         buf.push_str(b);
                     }
-                    TOSECLanguage::Count(c) => { buf.push_str(c); },
+                    TOSECLanguage::Count(c) => {
+                        buf.push_str(c);
+                    }
                 }
                 buf.push(')');
             }
@@ -769,8 +741,7 @@ fn write_tosec_string(buf: &mut String, vec: &Vec<TOSECToken<'_>>)
                     buf.push(' ');
                 }
 
-                if buf.ends_with(" ")
-                {
+                if buf.ends_with(' ') {
                     buf.truncate(buf.len() - " ".len());
                 }
 
@@ -786,31 +757,28 @@ fn write_tosec_string(buf: &mut String, vec: &Vec<TOSECToken<'_>>)
                 buf.push_str(f);
                 buf.push(']');
             }
-            TOSECToken::Warning(w) => {
-                match w {
-                    TOSECWarn::ZZZUnknown => {
-                        buf.push_str("ZZZ-UNK-");
-                    }
-                    TOSECWarn::MissingSpace => {
-                        if buf.ends_with(" ") {
-                            buf.truncate(buf.len() - " ".len())
-                        }
-                    }
-                    TOSECWarn::UnexpectedSpace => {
-                        buf.push(' ');
-                    }
-                    TOSECWarn::NotEof(remainder) => {
-                        buf.push_str(remainder);
-                    }
-                    _ => {}
+            TOSECToken::Warning(w) => match w {
+                TOSECWarn::ZZZUnknown => {
+                    buf.push_str("ZZZ-UNK-");
                 }
-            }
+                TOSECWarn::MissingSpace => {
+                    if buf.ends_with(' ') {
+                        buf.truncate(buf.len() - " ".len())
+                    }
+                }
+                TOSECWarn::UnexpectedSpace => {
+                    buf.push(' ');
+                }
+                TOSECWarn::NotEof(remainder) => {
+                    buf.push_str(remainder);
+                }
+                _ => {}
+            },
         }
     }
 }
 
-impl Display for TOSECName<'_>
-{
+impl Display for TOSECName<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let mut buf = String::new();
         write_tosec_string(&mut buf, &self.0);
@@ -818,8 +786,7 @@ impl Display for TOSECName<'_>
     }
 }
 
-impl Display for TOSECMultiSetName<'_>
-{
+impl Display for TOSECMultiSetName<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let mut buf = String::new();
         for title in &self.tokens {
@@ -835,6 +802,6 @@ impl Display for TOSECMultiSetName<'_>
             buf.push('-');
             write_tosec_string(&mut buf, &self.globals);
         }
-        f.write_str(&buf.trim())
+        f.write_str(buf.trim())
     }
 }

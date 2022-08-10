@@ -18,18 +18,16 @@
 //! of inputs.
 // Re-export common at top level
 
-pub use common::NamingConvention;
-pub use common::tokens::TokenizedName;
-pub use common::tokens::FlagType;
 pub use common::error::NameError;
+pub use common::tokens::FlagType;
+pub use common::tokens::TokenizedName;
+pub use common::NamingConvention;
 
 pub(crate) use common::parsers;
 
 #[macro_use]
 mod common;
 
+pub mod goodtools;
 pub mod nointro;
 pub mod tosec;
-pub mod goodtools;
-
-

@@ -1,10 +1,10 @@
-use crate::region::Region;
-use crate::naming::{FlagType, NamingConvention, TokenizedName};
-use crate::naming::goodtools::parsers::do_parse;
 use crate::naming::common::error::{NameError, Result};
-use std::slice::Iter;
-use std::fmt::{Display, Formatter};
+use crate::naming::goodtools::parsers::do_parse;
+use crate::naming::{FlagType, NamingConvention, TokenizedName};
+use crate::region::Region;
 use std::fmt;
+use std::fmt::{Display, Formatter};
+use std::slice::Iter;
 
 /// A token constituent within a `GoodToolsName`.
 ///
@@ -13,8 +13,7 @@ use std::fmt;
 /// `GoodToolsName` is significant in order of appearance in
 /// the input file name.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum GoodToolsToken<'a>
-{
+pub enum GoodToolsToken<'a> {
     /// The title of the ROM.
     Title(&'a str),
 
@@ -75,7 +74,14 @@ pub enum GoodToolsToken<'a>
     /// * `[a1]` parses to `DumpCode("a", Some("1"), None, None, None, None)`.
     /// * `[hIR]` parses to `DumpCode("h", None, Some("IR"), None, None, None)`.
     /// * `[h1+2C]` parses to `DumpCode("h", Some("1"), None, Some("+"), Some("2"), Some("C"))`.
-    DumpCode(&'a str, Option<&'a str>, Option<&'a str>, Option<&'a str>, Option<&'a str>, Option<&'a str>),
+    DumpCode(
+        &'a str,
+        Option<&'a str>,
+        Option<&'a str>,
+        Option<&'a str>,
+        Option<&'a str>,
+        Option<&'a str>,
+    ),
 
     /// A `(Hack)` flag.
     ///
@@ -103,19 +109,15 @@ pub enum GoodToolsToken<'a>
 
 impl GoodToolsToken<'_> {
     fn is_bracketed_token(&self) -> bool {
-        match self {
-            GoodToolsToken::Translation(_, _) => true,
-            GoodToolsToken::DumpCode(_, _, _, _, _, _) => true,
-            GoodToolsToken::Flag(FlagType::Bracketed, _) => true,
-            _ => false,
-        }
+        matches!(self, GoodToolsToken::Translation(_, _)
+            | GoodToolsToken::DumpCode(_, _, _, _, _, _)
+            | GoodToolsToken::Flag(FlagType::Bracketed, _))
     }
 }
 
 /// The status of a translation in a GoodTools file name.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum GoodToolsTranslationStatus
-{
+pub enum GoodToolsTranslationStatus {
     /// This translation is recent (`T+`)
     Recent,
 
@@ -132,14 +134,12 @@ pub enum GoodToolsTranslationStatus
 /// the input file name.
 pub struct GoodToolsName<'a>(Vec<GoodToolsToken<'a>>);
 
-impl <'a> TokenizedName<'a, GoodToolsToken<'a>> for GoodToolsName<'a>
-{
+impl<'a> TokenizedName<'a, GoodToolsToken<'a>> for GoodToolsName<'a> {
     fn title(&self) -> Option<&'a str> {
-        self.iter()
-            .find_map(|f| match f {
-                GoodToolsToken::Title(t) => Some(*t),
-                _ => None
-            })
+        self.iter().find_map(|f| match f {
+            GoodToolsToken::Title(t) => Some(*t),
+            _ => None,
+        })
     }
 
     #[inline]
@@ -159,28 +159,28 @@ impl <'a> TokenizedName<'a, GoodToolsToken<'a>> for GoodToolsName<'a>
     }
 }
 
-impl <'a> From<Vec<GoodToolsToken<'a>>> for GoodToolsName<'a>
-{
+impl<'a> From<Vec<GoodToolsToken<'a>>> for GoodToolsName<'a> {
     fn from(vec: Vec<GoodToolsToken<'a>>) -> Self {
         GoodToolsName(vec)
     }
 }
 
-impl Display for GoodToolsName<'_>
-{
+impl Display for GoodToolsName<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let mut buf = String::new();
 
         for (i, token) in self.iter().enumerate() {
             match token {
-                GoodToolsToken::Title(t) => { buf.push_str(t); }
+                GoodToolsToken::Title(t) => {
+                    buf.push_str(t);
+                }
                 GoodToolsToken::Region(rs, _) => {
                     buf.push_str(" (");
                     for r in rs {
                         buf.push_str(r);
                         buf.push(',');
                     }
-                    if buf.ends_with(",") {
+                    if buf.ends_with(',') {
                         buf.truncate(buf.len() - ",".len());
                     }
                     buf.push(')');
@@ -305,7 +305,7 @@ impl Display for GoodToolsName<'_>
                 GoodToolsToken::Flag(FlagType::Parenthesized, f) => {
                     buf.push_str(" (");
                     buf.push_str(f);
-                    buf.push_str(")");
+                    buf.push(')');
                 }
             }
         }

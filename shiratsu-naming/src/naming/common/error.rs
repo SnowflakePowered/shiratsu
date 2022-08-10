@@ -1,8 +1,8 @@
-use std::fmt::{Display, Formatter};
 use std::error::Error;
+use std::fmt::{Display, Formatter};
 
-use crate::region::RegionError;
 use crate::naming::*;
+use crate::region::RegionError;
 use std::fmt;
 
 #[derive(Debug, PartialEq)]
@@ -26,10 +26,12 @@ impl Error for NameError {}
 impl Display for NameError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            NameError::ParseError(convention, string) =>
-                write!(f, "The name \"{}\" could not be parsed properly in the {:?} naming convention", string, convention),
-            NameError::RegionError(region_err) =>
-                write!(f, "{}", region_err),
+            NameError::ParseError(convention, string) => write!(
+                f,
+                "The name \"{}\" could not be parsed properly in the {:?} naming convention",
+                string, convention
+            ),
+            NameError::RegionError(region_err) => write!(f, "{}", region_err),
         }
     }
 }
