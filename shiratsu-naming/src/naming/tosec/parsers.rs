@@ -17,7 +17,7 @@ use crate::naming::parsers::*;
 use crate::naming::tosec::tokens::*;
 
 use nom::bytes::complete::{take, take_till1, take_until, take_while1};
-use nom::combinator::{map, peek, verify};
+use nom::combinator::{consumed, map, peek, verify};
 use nom::error::ParseError;
 use nom::sequence::pair;
 
@@ -179,7 +179,20 @@ fn parse_region_tag(input: &str) -> IResult<&str, TOSECToken> {
 
 make_parens_tag!(parse_publisher_tag, parse_publisher, TOSECToken);
 fn parse_publisher(input: &str) -> IResult<&str, TOSECToken> {
-    if let Ok((input, _)) = char::<&str, nom::error::Error<&str>>('-')(input) {
+
+   fn parse_dash_publisher(input: &str) -> IResult<&str, &str> {
+       let (input, _) = char('-')(input)?;
+       let (input, rest) = take_until("-")(input)?;
+       let (input, _) = char('-')(input)?;
+       Ok((input, rest))
+   }
+
+    if let Ok((input, (value, _))) = consumed(parse_dash_publisher)(input) {
+        return Ok((input, TOSECToken::Publisher(Some(vec![value]))))
+    }
+
+    if let Ok((input, _)) = char::<&str, nom::error::Error<&str>>('-')
+        (input) {
         return Ok((input, TOSECToken::Publisher(None)));
     }
 
@@ -1235,6 +1248,20 @@ mod test {
                 ]
             ))
         );
+        assert_eq!(
+            do_parse(
+                "Deadeus v1.3.8 (2021-02-07)(-IZMA-)"
+            ),
+            Ok((
+                "",
+                vec![
+                    TOSECToken::Title("Deadeus"),
+                    TOSECToken::Version("v", "1", Some("3.8")),
+                    TOSECToken::Date("2021", Some("02"), Some("07")),
+                    TOSECToken::Publisher(Some(vec!["-IZMA-"])),
+                ]
+            ))
+        );
     }
     #[test]
     fn test_parse_dumpinfo() {
@@ -1395,6 +1422,11 @@ mod test {
         assert_eq!(
             parse_publisher_tag("(-)"),
             Ok(("", TOSECToken::Publisher(None)))
+        );
+
+        assert_eq!(
+            parse_publisher_tag("(-IZMA-)"),
+            Ok(("", TOSECToken::Publisher(Some(vec!["-IZMA-"]))))
         );
 
         assert_eq!(

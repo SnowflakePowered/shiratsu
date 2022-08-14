@@ -11,7 +11,7 @@ use shiratsu_naming::naming::TokenizedName;
 #[derive(Debug, Deserialize, PartialEq)]
 struct Rom {
     name: String,
-    size: i64,
+    size: Option<i64>,
     crc: String,
     md5: String,
     sha1: String,
@@ -58,7 +58,7 @@ impl From<Rom> for RomEntry {
             sha1: Some(rom.sha1),
             crc: Some(rom.crc),
             file_name: rom.name,
-            size: rom.size,
+            size: rom.size.unwrap_or(0),
         }
     }
 }
