@@ -72,4 +72,9 @@ wrap_error! {
 }
 
 make_parse!("No-Intro", Game, NoIntroParserError);
-make_from!("No-Intro", "https://datomatic.no-intro.org/", NoIntro, nointro);
+make_from!(
+    "No-Intro",
+    "https://datomatic.no-intro.org/",
+    NoIntro,
+    nointro
+);

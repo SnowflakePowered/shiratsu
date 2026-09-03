@@ -31,19 +31,31 @@ fn parse_region_tag(input: &str) -> IResult<&str, GoodToolsToken> {
         let (input, _) = char(')')(input)?;
         return Ok((
             input,
-            (GoodToolsToken::Region(vec![egc], vec![Region::Europe])),
+            (GoodToolsToken::Region {
+                region_strings: vec![egc],
+                regions: vec![Region::Europe],
+            }),
         ));
     }
     if let Ok((input, jgc)) = tag::<&str, &str, nom::error::Error<&str>>("J-GC")(input) {
         let (input, _) = char(')')(input)?;
         return Ok((
             input,
-            (GoodToolsToken::Region(vec![jgc], vec![Region::Japan])),
+            (GoodToolsToken::Region {
+                region_strings: vec![jgc],
+                regions: vec![Region::Japan],
+            }),
         ));
     }
     let (input, region_inner) = in_parens(is_not(")"))(input)?;
     let (_, (strs, region)) = parse_region(region_inner)?;
-    Ok((input, (GoodToolsToken::Region(strs, region))))
+    Ok((
+        input,
+        (GoodToolsToken::Region {
+            region_strings: strs,
+            regions: region,
+        }),
+    ))
 }
 
 make_parens_tag!(parse_year_tag, parse_year, GoodToolsToken);
@@ -61,14 +73,27 @@ fn parse_translation_tag(input: &str) -> IResult<&str, GoodToolsToken> {
     ))(input)?;
     let (input, remain) = take_until("]")(input)?;
     let (input, _) = char(']')(input)?;
-    Ok((input, GoodToolsToken::Translation(status, remain)))
+    Ok((
+        input,
+        GoodToolsToken::Translation {
+            status,
+            tags: remain,
+        },
+    ))
 }
 
 make_parens_tag!(parse_revision_tag, parse_revision, GoodToolsToken);
 fn parse_revision(input: &str) -> IResult<&str, GoodToolsToken> {
     let (input, rev) = tag("REV")(input)?;
     let (input, ver) = take_while1(|c: char| c.is_ascii_alphanumeric() || c == '.')(input)?;
-    Ok((input, GoodToolsToken::Version(rev, ver, None)))
+    Ok((
+        input,
+        GoodToolsToken::Version {
+            prefix: rev,
+            major: ver,
+            minor: None,
+        },
+    ))
 }
 
 make_parens_tag!(parse_version_tag, parse_version, GoodToolsToken);
@@ -78,7 +103,14 @@ fn parse_version(input: &str) -> IResult<&str, GoodToolsToken> {
     // check VWIPX
     if let Ok((input, wip)) = tag::<&str, &str, nom::error::Error<&str>>("WIP")(input) {
         let (input, number) = opt(take_while_m_n(1, 1, |c: char| c.is_ascii_digit()))(input)?;
-        return Ok((input, GoodToolsToken::Version(v, wip, number)));
+        return Ok((
+            input,
+            GoodToolsToken::Version {
+                prefix: v,
+                major: wip,
+                minor: number,
+            },
+        ));
     }
 
     if let Ok((input, fin)) = tag::<&str, &str, nom::error::Error<&str>>("Final")(input) {
@@ -87,10 +119,24 @@ fn parse_version(input: &str) -> IResult<&str, GoodToolsToken> {
             take_while(|c: char| c.is_alphanumeric() || c == '_' || c.is_ascii_whitespace()),
         ))(input)?;
 
-        return Ok((input, GoodToolsToken::Version(v, fin, ver)));
+        return Ok((
+            input,
+            GoodToolsToken::Version {
+                prefix: v,
+                major: fin,
+                minor: ver,
+            },
+        ));
     }
     if let Ok((input, unk)) = tag::<&str, &str, nom::error::Error<&str>>("unknown")(input) {
-        return Ok((input, GoodToolsToken::Version(v, unk, None)));
+        return Ok((
+            input,
+            GoodToolsToken::Version {
+                prefix: v,
+                major: unk,
+                minor: None,
+            },
+        ));
     }
 
     // Quick lookahead, should fail if it is not a version
@@ -107,7 +153,14 @@ fn parse_version(input: &str) -> IResult<&str, GoodToolsToken> {
         take_while1(|c: char| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.'),
     ))(input)?;
 
-    Ok((input, GoodToolsToken::Version(v, major, minor)))
+    Ok((
+        input,
+        GoodToolsToken::Version {
+            prefix: v,
+            major,
+            minor,
+        },
+    ))
 }
 
 make_parens_tag!(
@@ -122,15 +175,26 @@ fn parse_version_with_space(input: &str) -> IResult<&str, GoodToolsToken> {
     // b1/b2
     // 2 or 4 digits
     let (input, version) = alt((
-        tag("x.xx").map(|_| GoodToolsToken::Version(v, "x", Some("xx"))),
-        take_while_m_n(2, 4, |c: char| c.is_ascii_digit())
-            .map(|ver| GoodToolsToken::Version(v, ver, None)),
+        tag("x.xx").map(|_| GoodToolsToken::Version {
+            prefix: v,
+            major: "x",
+            minor: Some("xx"),
+        }),
+        take_while_m_n(2, 4, |c: char| c.is_ascii_digit()).map(|ver| GoodToolsToken::Version {
+            prefix: v,
+            major: ver,
+            minor: None,
+        }),
         recognize(|input| {
             let (input, _) = tag("b")(input)?;
             let (input, _) = take_while1(|c: char| c.is_ascii_digit())(input)?;
             Ok((input, ()))
         })
-        .map(|ver| GoodToolsToken::Version(v, ver, None)),
+        .map(|ver| GoodToolsToken::Version {
+            prefix: v,
+            major: ver,
+            minor: None,
+        }),
     ))(input)?;
     Ok((input, version))
 }
@@ -145,7 +209,14 @@ fn parse_version_with_underscore(input: &str) -> IResult<&str, GoodToolsToken> {
     let (input, major) = take_while(|c: char| {
         c.is_ascii_alphanumeric() || c == '.' || c == '_' || c.is_ascii_whitespace()
     })(input)?;
-    Ok((input, GoodToolsToken::Version(v, major, None)))
+    Ok((
+        input,
+        GoodToolsToken::Version {
+            prefix: v,
+            major,
+            minor: None,
+        },
+    ))
 }
 
 make_parens_tag!(parse_multilaguage_tag, parse_multilanguage, GoodToolsToken);
@@ -167,7 +238,13 @@ fn parse_known_parens<'a>(
 ) -> impl FnMut(&'a str) -> IResult<&str, GoodToolsToken> {
     move |input: &str| {
         let (input, info) = in_parens(tag(known))(input)?;
-        Ok((input, GoodToolsToken::Flag(FlagType::Parenthesized, info)))
+        Ok((
+            input,
+            GoodToolsToken::Flag {
+                flag_type: FlagType::Parenthesized,
+                flag: info,
+            },
+        ))
     }
 }
 
@@ -177,7 +254,10 @@ fn parse_additional_parens_tag(input: &str) -> IResult<&str, GoodToolsToken> {
     let (input, _) = tag(")")(input)?;
     Ok((
         input,
-        GoodToolsToken::Flag(FlagType::Parenthesized, add_tag),
+        GoodToolsToken::Flag {
+            flag_type: FlagType::Parenthesized,
+            flag: add_tag,
+        },
     ))
 }
 
@@ -185,7 +265,13 @@ fn parse_additional_brackets_tag(input: &str) -> IResult<&str, GoodToolsToken> {
     let (input, _) = tag("[")(input)?;
     let (input, add_tag) = take_till1(|c: char| c == ')')(input)?;
     let (input, _) = tag("]")(input)?;
-    Ok((input, GoodToolsToken::Flag(FlagType::Bracketed, add_tag)))
+    Ok((
+        input,
+        GoodToolsToken::Flag {
+            flag_type: FlagType::Bracketed,
+            flag: add_tag,
+        },
+    ))
 }
 
 fn parse_dump_tag<'a>(
@@ -206,7 +292,14 @@ fn parse_dump_tag<'a>(
             let (input, _) = char(']')(input)?;
             return Ok((
                 input,
-                GoodToolsToken::DumpCode(itag, number, ty, sep, None, Some(args)),
+                GoodToolsToken::DumpCode {
+                    code: itag,
+                    number,
+                    code_type: ty,
+                    separator: sep,
+                    argument_number: None,
+                    arguments: Some(args),
+                },
             ));
         }
         // argnum only happens if we have '+'
@@ -216,14 +309,28 @@ fn parse_dump_tag<'a>(
             let (input, _) = char(']')(input)?;
             return Ok((
                 input,
-                GoodToolsToken::DumpCode(itag, number, ty, sep, argnum, args),
+                GoodToolsToken::DumpCode {
+                    code: itag,
+                    number,
+                    code_type: ty,
+                    separator: sep,
+                    argument_number: argnum,
+                    arguments: args,
+                },
             ));
         }
         let (input, args) = opt(take_while1(|c: char| c.is_ascii_alphanumeric()))(input)?;
         let (input, _) = char(']')(input)?;
         Ok((
             input,
-            GoodToolsToken::DumpCode(itag, number, ty, sep, None, args),
+            GoodToolsToken::DumpCode {
+                code: itag,
+                number,
+                code_type: ty,
+                separator: sep,
+                argument_number: None,
+                arguments: args,
+            },
         ))
     }
 }
@@ -369,91 +476,168 @@ mod test {
             parse_dump_tag("p")("[p]"),
             Ok((
                 "",
-                GoodToolsToken::DumpCode("p", None, None, None, None, None)
+                GoodToolsToken::DumpCode {
+                    code: "p",
+                    number: None,
+                    code_type: None,
+                    separator: None,
+                    argument_number: None,
+                    arguments: None
+                }
             ))
         );
         assert_eq!(
             parse_dump_tag("!")("[!]"),
             Ok((
                 "",
-                GoodToolsToken::DumpCode("!", None, None, None, None, None)
+                GoodToolsToken::DumpCode {
+                    code: "!",
+                    number: None,
+                    code_type: None,
+                    separator: None,
+                    argument_number: None,
+                    arguments: None
+                }
             ))
         );
         assert_eq!(
             parse_dump_tag("!p")("[!p]"),
             Ok((
                 "",
-                GoodToolsToken::DumpCode("!p", None, None, None, None, None)
+                GoodToolsToken::DumpCode {
+                    code: "!p",
+                    number: None,
+                    code_type: None,
+                    separator: None,
+                    argument_number: None,
+                    arguments: None
+                }
             ))
         );
         assert_eq!(
             parse_dump_tag("a")("[a1]"),
             Ok((
                 "",
-                GoodToolsToken::DumpCode("a", Some("1"), None, None, None, None)
+                GoodToolsToken::DumpCode {
+                    code: "a",
+                    number: Some("1"),
+                    code_type: None,
+                    separator: None,
+                    argument_number: None,
+                    arguments: None
+                }
             ))
         );
         assert_eq!(
             parse_dump_tag("b")("[b02-Unknown Song 2]"),
             Ok((
                 "",
-                GoodToolsToken::DumpCode(
-                    "b",
-                    Some("02"),
-                    None,
-                    Some("-"),
-                    None,
-                    Some("Unknown Song 2")
-                )
+                GoodToolsToken::DumpCode {
+                    code: "b",
+                    number: Some("02"),
+                    code_type: None,
+                    separator: Some("-"),
+                    argument_number: None,
+                    arguments: Some("Unknown Song 2")
+                }
             ))
         );
         assert_eq!(
             parse_dump_tag("h")("[h]"),
             Ok((
                 "",
-                GoodToolsToken::DumpCode("h", None, None, None, None, None)
+                GoodToolsToken::DumpCode {
+                    code: "h",
+                    number: None,
+                    code_type: None,
+                    separator: None,
+                    argument_number: None,
+                    arguments: None
+                }
             ))
         );
         assert_eq!(
             parse_dump_tag("h")("[h1]"),
             Ok((
                 "",
-                GoodToolsToken::DumpCode("h", Some("1"), None, None, None, None)
+                GoodToolsToken::DumpCode {
+                    code: "h",
+                    number: Some("1"),
+                    code_type: None,
+                    separator: None,
+                    argument_number: None,
+                    arguments: None
+                }
             ))
         );
         assert_eq!(
             parse_dump_tag("h")("[h2IR]"),
             Ok((
                 "",
-                GoodToolsToken::DumpCode("h", Some("2"), Some("IR"), None, None, None)
+                GoodToolsToken::DumpCode {
+                    code: "h",
+                    number: Some("2"),
+                    code_type: Some("IR"),
+                    separator: None,
+                    argument_number: None,
+                    arguments: None
+                }
             ))
         );
         assert_eq!(
             parse_dump_tag("h")("[h2IR00]"),
             Ok((
                 "",
-                GoodToolsToken::DumpCode("h", Some("2"), Some("IR"), None, None, Some("00"))
+                GoodToolsToken::DumpCode {
+                    code: "h",
+                    number: Some("2"),
+                    code_type: Some("IR"),
+                    separator: None,
+                    argument_number: None,
+                    arguments: Some("00")
+                }
             ))
         );
         assert_eq!(
             parse_dump_tag("h")("[h2IRff]"),
             Ok((
                 "",
-                GoodToolsToken::DumpCode("h", Some("2"), Some("IR"), None, None, Some("ff"))
+                GoodToolsToken::DumpCode {
+                    code: "h",
+                    number: Some("2"),
+                    code_type: Some("IR"),
+                    separator: None,
+                    argument_number: None,
+                    arguments: Some("ff")
+                }
             ))
         );
         assert_eq!(
             parse_dump_tag("h")("[hMF6]"),
             Ok((
                 "",
-                GoodToolsToken::DumpCode("h", None, Some("MF"), None, None, Some("6"))
+                GoodToolsToken::DumpCode {
+                    code: "h",
+                    number: None,
+                    code_type: Some("MF"),
+                    separator: None,
+                    argument_number: None,
+                    arguments: Some("6")
+                }
             ))
         );
         assert_eq!(
             parse_dump_tag("h")("[h1+2C]"),
             Ok((
                 "",
-                GoodToolsToken::DumpCode("h", Some("1"), None, Some("+"), Some("2"), Some("C"))
+                GoodToolsToken::DumpCode {
+                    code: "h",
+                    number: Some("1"),
+                    code_type: None,
+                    separator: Some("+"),
+                    argument_number: Some("2"),
+                    arguments: Some("C")
+                }
             ))
         );
     }
@@ -462,7 +646,14 @@ mod test {
     fn test_ver_underscore() {
         assert_eq!(
             parse_version_with_underscore_tag("(V_unfinished)"),
-            Ok(("", GoodToolsToken::Version("V_", "unfinished", None)))
+            Ok((
+                "",
+                GoodToolsToken::Version {
+                    prefix: "V_",
+                    major: "unfinished",
+                    minor: None
+                }
+            ))
         );
     }
 
@@ -470,58 +661,146 @@ mod test {
     fn test_ver() {
         assert_eq!(
             parse_version_tag("(Vx.xx)"),
-            Ok(("", GoodToolsToken::Version("V", "x", Some("xx"))))
+            Ok((
+                "",
+                GoodToolsToken::Version {
+                    prefix: "V",
+                    major: "x",
+                    minor: Some("xx")
+                }
+            ))
         );
         assert_eq!(
             parse_version_tag("(Vx.x)"),
-            Ok(("", GoodToolsToken::Version("V", "x", Some("x"))))
+            Ok((
+                "",
+                GoodToolsToken::Version {
+                    prefix: "V",
+                    major: "x",
+                    minor: Some("x")
+                }
+            ))
         );
         assert_eq!(
             parse_version_tag("(Vxxxx)"),
-            Ok(("", GoodToolsToken::Version("V", "xxxx", None)))
+            Ok((
+                "",
+                GoodToolsToken::Version {
+                    prefix: "V",
+                    major: "xxxx",
+                    minor: None
+                }
+            ))
         );
         assert_eq!(
             parse_version_tag("(V1.1)"),
-            Ok(("", GoodToolsToken::Version("V", "1", Some("1"))))
+            Ok((
+                "",
+                GoodToolsToken::Version {
+                    prefix: "V",
+                    major: "1",
+                    minor: Some("1")
+                }
+            ))
         );
         assert_eq!(
             parse_version_tag("(V1.1.0.1)"),
-            Ok(("", GoodToolsToken::Version("V", "1", Some("1.0.1"))))
+            Ok((
+                "",
+                GoodToolsToken::Version {
+                    prefix: "V",
+                    major: "1",
+                    minor: Some("1.0.1")
+                }
+            ))
         );
         assert_eq!(
             parse_version_tag("(V1.15)"),
-            Ok(("", GoodToolsToken::Version("V", "1", Some("15"))))
+            Ok((
+                "",
+                GoodToolsToken::Version {
+                    prefix: "V",
+                    major: "1",
+                    minor: Some("15")
+                }
+            ))
         );
         assert_eq!(
             parse_version_tag("(V20150731)"),
-            Ok(("", GoodToolsToken::Version("V", "20150731", None)))
+            Ok((
+                "",
+                GoodToolsToken::Version {
+                    prefix: "V",
+                    major: "20150731",
+                    minor: None
+                }
+            ))
         );
         assert_eq!(
             parse_version_tag("(V1.27_20090723)"),
-            Ok(("", GoodToolsToken::Version("V", "1", Some("27_20090723"))))
+            Ok((
+                "",
+                GoodToolsToken::Version {
+                    prefix: "V",
+                    major: "1",
+                    minor: Some("27_20090723")
+                }
+            ))
         );
         assert_eq!(
             parse_version_tag("(V20050108-Rev33)"),
-            Ok(("", GoodToolsToken::Version("V", "20050108-Rev33", None)))
+            Ok((
+                "",
+                GoodToolsToken::Version {
+                    prefix: "V",
+                    major: "20050108-Rev33",
+                    minor: None
+                }
+            ))
         );
         assert_eq!(
             parse_version_tag("(VFinal)"),
-            Ok(("", GoodToolsToken::Version("V", "Final", None)))
+            Ok((
+                "",
+                GoodToolsToken::Version {
+                    prefix: "V",
+                    major: "Final",
+                    minor: None
+                }
+            ))
         );
         assert_eq!(
             parse_version_tag("(VFinal_20070204_for EZ4)"),
             Ok((
                 "",
-                GoodToolsToken::Version("V", "Final", Some("20070204_for EZ4"))
+                GoodToolsToken::Version {
+                    prefix: "V",
+                    major: "Final",
+                    minor: Some("20070204_for EZ4")
+                }
             ))
         );
         assert_eq!(
             parse_version_tag("(V20120924PAL)"),
-            Ok(("", GoodToolsToken::Version("V", "20120924PAL", None)))
+            Ok((
+                "",
+                GoodToolsToken::Version {
+                    prefix: "V",
+                    major: "20120924PAL",
+                    minor: None
+                }
+            ))
         );
         assert_eq!(
             parse_version_tag("(VWIP8)"),
-            Ok(("", GoodToolsToken::Version("V", "WIP", Some("8"))))
+            Ok((
+                "",
+                GoodToolsToken::Version {
+                    prefix: "V",
+                    major: "WIP",
+                    minor: Some("8")
+                }
+            ))
         );
         assert_eq!(
             parse_version_tag("(Vector)"),
@@ -536,23 +815,58 @@ mod test {
     fn test_space_ver() {
         assert_eq!(
             parse_version_with_space_tag("(V b1)"),
-            Ok(("", GoodToolsToken::Version("V ", "b1", None)))
+            Ok((
+                "",
+                GoodToolsToken::Version {
+                    prefix: "V ",
+                    major: "b1",
+                    minor: None
+                }
+            ))
         );
         assert_eq!(
             parse_version_with_space_tag("(V b2)"),
-            Ok(("", GoodToolsToken::Version("V ", "b2", None)))
+            Ok((
+                "",
+                GoodToolsToken::Version {
+                    prefix: "V ",
+                    major: "b2",
+                    minor: None
+                }
+            ))
         );
         assert_eq!(
             parse_version_with_space_tag("(V x.xx)"),
-            Ok(("", GoodToolsToken::Version("V ", "x", Some("xx"))))
+            Ok((
+                "",
+                GoodToolsToken::Version {
+                    prefix: "V ",
+                    major: "x",
+                    minor: Some("xx")
+                }
+            ))
         );
         assert_eq!(
             parse_version_with_space_tag("(V 1502)"),
-            Ok(("", GoodToolsToken::Version("V ", "1502", None)))
+            Ok((
+                "",
+                GoodToolsToken::Version {
+                    prefix: "V ",
+                    major: "1502",
+                    minor: None
+                }
+            ))
         );
         assert_eq!(
             parse_version_with_space_tag("(V 15)"),
-            Ok(("", GoodToolsToken::Version("V ", "15", None)))
+            Ok((
+                "",
+                GoodToolsToken::Version {
+                    prefix: "V ",
+                    major: "15",
+                    minor: None
+                }
+            ))
         );
     }
 
@@ -562,7 +876,10 @@ mod test {
             parse_translation_tag("[T+Eng10%]"),
             Ok((
                 "",
-                GoodToolsToken::Translation(GoodToolsTranslationStatus::Recent, "Eng10%")
+                GoodToolsToken::Translation {
+                    status: GoodToolsTranslationStatus::Recent,
+                    tags: "Eng10%"
+                }
             ))
         );
     }
@@ -573,17 +890,20 @@ mod test {
             parse_region_tag("(U)"),
             Ok((
                 "",
-                GoodToolsToken::Region(vec!["U"], vec![Region::UnitedStates])
+                GoodToolsToken::Region {
+                    region_strings: vec!["U"],
+                    regions: vec![Region::UnitedStates]
+                }
             ))
         );
         assert_eq!(
             parse_region_tag("(W)"),
             Ok((
                 "",
-                GoodToolsToken::Region(
-                    vec!["W"],
-                    vec![Region::Japan, Region::UnitedStates, Region::Europe]
-                )
+                GoodToolsToken::Region {
+                    region_strings: vec!["W"],
+                    regions: vec![Region::Japan, Region::UnitedStates, Region::Europe]
+                }
             ))
         )
     }

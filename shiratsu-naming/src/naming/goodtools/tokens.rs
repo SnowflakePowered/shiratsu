@@ -23,10 +23,12 @@ pub enum GoodToolsToken<'a> {
     /// region flag, and the list of parsed regions, since regions may
     /// undergo expansion.
     ///
-    /// ## Tuple elements
-    /// 0. The region strings that correspond to the parsed regions.
-    /// 1. The parsed regions.
-    Region(Vec<&'a str>, Vec<Region>),
+    Region {
+        /// The region strings that correspond to the parsed regions.
+        region_strings: Vec<&'a str>,
+        /// The parsed regions.
+        regions: Vec<Region>,
+    },
 
     /// The year the ROM was released.
     Year(&'a str),
@@ -36,56 +38,62 @@ pub enum GoodToolsToken<'a> {
 
     /// A translation flag in the form `[T(+/-)...]`
     ///
-    /// ## Tuple elements
-    /// 0. The status of the translation, mapping either to a `+` or `-` in the flag.
-    /// 1. The remaining arguments in the translation flag.
-    Translation(GoodToolsTranslationStatus, &'a str), // [T(+/-)...]
+    Translation {
+        /// The status of the translation, mapping either to a `+` or `-` in the flag.
+        status: GoodToolsTranslationStatus,
+        /// The remaining arguments in the translation flag.
+        tags: &'a str,
+    }, // [T(+/-)...]
 
     /// The version of the ROM.
     ///
-    /// ## Tuple elements
-    /// 0. The version prefix, such as `REV`, `V` etc.
-    /// 1. The major version number.
-    /// 2. The minor version number, separated by a dot (`.`) or underscore (`_`) if the major version is `Final`
-    Version(&'a str, &'a str, Option<&'a str>), // (REV/V/V /V_ ...)
+    Version {
+        /// The version prefix, such as `REV` or `V`.
+        prefix: &'a str,
+        /// The major version number.
+        major: &'a str,
+        /// The minor version number, separated by a dot (`.`), or by an underscore (`_`)
+        /// if the major version is `Final`.
+        minor: Option<&'a str>,
+    }, // (REV/V/V /V_ ...)
 
     /// The volume of the ROM, for the form `(Vol #)`
     Volume(&'a str), // (Vol #)
 
     /// A `(#-in-1)` flag.
     ///
-    /// ## Tuple elements
-    /// 0. The #-in-1 entries that appear in the flag.
-    /// 1. The separator, if any, separating multiple #-in-1 entries in a single flag.
-    NInOne(Vec<&'a str>, Option<&'a str>), // list, sep (either + or ,)
+    NInOne {
+        /// The #-in-1 entries that appear in the flag.
+        entries: Vec<&'a str>,
+        /// The separator, if any, separating multiple #-in-1 entries in a single flag.
+        separator: Option<&'a str>,
+    }, // list, sep (either + or ,)
 
     /// A dump code in brackets.
     ///
-    /// ## Tuple elements
-    /// 0. The code letter, such as `a`, or `h`.
-    /// 1. The number of the dump code.
-    /// 2. The type of the dump code.
-    /// 3. If present, a separator between the dump code and it's arguments.
-    /// 4. The number of the dump code arguments.
-    /// 5. The dump code arguments.
-    ///
     /// ## Examples
-    /// * `[a]` parses to `DumpCode("a", None, None, None, None, None)`.
-    /// * `[a1]` parses to `DumpCode("a", Some("1"), None, None, None, None)`.
-    /// * `[hIR]` parses to `DumpCode("h", None, Some("IR"), None, None, None)`.
-    /// * `[h1+2C]` parses to `DumpCode("h", Some("1"), None, Some("+"), Some("2"), Some("C"))`.
-    DumpCode(
-        &'a str,
-        Option<&'a str>,
-        Option<&'a str>,
-        Option<&'a str>,
-        Option<&'a str>,
-        Option<&'a str>,
-    ),
+    /// * `[a]` parses to `DumpCode { code: "a", number: None, code_type: None, separator: None, argument_number: None, arguments: None }`.
+    /// * `[a1]` parses to `DumpCode { code: "a", number: Some("1"), .. }`.
+    /// * `[hIR]` parses to `DumpCode { code: "h", code_type: Some("IR"), .. }`.
+    /// * `[h1+2C]` parses to `DumpCode { code: "h", number: Some("1"), separator: Some("+"), argument_number: Some("2"), arguments: Some("C"), .. }`.
+    DumpCode {
+        /// The code letter, such as `a` or `h`.
+        code: &'a str,
+        /// The number of the dump code.
+        number: Option<&'a str>,
+        /// The type of the dump code.
+        code_type: Option<&'a str>,
+        /// A separator between the dump code and its arguments, if present.
+        separator: Option<&'a str>,
+        /// The number of the dump code arguments.
+        argument_number: Option<&'a str>,
+        /// The dump code arguments.
+        arguments: Option<&'a str>,
+    },
 
     /// A `(Hack)` flag.
     ///
-    /// If a game was specified, then it will be parsed in the first element of the tuple.
+    /// If a game was specified, then it will be parsed in the contained option.
     ///
     /// ## Examples
     /// * `(Hack)` parses to `GameHack(None)`
@@ -94,24 +102,44 @@ pub enum GoodToolsToken<'a> {
 
     /// A media parts string.
     ///
-    /// ## Tuple elements
-    /// 0. The name of the media part.
-    /// 1. The number of the media part.
-    /// 2. The total parts of the media, if any.
-    ///
     /// ## Examples
-    /// * `(Disk 1 of 2)` parses to `Media("Disk", "1", Some("2"))`.
-    Media(&'a str, &'a str, Option<&'a str>),
+    /// * `(Disk 1 of 2)` parses to `Media { media_type: "Disk", number: "1", total: Some("2") }`.
+    Media {
+        /// The name of the media part.
+        media_type: &'a str,
+        /// The number of the media part.
+        number: &'a str,
+        /// The total number of media parts, if any.
+        total: Option<&'a str>,
+    },
 
     /// A generic, non-defined, or unknown flag.
-    Flag(FlagType, &'a str),
+    Flag {
+        /// The flag's delimiter type.
+        flag_type: FlagType,
+        /// The text inside the flag's delimiters.
+        flag: &'a str,
+    },
 }
 
 impl GoodToolsToken<'_> {
     fn is_bracketed_token(&self) -> bool {
-        matches!(self, GoodToolsToken::Translation(_, _)
-            | GoodToolsToken::DumpCode(_, _, _, _, _, _)
-            | GoodToolsToken::Flag(FlagType::Bracketed, _))
+        matches!(
+            self,
+            GoodToolsToken::Translation { status: _, tags: _ }
+                | GoodToolsToken::DumpCode {
+                    code: _,
+                    number: _,
+                    code_type: _,
+                    separator: _,
+                    argument_number: _,
+                    arguments: _
+                }
+                | GoodToolsToken::Flag {
+                    flag_type: FlagType::Bracketed,
+                    flag: _
+                }
+        )
     }
 }
 
@@ -174,7 +202,10 @@ impl Display for GoodToolsName<'_> {
                 GoodToolsToken::Title(t) => {
                     buf.push_str(t);
                 }
-                GoodToolsToken::Region(rs, _) => {
+                GoodToolsToken::Region {
+                    region_strings: rs,
+                    regions: _,
+                } => {
                     buf.push_str(" (");
                     for r in rs {
                         buf.push_str(r);
@@ -195,7 +226,7 @@ impl Display for GoodToolsName<'_> {
                     buf.push_str(num);
                     buf.push(')');
                 }
-                GoodToolsToken::Translation(t, tags) => {
+                GoodToolsToken::Translation { status: t, tags } => {
                     if let Some(t) = self.0.get(i - 1) {
                         // space between brackets token and parens
                         if !t.is_bracketed_token() {
@@ -210,7 +241,11 @@ impl Display for GoodToolsName<'_> {
                     buf.push_str(tags);
                     buf.push(']');
                 }
-                GoodToolsToken::Version(ver, maj, min) => {
+                GoodToolsToken::Version {
+                    prefix: ver,
+                    major: maj,
+                    minor: min,
+                } => {
                     buf.push_str(" (");
                     buf.push_str(ver);
                     buf.push_str(maj);
@@ -228,7 +263,10 @@ impl Display for GoodToolsName<'_> {
                     buf.push_str(v);
                     buf.push(')');
                 }
-                GoodToolsToken::NInOne(ms, sep) => {
+                GoodToolsToken::NInOne {
+                    entries: ms,
+                    separator: sep,
+                } => {
                     buf.push_str(" (");
                     for m in ms {
                         buf.push_str(m);
@@ -244,7 +282,14 @@ impl Display for GoodToolsName<'_> {
                     }
                     buf.push(')');
                 }
-                GoodToolsToken::DumpCode(code, num, ty, sep, argnum, arg) => {
+                GoodToolsToken::DumpCode {
+                    code,
+                    number: num,
+                    code_type: ty,
+                    separator: sep,
+                    argument_number: argnum,
+                    arguments: arg,
+                } => {
                     if let Some(t) = self.0.get(i - 1) {
                         // space between brackets token and parens
                         if !t.is_bracketed_token() {
@@ -280,7 +325,11 @@ impl Display for GoodToolsName<'_> {
                     buf.push_str("Hack");
                     buf.push(')');
                 }
-                GoodToolsToken::Media(ty, num, total) => {
+                GoodToolsToken::Media {
+                    media_type: ty,
+                    number: num,
+                    total,
+                } => {
                     buf.push_str(" (");
                     buf.push_str(ty);
                     buf.push(' ');
@@ -291,7 +340,10 @@ impl Display for GoodToolsName<'_> {
                     }
                     buf.push(')');
                 }
-                GoodToolsToken::Flag(FlagType::Bracketed, f) => {
+                GoodToolsToken::Flag {
+                    flag_type: FlagType::Bracketed,
+                    flag: f,
+                } => {
                     if let Some(t) = self.0.get(i - 1) {
                         // space between brackets token and parens
                         if !t.is_bracketed_token() {
@@ -302,7 +354,10 @@ impl Display for GoodToolsName<'_> {
                     buf.push_str(f);
                     buf.push(']');
                 }
-                GoodToolsToken::Flag(FlagType::Parenthesized, f) => {
+                GoodToolsToken::Flag {
+                    flag_type: FlagType::Parenthesized,
+                    flag: f,
+                } => {
                     buf.push_str(" (");
                     buf.push_str(f);
                     buf.push(')');

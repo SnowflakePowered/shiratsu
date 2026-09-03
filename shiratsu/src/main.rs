@@ -3,13 +3,11 @@ mod ingest;
 mod log;
 mod sortrules;
 
-use shiratsu_stone::{
-    PlatformId, StonePlatforms
-};
+use shiratsu_stone::{PlatformId, StonePlatforms};
 
 use shiratsu_dat::{
     *,
-    {nointro::*, redump::*, tosec::*, dats_site::*, opengood::*}
+    {dats_site::*, nointro::*, opengood::*, redump::*, tosec::*},
 };
 
 use anyhow::{anyhow, Error, Result};
@@ -197,7 +195,10 @@ where
             "The specified path already exists.",
         )));
     }
-    let (root, filelog) = setup_logging(format!("{}.log", save_path.display()), format!("{}.inputs.log", save_path.display()));
+    let (root, filelog) = setup_logging(
+        format!("{}.log", save_path.display()),
+        format!("{}.inputs.log", save_path.display()),
+    );
     event_fn(Event::GeneratingDatabase(&save_path, &root));
 
     let mut db = ShiratsuDatabase::new().unwrap();

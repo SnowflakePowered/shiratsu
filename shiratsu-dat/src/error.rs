@@ -1,8 +1,8 @@
-use std::fmt::{Display, Formatter};
 use std::error::Error;
+use std::fmt::{Display, Formatter};
 
-use std::fmt;
 use shiratsu_naming::naming::NameError;
+use std::fmt;
 
 #[derive(Debug)]
 pub enum DatError {

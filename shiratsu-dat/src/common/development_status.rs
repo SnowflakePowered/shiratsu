@@ -1,8 +1,7 @@
-
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 /// The development status of a release.
 pub enum DevelopmentStatus {
-    /// A commercially released, or feature complete product, whether distributed gratis or not, 
+    /// A commercially released, or feature complete product, whether distributed gratis or not,
     /// released in an official capacity by the publisher or developer.
     ///
     /// This is equivalent to a lack of a status tag in both NoIntro and TOSEC standards.
@@ -25,7 +24,7 @@ impl From<&DevelopmentStatus> for &str {
         match status {
             DevelopmentStatus::Release => "release",
             DevelopmentStatus::Prerelease => "prerelease",
-            DevelopmentStatus::Prototype => "prototype"
+            DevelopmentStatus::Prototype => "prototype",
         }
     }
 }
@@ -33,5 +32,5 @@ impl From<&DevelopmentStatus> for &str {
 impl AsRef<str> for DevelopmentStatus {
     fn as_ref(&self) -> &str {
         self.into()
-    } 
+    }
 }

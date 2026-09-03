@@ -4,6 +4,7 @@ use lazy_static_include::{
     lazy_static_include_str, lazy_static_include_str_impl, lazy_static_include_str_inner,
 };
 
+use crate::file_ext::FileExt;
 use serde;
 use serde::Deserialize;
 use serde_json;
@@ -11,7 +12,6 @@ use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::io;
-use crate::file_ext::FileExt;
 
 type Result<T> = std::result::Result<T, StoneError>;
 
@@ -51,12 +51,12 @@ impl StonePlatforms {
     }
 
     /// Get an iterator of PlatformIDs in the listed definitions.
-    pub fn ids(&self) -> impl Iterator<Item=&PlatformId> {
+    pub fn ids(&self) -> impl Iterator<Item = &PlatformId> {
         self.platform_info.keys()
     }
 
     /// Get an iterator of `PlatformInfo`s in the listed definitions.
-    pub fn infos(&self) -> impl Iterator<Item=&PlatformInfo> {
+    pub fn infos(&self) -> impl Iterator<Item = &PlatformInfo> {
         self.platform_info.values()
     }
 
@@ -100,7 +100,7 @@ impl std::fmt::Display for StoneError {
 pub struct PlatformId(String);
 
 impl AsRef<str> for PlatformId {
-    fn as_ref(&self) -> &str{
+    fn as_ref(&self) -> &str {
         &self.0
     }
 }
@@ -120,7 +120,7 @@ impl TryFrom<String> for &'static PlatformId {
 impl TryFrom<&String> for &'static PlatformId {
     type Error = StoneError;
     fn try_from(platform_id_str: &String) -> Result<&'static PlatformId> {
-        let stone =StonePlatforms::get();
+        let stone = StonePlatforms::get();
         if let Some(platform_id_ref) = stone.get_platform_id(&platform_id_str) {
             Ok(platform_id_ref)
         } else {
@@ -164,7 +164,7 @@ impl PlatformInfo {
     pub fn platform_id(&self) -> &PlatformId {
         &self.platform_id
     }
-    pub fn file_exts(&self) -> impl Iterator<Item=&str> {
+    pub fn file_exts(&self) -> impl Iterator<Item = &str> {
         self.file_types.keys().map(|s| s.as_ref())
     }
 
@@ -172,22 +172,23 @@ impl PlatformInfo {
         self.maximum_inputs
     }
 
-    pub fn metadata(&self) -> impl Iterator<Item=(&str, &str)>
-    {
-        self.metadata.iter()
-            .map(|(k, v)| (k.as_str(), v.as_str()))
+    pub fn metadata(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.metadata.iter().map(|(k, v)| (k.as_str(), v.as_str()))
     }
 
-    pub fn mimetypes(&self) -> impl Iterator<Item=&str> {
+    pub fn mimetypes(&self) -> impl Iterator<Item = &str> {
         self.file_types.values().map(|s| s.as_str())
     }
-    pub fn bios_file_names(&self) -> impl Iterator<Item=&str> {
+    pub fn bios_file_names(&self) -> impl Iterator<Item = &str> {
         self.bios_files
             .iter()
             .flat_map(|s| s.keys())
             .map(|s| s.as_str())
     }
-    pub fn bios_file_hashes<'a, S: AsRef<str>>(&'a self, hash: &'a S) -> impl Iterator<Item=&'a str> {
+    pub fn bios_file_hashes<'a, S: AsRef<str>>(
+        &'a self,
+        hash: &'a S,
+    ) -> impl Iterator<Item = &'a str> {
         self.bios_files
             .iter()
             .flat_map(move |s| s.get(hash.as_ref()))
@@ -195,7 +196,9 @@ impl PlatformInfo {
             .map(|s| s.as_str())
     }
     pub fn get_mimetype_for_ext<S: AsRef<str>>(&self, ext: S) -> Option<&str> {
-        self.file_types.get(&ext.as_ref().into()).map(|s| s.as_str())
+        self.file_types
+            .get(&ext.as_ref().into())
+            .map(|s| s.as_str())
     }
     pub fn friendly_name(&self) -> &str {
         &self.friendly_name
@@ -214,12 +217,12 @@ fn load_platform_info() -> Result<(StonePlatforms, String)> {
     let platform_data = stone_data
         .get("Platforms")
         .ok_or(StoneError::InvalidStoneFile)?;
-    let version = stone_data.get("version")
-        .and_then(|val|val.as_str())
+    let version = stone_data
+        .get("version")
+        .and_then(|val| val.as_str())
         .map(|val| String::from(val))
         .ok_or(StoneError::InvalidStoneFile)?;
-    let value =
-        serde_json::from_value::<HashMap<PlatformId, PlatformInfo>>(platform_data.clone())?;
+    let value = serde_json::from_value::<HashMap<PlatformId, PlatformInfo>>(platform_data.clone())?;
 
     Ok((StonePlatforms::new(value), version))
 }

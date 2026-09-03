@@ -42,7 +42,7 @@ impl From<Rom> for RomEntry {
         rom.md5.make_ascii_lowercase();
         rom.crc.make_ascii_lowercase();
         rom.sha1.make_ascii_lowercase();
-        
+
         RomEntry {
             md5: Some(rom.md5),
             sha1: Some(rom.sha1),
@@ -62,4 +62,9 @@ wrap_error! {
 }
 
 make_parse!("OpenGood", Game, OpenGoodParserError);
-make_from!("OpenGood", "https://github.com/SnowflakePowered/opengood", OpenGood, opengood);
+make_from!(
+    "OpenGood",
+    "https://github.com/SnowflakePowered/opengood",
+    OpenGood,
+    opengood
+);

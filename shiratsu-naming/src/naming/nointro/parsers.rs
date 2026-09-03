@@ -35,14 +35,26 @@ fn parse_region_tag(input: &str) -> IResult<&str, NoIntroToken> {
     // Hack because we don't want nom to backtrack :|
     let (input, region_inner) = in_parens(is_not(")"))(input)?;
     let (_, (strs, regions)) = parse_region(region_inner)?;
-    Ok((input, NoIntroToken::Region(strs, regions)))
+    Ok((
+        input,
+        NoIntroToken::Region {
+            region_strings: strs,
+            regions,
+        },
+    ))
 }
 
 macro_rules! nointro_brackets_flag_parser {
     ($fn_name:ident,  $tag:literal) => {
         fn $fn_name<'a>(input: &'a str) -> IResult<&'a str, NoIntroToken> {
             let (input, tag) = in_brackets(tag($tag))(input)?;
-            Ok((input, NoIntroToken::Flag(FlagType::Bracketed, tag)))
+            Ok((
+                input,
+                NoIntroToken::Flag {
+                    flag_type: FlagType::Bracketed,
+                    flag: tag,
+                },
+            ))
         }
     };
 }
@@ -74,21 +86,27 @@ nointro_brackets_flag_parser!(parse_bios_tag, "BIOS");
 // 4 digit versions can only appear AFTER a v... tag.
 make_parens_tag!(parse_version_tag, parse_version_string, NoIntroToken);
 fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken> {
-    fn parse_revision_version(
-        input: &str,
-    ) -> IResult<&str, (&str, &str, Option<&str>, Option<&str>, Option<Vec<&str>>)> {
+    fn parse_revision_version(input: &str) -> IResult<&str, NoIntroVersion> {
         let (input, tag) = tag("Rev")(input)?;
         let (input, _) = char(' ')(input)?;
         let (input, major) = alphanumeric1(input)?;
         let (input, _) = opt(char('.'))(input)?;
         let (input, minor) = opt(alphanumeric1)(input)?;
 
-        Ok((input, (tag, major, minor, None, None)))
+        Ok((
+            input,
+            NoIntroVersion {
+                version_type: tag,
+                major,
+                minor,
+                prefix: None,
+                suffixes: None,
+                separator: None,
+            },
+        ))
     }
 
-    fn parse_single_prefixed_version(
-        input: &str,
-    ) -> IResult<&str, (&str, &str, Option<&str>, Option<&str>, Option<Vec<&str>>)> {
+    fn parse_single_prefixed_version(input: &str) -> IResult<&str, NoIntroVersion> {
         let (input, ver) = tag("v")(input)?;
 
         let (input, major) = digit1(input)?;
@@ -100,22 +118,35 @@ fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken> {
 
         Ok((
             input,
-            (ver.trim(), major, minor, None, suffix.map(|x| vec![x])),
+            NoIntroVersion {
+                version_type: ver.trim(),
+                major,
+                minor,
+                prefix: None,
+                suffixes: suffix.map(|x| vec![x]),
+                separator: None,
+            },
         ))
     }
 
-    fn parse_unprefixed_dot_version(
-        input: &str,
-    ) -> IResult<&str, (&str, &str, Option<&str>, Option<&str>, Option<Vec<&str>>)> {
+    fn parse_unprefixed_dot_version(input: &str) -> IResult<&str, NoIntroVersion> {
         let (input, major) = digit1(input)?;
         let (input, _) = char('.')(input)?;
         let (input, minor) = digit1(input)?;
-        Ok((input, ("", major, Some(minor), None, None)))
+        Ok((
+            input,
+            NoIntroVersion {
+                version_type: "",
+                major,
+                minor: Some(minor),
+                prefix: None,
+                suffixes: None,
+                separator: None,
+            },
+        ))
     }
 
-    fn parse_single_prefixed_version_with_full_tag(
-        input: &str,
-    ) -> IResult<&str, (&str, &str, Option<&str>, Option<&str>, Option<Vec<&str>>)> {
+    fn parse_single_prefixed_version_with_full_tag(input: &str) -> IResult<&str, NoIntroVersion> {
         // Redump BIOS versions include date
         fn parse_date(input: &str) -> IResult<&str, &str> {
             fn parse_date_check(input: &str) -> IResult<&str, (&str, &str, &str)> {
@@ -156,7 +187,17 @@ fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken> {
         ))(input)?;
 
         if datestr.is_none() && suffix.is_none() {
-            return Ok((input, (ver.trim(), major, minor, None, None)));
+            return Ok((
+                input,
+                NoIntroVersion {
+                    version_type: ver.trim(),
+                    major,
+                    minor,
+                    prefix: None,
+                    suffixes: None,
+                    separator: None,
+                },
+            ));
         }
 
         if let Some(datestr) = datestr {
@@ -167,16 +208,25 @@ fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken> {
             suffixes.push(suffix);
         }
 
-        Ok((input, (ver.trim(), major, minor, None, Some(suffixes))))
+        Ok((
+            input,
+            NoIntroVersion {
+                version_type: ver.trim(),
+                major,
+                minor,
+                prefix: None,
+                suffixes: Some(suffixes),
+                separator: None,
+            },
+        ))
     }
 
-    fn parse_playstation_version(
-        input: &str,
-    ) -> IResult<&str, (&str, &str, Option<&str>, Option<&str>, Option<Vec<&str>>)> {
+    fn parse_playstation_version(input: &str) -> IResult<&str, NoIntroVersion> {
         let (input, prefix) = alt((tag("PS3"), tag("PSP")))(input)?;
         let (input, _) = char(' ')(input)?;
-        let (input, (ver, major, minor, _, _)) = parse_single_prefixed_version(input)?;
-        Ok((input, (ver, major, minor, Some(prefix), None)))
+        let (input, mut version) = parse_single_prefixed_version(input)?;
+        version.prefix = Some(prefix);
+        Ok((input, version))
     }
 
     let (input, vers1) = alt((
@@ -187,8 +237,6 @@ fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken> {
         parse_unprefixed_dot_version,
     ))(input)?;
 
-    let vers1 = (vers1.0, vers1.1, vers1.2, vers1.3, vers1.4, None);
-
     let (input, nextvers) = many0(pair(
         opt(alt((tag(", "), tag(","), tag(" ")))),
         alt((
@@ -196,14 +244,23 @@ fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken> {
             parse_single_prefixed_version,
             parse_single_prefixed_version_with_full_tag,
             parse_revision_version,
-            take_while_m_n(4, 4, |c: char| c.is_ascii_alphanumeric())
-                .map(|s| ("", s, None, None, None)),
+            take_while_m_n(4, 4, |c: char| c.is_ascii_alphanumeric()).map(|major| NoIntroVersion {
+                version_type: "",
+                major,
+                minor: None,
+                prefix: None,
+                suffixes: None,
+                separator: None,
+            }),
         )),
     ))(input)?;
 
     let mut nextvers: Vec<_> = nextvers
         .into_iter()
-        .map(|(sep, (v, maj, min, pref, suff))| (v, maj, min, pref, suff, sep))
+        .map(|(separator, mut version)| {
+            version.separator = separator;
+            version
+        })
         .collect();
 
     nextvers.insert(0, vers1);
@@ -223,7 +280,13 @@ fn parse_dev_status(input: &str) -> IResult<&str, NoIntroToken> {
         char(' '),
         take_while(|c: char| c.is_ascii_alphanumeric() || c == ' '),
     ))(input)?;
-    Ok((input, NoIntroToken::Release(status, beta)))
+    Ok((
+        input,
+        NoIntroToken::Release {
+            status,
+            number: beta,
+        },
+    ))
 }
 
 make_parens_tag!(parse_disc_tag, parse_disc, NoIntroToken);
@@ -231,25 +294,49 @@ fn parse_disc(input: &str) -> IResult<&str, NoIntroToken> {
     let (input, disc) = tag("Disc")(input)?;
     let (input, _) = char(' ')(input)?;
     let (input, number) = digit1(input)?;
-    Ok((input, NoIntroToken::Media(disc, number)))
+    Ok((
+        input,
+        NoIntroToken::Media {
+            media_type: disc,
+            number,
+        },
+    ))
 }
 
 fn parse_scene_number(input: &str) -> IResult<&str, NoIntroToken> {
     fn parse_regular_scene_number(input: &str) -> IResult<&str, NoIntroToken> {
         let (input, scene) = take_while_m_n(4, 4, |c: char| c.is_ascii_digit())(input)?;
-        Ok((input, NoIntroToken::Scene(scene, None)))
+        Ok((
+            input,
+            NoIntroToken::Scene {
+                number: scene,
+                prefix: None,
+            },
+        ))
     }
 
     fn parse_z_or_x_scene_number(input: &str) -> IResult<&str, NoIntroToken> {
         let (input, z) = alt((tag("z"), tag("x")))(input)?;
         let (input, scene) = take_while_m_n(3, 3, |c: char| c.is_ascii_digit())(input)?;
-        Ok((input, NoIntroToken::Scene(scene, Some(z))))
+        Ok((
+            input,
+            NoIntroToken::Scene {
+                number: scene,
+                prefix: Some(z),
+            },
+        ))
     }
 
     fn parse_bios_scene_number(input: &str) -> IResult<&str, NoIntroToken> {
         let (input, b) = tag("xB")(input)?;
         let (input, scene) = take_while_m_n(2, 2, |c: char| c.is_ascii_digit())(input)?;
-        Ok((input, NoIntroToken::Scene(scene, Some(b))))
+        Ok((
+            input,
+            NoIntroToken::Scene {
+                number: scene,
+                prefix: Some(b),
+            },
+        ))
     }
 
     let (input, scene) = alt((
@@ -268,24 +355,28 @@ fn parse_scene_tag(input: &str) -> IResult<&str, NoIntroToken> {
 
 make_parens_tag!(parse_language_tag, parse_language, NoIntroToken);
 fn parse_language(input: &str) -> IResult<&str, NoIntroToken> {
-    fn parse_language_code(input: &str) -> IResult<&str, &str> {
+    fn parse_language_code(input: &str) -> IResult<&str, NoIntroLanguage> {
         let (input, code) = take_while_m_n(2, 2, |c: char| c.is_ascii_alphabetic())(input)?;
-        Ok((input, code))
+        Ok((
+            input,
+            NoIntroLanguage {
+                code,
+                variant: None,
+            },
+        ))
     }
 
-    fn parse_language_variant(input: &str) -> IResult<&str, (&str, Option<&str>)> {
-        let (input, code) = parse_language_code(input)?;
+    fn parse_language_variant(input: &str) -> IResult<&str, NoIntroLanguage> {
+        let (input, mut language) = parse_language_code(input)?;
         let (input, _) = tag("-")(input)?;
         let (input, variant) = alpha1(input)?;
-        Ok((input, (code, Some(variant))))
+        language.variant = Some(variant);
+        Ok((input, language))
     }
 
     let (input, languages) = separated_list1(
         char(','),
-        alt((
-            parse_language_variant,
-            parse_language_code.map(|s| (s, None)),
-        )),
+        alt((parse_language_variant, parse_language_code)),
     )(input)?;
 
     Ok((input, NoIntroToken::Languages(languages)))
@@ -295,7 +386,13 @@ fn parse_additional_tag(input: &str) -> IResult<&str, NoIntroToken> {
     let (input, _) = tag("(")(input)?;
     let (input, add_tag) = take_till1(|c: char| c == ')')(input)?;
     let (input, _) = tag(")")(input)?;
-    Ok((input, NoIntroToken::Flag(FlagType::Parenthesized, add_tag)))
+    Ok((
+        input,
+        NoIntroToken::Flag {
+            flag_type: FlagType::Parenthesized,
+            flag: add_tag,
+        },
+    ))
 }
 
 // No one ever told inner parens were allowed!
@@ -313,7 +410,13 @@ fn parse_redump_multitap_flag(input: &str) -> IResult<&str, NoIntroToken> {
     let (input, _) = char('(')(input)?;
     let (input, flag) = recognize(parse_redump_multitap_flag_inner)(input)?;
     let (input, _) = char(')')(input)?;
-    Ok((input, NoIntroToken::Flag(FlagType::Parenthesized, flag)))
+    Ok((
+        input,
+        NoIntroToken::Flag {
+            flag_type: FlagType::Parenthesized,
+            flag,
+        },
+    ))
 }
 
 fn parse_known_flags(input: &str) -> IResult<&str, NoIntroToken> {
@@ -402,19 +505,43 @@ mod tests {
     #[test]
     fn parse_scene_tags() {
         assert_eq!(
-            Ok(("", NoIntroToken::Scene("1234", None))),
+            Ok((
+                "",
+                NoIntroToken::Scene {
+                    number: "1234",
+                    prefix: None
+                }
+            )),
             parse_scene_number("1234")
         );
         assert_eq!(
-            Ok(("", NoIntroToken::Scene("234", Some("z")))),
+            Ok((
+                "",
+                NoIntroToken::Scene {
+                    number: "234",
+                    prefix: Some("z")
+                }
+            )),
             parse_scene_number("z234")
         );
         assert_eq!(
-            Ok(("", NoIntroToken::Scene("234", Some("x")))),
+            Ok((
+                "",
+                NoIntroToken::Scene {
+                    number: "234",
+                    prefix: Some("x")
+                }
+            )),
             parse_scene_number("x234")
         );
         assert_eq!(
-            Ok(("", NoIntroToken::Scene("34", Some("xB")))),
+            Ok((
+                "",
+                NoIntroToken::Scene {
+                    number: "34",
+                    prefix: Some("xB")
+                }
+            )),
             parse_scene_number("xB34")
         );
     }
@@ -426,10 +553,22 @@ mod tests {
             Ok((
                 "",
                 NoIntroToken::Languages(vec![
-                    ("En", None),
-                    ("Fr", None),
-                    ("Es", None),
-                    ("Zh", Some("Hant"))
+                    NoIntroLanguage {
+                        code: "En",
+                        variant: None
+                    },
+                    NoIntroLanguage {
+                        code: "Fr",
+                        variant: None
+                    },
+                    NoIntroLanguage {
+                        code: "Es",
+                        variant: None
+                    },
+                    NoIntroLanguage {
+                        code: "Zh",
+                        variant: Some("Hant")
+                    }
                 ])
             )),
             langs
@@ -484,8 +623,8 @@ mod tests {
         Ok(("",
         vec![
             NoIntroToken::Title("Konjiki no Gashbell!! Go! Go! Mamono Fight!!"),
-            NoIntroToken::Region(vec!["Japan"], vec![Region::Japan]),
-            NoIntroToken::Flag(FlagType::Parenthesized, "Multi Tap (SCPH-10090) Doukonban")
+            NoIntroToken::Region { region_strings: vec!["Japan"], regions: vec![Region::Japan] },
+            NoIntroToken::Flag { flag_type: FlagType::Parenthesized, flag: "Multi Tap (SCPH-10090) Doukonban" }
         ])))
     }
     #[test]
@@ -506,7 +645,13 @@ mod tests {
     fn parse_disc_test() {
         assert_eq!(
             parse_disc_tag("(Disc 5)"),
-            Ok(("", NoIntroToken::Media("Disc", "5")))
+            Ok((
+                "",
+                NoIntroToken::Media {
+                    media_type: "Disc",
+                    number: "5"
+                }
+            ))
         );
     }
 
@@ -514,19 +659,43 @@ mod tests {
     fn parse_beta_test() {
         assert_eq!(
             parse_dev_status_tag("(Beta)"),
-            Ok(("", NoIntroToken::Release("Beta", None)))
+            Ok((
+                "",
+                NoIntroToken::Release {
+                    status: "Beta",
+                    number: None
+                }
+            ))
         );
         assert_eq!(
             parse_dev_status_tag("(Beta 3)"),
-            Ok(("", NoIntroToken::Release("Beta", Some("3"))))
+            Ok((
+                "",
+                NoIntroToken::Release {
+                    status: "Beta",
+                    number: Some("3")
+                }
+            ))
         );
         assert_eq!(
             parse_dev_status_tag("(Beta 55)"),
-            Ok(("", NoIntroToken::Release("Beta", Some("55"))))
+            Ok((
+                "",
+                NoIntroToken::Release {
+                    status: "Beta",
+                    number: Some("55")
+                }
+            ))
         );
         assert_eq!(
             parse_dev_status_tag("(Beta Phase 2)"),
-            Ok(("", NoIntroToken::Release("Beta", Some("Phase 2"))))
+            Ok((
+                "",
+                NoIntroToken::Release {
+                    status: "Beta",
+                    number: Some("Phase 2")
+                }
+            ))
         );
     }
 
@@ -536,28 +705,28 @@ mod tests {
             parse_version_tag("(Version 5.0 04/15/10 E)"),
             Ok((
                 "",
-                NoIntroToken::Version(vec![(
-                    "Version",
-                    "5",
-                    Some("0"),
-                    None,
-                    Some(vec!["04/15/10", "E"]),
-                    None
-                )])
+                NoIntroToken::Version(vec![NoIntroVersion {
+                    version_type: "Version",
+                    major: "5",
+                    minor: Some("0"),
+                    prefix: None,
+                    suffixes: Some(vec!["04/15/10", "E"]),
+                    separator: None
+                }])
             ))
         );
         assert_eq!(
             parse_version_tag("(Version 4.5 05/25/00 A)"),
             Ok((
                 "",
-                NoIntroToken::Version(vec![(
-                    "Version",
-                    "4",
-                    Some("5"),
-                    None,
-                    Some(vec!["05/25/00", "A"]),
-                    None
-                )])
+                NoIntroToken::Version(vec![NoIntroVersion {
+                    version_type: "Version",
+                    major: "4",
+                    minor: Some("5"),
+                    prefix: None,
+                    suffixes: Some(vec!["05/25/00", "A"]),
+                    separator: None
+                }])
             ))
         );
     }
@@ -568,21 +737,42 @@ mod tests {
             parse_version_tag("(v10.XX)"),
             Ok((
                 "",
-                NoIntroToken::Version(vec![("v", "10", Some("XX"), None, None, None)])
+                NoIntroToken::Version(vec![NoIntroVersion {
+                    version_type: "v",
+                    major: "10",
+                    minor: Some("XX"),
+                    prefix: None,
+                    suffixes: None,
+                    separator: None
+                }])
             ))
         );
         assert_eq!(
             parse_version_tag("(Version 10.5.6-10)"),
             Ok((
                 "",
-                NoIntroToken::Version(vec![("Version", "10", Some("5.6-10"), None, None, None)])
+                NoIntroToken::Version(vec![NoIntroVersion {
+                    version_type: "Version",
+                    major: "10",
+                    minor: Some("5.6-10"),
+                    prefix: None,
+                    suffixes: None,
+                    separator: None
+                }])
             ))
         );
         assert_eq!(
             parse_version_tag("(Version 9)"),
             Ok((
                 "",
-                NoIntroToken::Version(vec![("Version", "9", None, None, None, None)])
+                NoIntroToken::Version(vec![NoIntroVersion {
+                    version_type: "Version",
+                    major: "9",
+                    minor: None,
+                    prefix: None,
+                    suffixes: None,
+                    separator: None
+                }])
             ))
         );
         assert_eq!(
@@ -590,8 +780,22 @@ mod tests {
             Ok((
                 "",
                 NoIntroToken::Version(vec![
-                    ("v", "1", Some("0.0"), None, None, None),
-                    ("v", "12342", None, None, None, Some(", "))
+                    NoIntroVersion {
+                        version_type: "v",
+                        major: "1",
+                        minor: Some("0.0"),
+                        prefix: None,
+                        suffixes: None,
+                        separator: None
+                    },
+                    NoIntroVersion {
+                        version_type: "v",
+                        major: "12342",
+                        minor: None,
+                        prefix: None,
+                        suffixes: None,
+                        separator: Some(", ")
+                    }
                 ])
             ))
         );
@@ -599,28 +803,56 @@ mod tests {
             parse_version_tag("(Rev 10)"),
             Ok((
                 "",
-                NoIntroToken::Version(vec![("Rev", "10", None, None, None, None)])
+                NoIntroToken::Version(vec![NoIntroVersion {
+                    version_type: "Rev",
+                    major: "10",
+                    minor: None,
+                    prefix: None,
+                    suffixes: None,
+                    separator: None
+                }])
             ))
         );
         assert_eq!(
             parse_version_tag("(Rev 10.08)"),
             Ok((
                 "",
-                NoIntroToken::Version(vec![("Rev", "10", Some("08"), None, None, None)])
+                NoIntroToken::Version(vec![NoIntroVersion {
+                    version_type: "Rev",
+                    major: "10",
+                    minor: Some("08"),
+                    prefix: None,
+                    suffixes: None,
+                    separator: None
+                }])
             ))
         );
         assert_eq!(
             parse_version_tag("(Rev 5C21)"),
             Ok((
                 "",
-                NoIntroToken::Version(vec![("Rev", "5C21", None, None, None, None)])
+                NoIntroToken::Version(vec![NoIntroVersion {
+                    version_type: "Rev",
+                    major: "5C21",
+                    minor: None,
+                    prefix: None,
+                    suffixes: None,
+                    separator: None
+                }])
             ))
         );
         assert_eq!(
             parse_version_tag("(0.01)"),
             Ok((
                 "",
-                NoIntroToken::Version(vec![("", "0", Some("01"), None, None, None)])
+                NoIntroToken::Version(vec![NoIntroVersion {
+                    version_type: "",
+                    major: "0",
+                    minor: Some("01"),
+                    prefix: None,
+                    suffixes: None,
+                    separator: None
+                }])
             ))
         );
         assert_eq!(
@@ -628,8 +860,22 @@ mod tests {
             Ok((
                 "",
                 NoIntroToken::Version(vec![
-                    ("v", "1", Some("07"), None, None, None),
-                    ("Rev", "1", None, None, None, Some(" "))
+                    NoIntroVersion {
+                        version_type: "v",
+                        major: "1",
+                        minor: Some("07"),
+                        prefix: None,
+                        suffixes: None,
+                        separator: None
+                    },
+                    NoIntroVersion {
+                        version_type: "Rev",
+                        major: "1",
+                        minor: None,
+                        prefix: None,
+                        suffixes: None,
+                        separator: Some(" ")
+                    }
                 ])
             ))
         );
@@ -638,8 +884,22 @@ mod tests {
             Ok((
                 "",
                 NoIntroToken::Version(vec![
-                    ("v", "1", Some("07"), None, None, None),
-                    ("", "1023", None, None, None, Some(" "))
+                    NoIntroVersion {
+                        version_type: "v",
+                        major: "1",
+                        minor: Some("07"),
+                        prefix: None,
+                        suffixes: None,
+                        separator: None
+                    },
+                    NoIntroVersion {
+                        version_type: "",
+                        major: "1023",
+                        minor: None,
+                        prefix: None,
+                        suffixes: None,
+                        separator: Some(" ")
+                    }
                 ])
             ))
         );
@@ -648,8 +908,22 @@ mod tests {
             Ok((
                 "",
                 NoIntroToken::Version(vec![
-                    ("v", "1", Some("07"), None, None, None),
-                    ("", "1023", None, None, None, Some(", "))
+                    NoIntroVersion {
+                        version_type: "v",
+                        major: "1",
+                        minor: Some("07"),
+                        prefix: None,
+                        suffixes: None,
+                        separator: None
+                    },
+                    NoIntroVersion {
+                        version_type: "",
+                        major: "1023",
+                        minor: None,
+                        prefix: None,
+                        suffixes: None,
+                        separator: Some(", ")
+                    }
                 ])
             ))
         );
@@ -658,8 +932,22 @@ mod tests {
             Ok((
                 "",
                 NoIntroToken::Version(vec![
-                    ("v", "1", Some("07"), None, None, None),
-                    ("v", "1023", None, None, None, Some(", "))
+                    NoIntroVersion {
+                        version_type: "v",
+                        major: "1",
+                        minor: Some("07"),
+                        prefix: None,
+                        suffixes: None,
+                        separator: None
+                    },
+                    NoIntroVersion {
+                        version_type: "v",
+                        major: "1023",
+                        minor: None,
+                        prefix: None,
+                        suffixes: None,
+                        separator: Some(", ")
+                    }
                 ])
             ))
         );
@@ -668,8 +956,22 @@ mod tests {
             Ok((
                 "",
                 NoIntroToken::Version(vec![
-                    ("v", "1", Some("07b"), None, None, None),
-                    ("v", "1023", None, None, None, Some(", "))
+                    NoIntroVersion {
+                        version_type: "v",
+                        major: "1",
+                        minor: Some("07b"),
+                        prefix: None,
+                        suffixes: None,
+                        separator: None
+                    },
+                    NoIntroVersion {
+                        version_type: "v",
+                        major: "1023",
+                        minor: None,
+                        prefix: None,
+                        suffixes: None,
+                        separator: Some(", ")
+                    }
                 ])
             ))
         );
@@ -682,8 +984,22 @@ mod tests {
             Ok((
                 "",
                 NoIntroToken::Version(vec![
-                    ("v", "1", Some("07"), None, None, None),
-                    ("v", "1023", None, None, None, Some(", "))
+                    NoIntroVersion {
+                        version_type: "v",
+                        major: "1",
+                        minor: Some("07"),
+                        prefix: None,
+                        suffixes: None,
+                        separator: None
+                    },
+                    NoIntroVersion {
+                        version_type: "v",
+                        major: "1023",
+                        minor: None,
+                        prefix: None,
+                        suffixes: None,
+                        separator: Some(", ")
+                    }
                 ])
             ))
         );
@@ -692,11 +1008,46 @@ mod tests {
             Ok((
                 "",
                 NoIntroToken::Version(vec![
-                    ("v", "1", Some("07"), None, None, None),
-                    ("v", "1023", None, None, None, Some(", ")),
-                    ("v", "1", Some("70"), Some("PS3"), None, Some(", ")),
-                    ("v", "5", Some("51"), Some("PSP"), None, Some(", ")),
-                    ("v", "60", None, None, Some(vec!["Alt"]), Some(", "))
+                    NoIntroVersion {
+                        version_type: "v",
+                        major: "1",
+                        minor: Some("07"),
+                        prefix: None,
+                        suffixes: None,
+                        separator: None
+                    },
+                    NoIntroVersion {
+                        version_type: "v",
+                        major: "1023",
+                        minor: None,
+                        prefix: None,
+                        suffixes: None,
+                        separator: Some(", ")
+                    },
+                    NoIntroVersion {
+                        version_type: "v",
+                        major: "1",
+                        minor: Some("70"),
+                        prefix: Some("PS3"),
+                        suffixes: None,
+                        separator: Some(", ")
+                    },
+                    NoIntroVersion {
+                        version_type: "v",
+                        major: "5",
+                        minor: Some("51"),
+                        prefix: Some("PSP"),
+                        suffixes: None,
+                        separator: Some(", ")
+                    },
+                    NoIntroVersion {
+                        version_type: "v",
+                        major: "60",
+                        minor: None,
+                        prefix: None,
+                        suffixes: Some(vec!["Alt"]),
+                        separator: Some(", ")
+                    }
                 ])
             ))
         );
@@ -705,28 +1056,28 @@ mod tests {
             parse_version_tag("(Version 5.0 04/15/10 E)"),
             Ok((
                 "",
-                NoIntroToken::Version(vec![(
-                    "Version",
-                    "5",
-                    Some("0"),
-                    None,
-                    Some(vec!["04/15/10", "E"]),
-                    None
-                )])
+                NoIntroToken::Version(vec![NoIntroVersion {
+                    version_type: "Version",
+                    major: "5",
+                    minor: Some("0"),
+                    prefix: None,
+                    suffixes: Some(vec!["04/15/10", "E"]),
+                    separator: None
+                }])
             ))
         );
         assert_eq!(
             parse_version_tag("(Version 4.5 05/25/00 A)"),
             Ok((
                 "",
-                NoIntroToken::Version(vec![(
-                    "Version",
-                    "4",
-                    Some("5"),
-                    None,
-                    Some(vec!["05/25/00", "A"]),
-                    None
-                )])
+                NoIntroToken::Version(vec![NoIntroVersion {
+                    version_type: "Version",
+                    major: "4",
+                    minor: Some("5"),
+                    prefix: None,
+                    suffixes: Some(vec!["05/25/00", "A"]),
+                    separator: None
+                }])
             ))
         );
 
@@ -743,8 +1094,14 @@ mod tests {
                 "",
                 vec![
                     NoIntroToken::Title("Truco '96"),
-                    NoIntroToken::Region(vec!["Argentina"], vec![Region::Argentina]),
-                    NoIntroToken::Flag(FlagType::Parenthesized, "Unl")
+                    NoIntroToken::Region {
+                        region_strings: vec!["Argentina"],
+                        regions: vec![Region::Argentina]
+                    },
+                    NoIntroToken::Flag {
+                        flag_type: FlagType::Parenthesized,
+                        flag: "Unl"
+                    }
                 ]
             ))
         );
@@ -786,15 +1143,15 @@ mod tests {
             parse_region_tag("(Japan, Europe, Australia, New Zealand)"),
             Ok((
                 "",
-                NoIntroToken::Region(
-                    vec!["Japan", "Europe", "Australia", "New Zealand"],
-                    vec![
+                NoIntroToken::Region {
+                    region_strings: vec!["Japan", "Europe", "Australia", "New Zealand"],
+                    regions: vec![
                         Region::Japan,
                         Region::Europe,
                         Region::Australia,
                         Region::NewZealand
                     ]
-                )
+                }
             ))
         );
     }
@@ -823,13 +1180,22 @@ mod tests {
                 "",
                 vec![
                     NoIntroToken::Title("FIFA 20 - Portuguese (Brazil) In-Game Commentary"),
-                    NoIntroToken::Region(
-                        vec!["World"],
-                        vec![Region::UnitedStates, Region::Japan, Region::Europe]
-                    ),
-                    NoIntroToken::Languages(vec![("Pt", Some("BR"))]),
-                    NoIntroToken::Flag(FlagType::Parenthesized, "DLC"),
-                    NoIntroToken::Flag(FlagType::Parenthesized, "eShop")
+                    NoIntroToken::Region {
+                        region_strings: vec!["World"],
+                        regions: vec![Region::UnitedStates, Region::Japan, Region::Europe]
+                    },
+                    NoIntroToken::Languages(vec![NoIntroLanguage {
+                        code: "Pt",
+                        variant: Some("BR")
+                    }]),
+                    NoIntroToken::Flag {
+                        flag_type: FlagType::Parenthesized,
+                        flag: "DLC"
+                    },
+                    NoIntroToken::Flag {
+                        flag_type: FlagType::Parenthesized,
+                        flag: "eShop"
+                    }
                 ]
             ))
         );
@@ -838,7 +1204,13 @@ mod tests {
     fn parse_unl() {
         assert_eq!(
             parse_additional_tag("(Unl)"),
-            Ok(("", NoIntroToken::Flag(FlagType::Parenthesized, "Unl")))
+            Ok((
+                "",
+                NoIntroToken::Flag {
+                    flag_type: FlagType::Parenthesized,
+                    flag: "Unl"
+                }
+            ))
         )
     }
 
@@ -851,11 +1223,20 @@ mod tests {
                 "",
                 vec![
                     NoIntroToken::Title("Call of Duty - Advanced Warfare"),
-                    NoIntroToken::Region(
-                        vec!["United Arab Emirates"],
-                        vec![Region::UnitedArabEmirates]
-                    ),
-                    NoIntroToken::Languages(vec![("En", None), ("Ar", None)])
+                    NoIntroToken::Region {
+                        region_strings: vec!["United Arab Emirates"],
+                        regions: vec![Region::UnitedArabEmirates]
+                    },
+                    NoIntroToken::Languages(vec![
+                        NoIntroLanguage {
+                            code: "En",
+                            variant: None
+                        },
+                        NoIntroLanguage {
+                            code: "Ar",
+                            variant: None
+                        }
+                    ])
                 ]
             ))
         );
@@ -870,11 +1251,20 @@ mod tests {
                 "",
                 vec![
                     NoIntroToken::Title("Double Dragon"),
-                    NoIntroToken::Region(
-                        vec!["Export"],
-                        vec![Region::UnitedStates, Region::Japan, Region::Europe]
-                    ),
-                    NoIntroToken::Languages(vec![("En", None), ("Ja", None)])
+                    NoIntroToken::Region {
+                        region_strings: vec!["Export"],
+                        regions: vec![Region::UnitedStates, Region::Japan, Region::Europe]
+                    },
+                    NoIntroToken::Languages(vec![
+                        NoIntroLanguage {
+                            code: "En",
+                            variant: None
+                        },
+                        NoIntroLanguage {
+                            code: "Ja",
+                            variant: None
+                        }
+                    ])
                 ]
             ))
         );
