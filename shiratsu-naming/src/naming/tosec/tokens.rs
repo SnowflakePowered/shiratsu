@@ -24,12 +24,14 @@ pub enum TOSECToken<'a> {
 
     /// A version flag.
     ///
-    /// ## Tuple elements
-    /// 0. The version type.
-    ///     * If this is `Rev`, a space occurs between the version type and the major version.
-    /// 1. The major version.
-    /// 2. The minor version, if any.
-    Version(&'a str, &'a str, Option<&'a str>),
+    Version {
+        /// The version type. If this is `Rev`, a space occurs between it and the major version.
+        version_type: &'a str,
+        /// The major version.
+        major: &'a str,
+        /// The minor version, if any.
+        minor: Option<&'a str>,
+    },
 
     /// A demo flag, preceding the `demo-` string.
     ///
@@ -40,11 +42,14 @@ pub enum TOSECToken<'a> {
 
     /// A date flag
     ///
-    /// ## Tuple elements
-    /// 0. The year.
-    /// 1. The month, if any.
-    /// 2. The day, if any.
-    Date(&'a str, Option<&'a str>, Option<&'a str>),
+    Date {
+        /// The year.
+        year: &'a str,
+        /// The month, if any.
+        month: Option<&'a str>,
+        /// The day, if any.
+        day: Option<&'a str>,
+    },
 
     /// A publisher flag, with publishers separated by ` - ` if more than one.
     ///
@@ -72,10 +77,12 @@ pub enum TOSECToken<'a> {
     /// region flag, and the list of parsed regions, since GoodTools regions may
     /// go through expansion.
     ///
-    /// ## Tuple elements
-    /// 0. The region strings that correspond to the parsed regions.
-    /// 1. The parsed regions.
-    Region(Vec<&'a str>, Vec<Region>),
+    Region {
+        /// The region strings that correspond to the parsed regions.
+        region_strings: Vec<&'a str>,
+        /// The parsed regions.
+        regions: Vec<Region>,
+    },
 
     /// A language flag.
     ///
@@ -95,42 +102,46 @@ pub enum TOSECToken<'a> {
     Development(&'a str),
     /// A dump info flag.
     ///
-    /// '`[more info]`' flags are parsed as `Flag(FlagType::Bracketed, &'a str)`, and not
-    /// `DumpInfo`.
+    /// '`[more info]`' flags are parsed as
+    /// `Flag { flag_type: FlagType::Bracketed, flag: &'a str }`, and not `DumpInfo`.
     ///
     /// See the [TOSEC Naming Convention](https://www.tosecdev.org/tosec-naming-convention#_Toc302254975)
     /// for a list of valid dump info flags.
     ///
-    /// ## Tuple elements
-    /// 0. The letter or name of the dump flag.
-    /// 1. The number of the dump flag, if any.
-    /// 2. The arguments or additional information of the dump flag, if any.
-    ///    This is an opaque string, and is not specialized with the type of the dump flag.
-    ///
     /// ## Example
-    /// * `[!]` parses as `DumpInfo("!", None, None)`
-    /// * `[f1 Fix Fixer]` parses as `DumpInfo("f", Some("1"), Some("Fix Fixer")`
-    DumpInfo(&'a str, Option<&'a str>, Option<&'a str>),
+    /// * `[!]` parses as `DumpInfo { code: "!", number: None, info: None }`
+    /// * `[f1 Fix Fixer]` parses as `DumpInfo { code: "f", number: Some("1"), info: Some("Fix Fixer") }`
+    DumpInfo {
+        /// The letter or name of the dump flag.
+        code: &'a str,
+        /// The number of the dump flag, if any.
+        number: Option<&'a str>,
+        /// The arguments or additional information of the dump flag, if any.
+        /// This is an opaque string, and is not specialized by dump flag type.
+        info: Option<&'a str>,
+    },
 
     /// A media part number flag.
     ///
     /// There may be multiple media parts in a flag, separated by a space.
     ///
-    /// Media type flags are parsed as `Flag(FlagType::Parenthesized, &'a str)`, and not
-    /// `Media`.
+    /// Media type flags are parsed as
+    /// `Flag { flag_type: FlagType::Parenthesized, flag: &'a str }`, and not `Media`.
     ///
-    /// ## Tuple elements
-    /// 0. The media part name
-    /// 1. The number of the media part.
-    /// 2. The total parts of the media, if any.
+    /// See [`TOSECMedia`] for the structure of each parsed media part.
     ///
     /// ## Examples
-    /// * `(Side A)` parses to `Media(vec![("Side", "A", None)])`.
-    /// * `(Disc 1 of 2 Side B)` parses to `Media(vec[("Disc", "1", Some("2")), ("Side", "B", None)])`.
-    Media(Vec<(&'a str, &'a str, Option<&'a str>)>),
+    /// * `(Side A)` parses to `Media(vec![TOSECMedia { media_type: "Side", number: "A", total: None }])`.
+    /// * `(Disc 1 of 2 Side B)` parses to two `TOSECMedia` values.
+    Media(Vec<TOSECMedia<'a>>),
 
     /// A generic, non-defined, or unknown flag.
-    Flag(FlagType, &'a str),
+    Flag {
+        /// The flag's delimiter type.
+        flag_type: FlagType,
+        /// The text inside the flag's delimiters.
+        flag: &'a str,
+    },
 
     /// Indicates an unexpected deviations from the
     /// TOSEC Naming convention.
@@ -146,17 +157,28 @@ pub enum TOSECToken<'a> {
     Warning(TOSECWarn<'a>),
 }
 
+/// A media part parsed from a TOSEC media flag.
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct TOSECMedia<'a> {
+    /// The media part type, such as `Disc`, `Part`, or `Side`.
+    pub media_type: &'a str,
+    /// The media part number or label.
+    pub number: &'a str,
+    /// The total number of media parts, if specified.
+    pub total: Option<&'a str>,
+}
+
 impl PartialEq for TOSECToken<'_> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (TOSECToken::Title(t), TOSECToken::Title(o)) => t.eq(o),
-            (TOSECToken::Version(a, b, c),
-                TOSECToken::Version(e, f, g))
+            (TOSECToken::Version { version_type: a, major: b, minor: c },
+                TOSECToken::Version { version_type: e, major: f, minor: g })
             => (a, b, c).eq(&(e, f, g)),
             (TOSECToken::Demo(t), TOSECToken::Demo(o))
             => t.eq(o),
-            (TOSECToken::Date(y, m, d),
-                TOSECToken::Date(y2, m2, d2))
+            (TOSECToken::Date { year: y, month: m, day: d },
+                TOSECToken::Date { year: y2, month: m2, day: d2 })
             => (y, m, d).eq(&(y2, m2, d2)),
             (TOSECToken::Publisher(a), TOSECToken::Publisher(b))
             => a.eq(b),
@@ -164,7 +186,7 @@ impl PartialEq for TOSECToken<'_> {
             => a.eq(b),
             (TOSECToken::Video(a), TOSECToken::Video(b))
             => a.eq(b),
-            (TOSECToken::Region(a, _), TOSECToken::Region(b, _))
+            (TOSECToken::Region { region_strings: a, regions: _ }, TOSECToken::Region { region_strings: b, regions: _ })
             // region equality depends on the string.
             => a.eq(b),
             (TOSECToken::Languages(a), TOSECToken::Languages(b))
@@ -176,13 +198,13 @@ impl PartialEq for TOSECToken<'_> {
             (TOSECToken::Media(a), TOSECToken::Media(b))
             => a.eq(b),
             // Presumably media type
-            (TOSECToken::Flag(FlagType::Parenthesized, a), TOSECToken::Flag(FlagType::Parenthesized, b))
+            (TOSECToken::Flag { flag_type: FlagType::Parenthesized, flag: a }, TOSECToken::Flag { flag_type: FlagType::Parenthesized, flag: b })
             => a.eq(b),
-            (TOSECToken::DumpInfo(a, n, f),
-                TOSECToken::DumpInfo(a1, n2, f2)) => {
+            (TOSECToken::DumpInfo { code: a, number: n, info: f },
+                TOSECToken::DumpInfo { code: a1, number: n2, info: f2 }) => {
                 (a, n, f).eq(&(a1, n2, f2))
             },
-            (TOSECToken::Flag(FlagType::Bracketed, a), TOSECToken::Flag(FlagType::Bracketed, b))
+            (TOSECToken::Flag { flag_type: FlagType::Bracketed, flag: a }, TOSECToken::Flag { flag_type: FlagType::Bracketed, flag: b })
             => a.eq(b),
             (TOSECToken::Warning(a), TOSECToken::Warning(b)) =>
                 a.eq(b),
@@ -196,21 +218,42 @@ impl PartialOrd for TOSECToken<'_> {
         fn get_priority(token: &TOSECToken) -> usize {
             match token {
                 TOSECToken::Title(_) => 0,
-                TOSECToken::Version(_, _, _) => 1,
+                TOSECToken::Version {
+                    version_type: _,
+                    major: _,
+                    minor: _,
+                } => 1,
                 TOSECToken::Demo(_) => 2,
-                TOSECToken::Date(_, _, _) => 3,
+                TOSECToken::Date {
+                    year: _,
+                    month: _,
+                    day: _,
+                } => 3,
                 TOSECToken::Publisher(_) => 4,
                 TOSECToken::System(_) => 5,
                 TOSECToken::Video(_) => 6,
-                TOSECToken::Region(_, _) => 7,
+                TOSECToken::Region {
+                    region_strings: _,
+                    regions: _,
+                } => 7,
                 TOSECToken::Languages(_) => 8,
                 TOSECToken::Copyright(_) => 9,
                 TOSECToken::Development(_) => 10,
                 TOSECToken::Media(_) => 11,
                 // Presumably media type
-                TOSECToken::Flag(FlagType::Parenthesized, _) => 12,
-                TOSECToken::DumpInfo(_, _, _) => 13,
-                TOSECToken::Flag(FlagType::Bracketed, _) => 14,
+                TOSECToken::Flag {
+                    flag_type: FlagType::Parenthesized,
+                    flag: _,
+                } => 12,
+                TOSECToken::DumpInfo {
+                    code: _,
+                    number: _,
+                    info: _,
+                } => 13,
+                TOSECToken::Flag {
+                    flag_type: FlagType::Bracketed,
+                    flag: _,
+                } => 14,
                 TOSECToken::Warning(_) => usize::MAX,
             }
         }
@@ -241,27 +284,71 @@ impl PartialOrd for TOSECToken<'_> {
         }
         match (self, other) {
             (TOSECToken::Title(t), TOSECToken::Title(o)) => t.partial_cmp(o),
-            (TOSECToken::Version(a, b, c), TOSECToken::Version(e, f, g)) => {
-                (a, b, c).partial_cmp(&(e, f, g))
-            }
+            (
+                TOSECToken::Version {
+                    version_type: a,
+                    major: b,
+                    minor: c,
+                },
+                TOSECToken::Version {
+                    version_type: e,
+                    major: f,
+                    minor: g,
+                },
+            ) => (a, b, c).partial_cmp(&(e, f, g)),
             (TOSECToken::Demo(t), TOSECToken::Demo(o)) => t.partial_cmp(o),
-            (TOSECToken::Date(y, m, d), TOSECToken::Date(y2, m2, d2)) => {
-                (y, m, d).partial_cmp(&(y2, m2, d2))
-            }
+            (
+                TOSECToken::Date {
+                    year: y,
+                    month: m,
+                    day: d,
+                },
+                TOSECToken::Date {
+                    year: y2,
+                    month: m2,
+                    day: d2,
+                },
+            ) => (y, m, d).partial_cmp(&(y2, m2, d2)),
             (TOSECToken::Publisher(a), TOSECToken::Publisher(b)) => a.partial_cmp(b),
             (TOSECToken::System(a), TOSECToken::System(b)) => a.partial_cmp(b),
             (TOSECToken::Video(a), TOSECToken::Video(b)) => a.partial_cmp(b),
-            (TOSECToken::Region(a, _), TOSECToken::Region(b, _)) => a.partial_cmp(b),
+            (
+                TOSECToken::Region {
+                    region_strings: a,
+                    regions: _,
+                },
+                TOSECToken::Region {
+                    region_strings: b,
+                    regions: _,
+                },
+            ) => a.partial_cmp(b),
             (TOSECToken::Languages(a), TOSECToken::Languages(b)) => a.partial_cmp(b),
             (TOSECToken::Copyright(a), TOSECToken::Copyright(b)) => a.partial_cmp(b),
             (TOSECToken::Development(a), TOSECToken::Development(b)) => a.partial_cmp(b),
             (TOSECToken::Media(a), TOSECToken::Media(b)) => a.partial_cmp(b),
             // Presumably media type
             (
-                TOSECToken::Flag(FlagType::Parenthesized, a),
-                TOSECToken::Flag(FlagType::Parenthesized, b),
+                TOSECToken::Flag {
+                    flag_type: FlagType::Parenthesized,
+                    flag: a,
+                },
+                TOSECToken::Flag {
+                    flag_type: FlagType::Parenthesized,
+                    flag: b,
+                },
             ) => a.partial_cmp(b),
-            (TOSECToken::DumpInfo(a, n, f), TOSECToken::DumpInfo(a1, n2, f2)) => {
+            (
+                TOSECToken::DumpInfo {
+                    code: a,
+                    number: n,
+                    info: f,
+                },
+                TOSECToken::DumpInfo {
+                    code: a1,
+                    number: n2,
+                    info: f2,
+                },
+            ) => {
                 if a == a1 {
                     if n != n2 {
                         n.partial_cmp(n2)
@@ -273,8 +360,14 @@ impl PartialOrd for TOSECToken<'_> {
                 }
             }
             (
-                TOSECToken::Flag(FlagType::Bracketed, a),
-                TOSECToken::Flag(FlagType::Bracketed, b),
+                TOSECToken::Flag {
+                    flag_type: FlagType::Bracketed,
+                    flag: a,
+                },
+                TOSECToken::Flag {
+                    flag_type: FlagType::Bracketed,
+                    flag: b,
+                },
             ) => a.partial_cmp(b),
             (TOSECToken::Warning(a), TOSECToken::Warning(b)) => a.partial_cmp(b),
             _ => unreachable!(),
@@ -469,12 +562,21 @@ impl TOSECName<'_> {
     /// The fixes that are done are only possible by converting the tokenized `&'a str` into
     /// a known `&'static str`.
     pub fn into_strict(mut self) -> Self {
-        if !self
-            .0
-            .iter()
-            .any(|e| matches!(e, TOSECToken::Date(_, _, _)))
-        {
-            self.0.push(TOSECToken::Date("19xx", None, None));
+        if !self.0.iter().any(|e| {
+            matches!(
+                e,
+                TOSECToken::Date {
+                    year: _,
+                    month: _,
+                    day: _
+                }
+            )
+        }) {
+            self.0.push(TOSECToken::Date {
+                year: "19xx",
+                month: None,
+                day: None,
+            });
         }
 
         if !self.0.iter().any(|e| matches!(e, TOSECToken::Publisher(_))) {
@@ -490,7 +592,15 @@ impl TOSECName<'_> {
                         publishers.sort();
                         Some(TOSECToken::Publisher(Some(publishers)))
                     }
-                    TOSECToken::Date("19XX", m, d) => Some(TOSECToken::Date("19xx", m, d)),
+                    TOSECToken::Date {
+                        year: "19XX",
+                        month: m,
+                        day: d,
+                    } => Some(TOSECToken::Date {
+                        year: "19xx",
+                        month: m,
+                        day: d,
+                    }),
                     TOSECToken::Development("Alpha") => Some(TOSECToken::Development("alpha")),
                     TOSECToken::Development("Beta") => Some(TOSECToken::Development("beta")),
                     TOSECToken::Development("Preview") => Some(TOSECToken::Development("preview")),
@@ -500,12 +610,18 @@ impl TOSECName<'_> {
                     TOSECToken::Development("Proto") | TOSECToken::Development("Prototype") => {
                         Some(TOSECToken::Development("proto"))
                     }
-                    TOSECToken::Region(_, regions) => {
+                    TOSECToken::Region {
+                        region_strings: _,
+                        regions,
+                    } => {
                         // Convert GoodTools region into TOSEC regions.
                         // The lifetime of the region strings change from 'a to 'static.
 
                         let region_str = regions.iter().map(|r| r.into()).collect::<Vec<&str>>();
-                        Some(TOSECToken::Region(region_str, regions))
+                        Some(TOSECToken::Region {
+                            region_strings: region_str,
+                            regions,
+                        })
                     }
                     TOSECToken::Warning(_) => None,
                     _ => Some(t),
@@ -589,7 +705,11 @@ fn write_tosec_string(buf: &mut String, tokens: &[TOSECToken<'_>]) {
                 buf.push_str(t);
                 buf.push(' ');
             }
-            TOSECToken::Version(tag, maj, min) => {
+            TOSECToken::Version {
+                version_type: tag,
+                major: maj,
+                minor: min,
+            } => {
                 if let Some(TOSECToken::Warning(TOSECWarn::VersionInFlag)) = tokens.get(i - 1) {
                     buf.push('(');
                 }
@@ -615,7 +735,11 @@ fn write_tosec_string(buf: &mut String, tokens: &[TOSECToken<'_>]) {
                 }
                 buf.push_str(") ");
             }
-            TOSECToken::Date(y, m, d) => {
+            TOSECToken::Date {
+                year: y,
+                month: m,
+                day: d,
+            } => {
                 buf.push('(');
                 if let Some(TOSECToken::Warning(TOSECWarn::UndelimitedDate(s))) = tokens.get(i - 1)
                 {
@@ -673,7 +797,10 @@ fn write_tosec_string(buf: &mut String, tokens: &[TOSECToken<'_>]) {
                 buf.push_str(v);
                 buf.push(')');
             }
-            TOSECToken::Region(rs, _) => {
+            TOSECToken::Region {
+                region_strings: rs,
+                regions: _,
+            } => {
                 buf.push('(');
                 for region in rs.iter() {
                     buf.push_str(region);
@@ -713,7 +840,11 @@ fn write_tosec_string(buf: &mut String, tokens: &[TOSECToken<'_>]) {
                 buf.push_str(de);
                 buf.push(')');
             }
-            TOSECToken::DumpInfo(code, num, info) => {
+            TOSECToken::DumpInfo {
+                code,
+                number: num,
+                info,
+            } => {
                 buf.push('[');
                 buf.push_str(code);
 
@@ -729,13 +860,13 @@ fn write_tosec_string(buf: &mut String, tokens: &[TOSECToken<'_>]) {
             }
             TOSECToken::Media(m) => {
                 buf.push('(');
-                for (title, number, of) in m.iter() {
-                    buf.push_str(title);
+                for media in m {
+                    buf.push_str(media.media_type);
                     buf.push(' ');
-                    buf.push_str(number);
-                    if let Some(of) = of {
+                    buf.push_str(media.number);
+                    if let Some(total) = media.total {
                         buf.push_str(" of ");
-                        buf.push_str(of);
+                        buf.push_str(total);
                     }
 
                     buf.push(' ');
@@ -747,12 +878,18 @@ fn write_tosec_string(buf: &mut String, tokens: &[TOSECToken<'_>]) {
 
                 buf.push(')');
             }
-            TOSECToken::Flag(FlagType::Parenthesized, f) => {
+            TOSECToken::Flag {
+                flag_type: FlagType::Parenthesized,
+                flag: f,
+            } => {
                 buf.push('(');
                 buf.push_str(f);
                 buf.push(')');
             }
-            TOSECToken::Flag(FlagType::Bracketed, f) => {
+            TOSECToken::Flag {
+                flag_type: FlagType::Bracketed,
+                flag: f,
+            } => {
                 buf.push('[');
                 buf.push_str(f);
                 buf.push(']');

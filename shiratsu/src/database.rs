@@ -1,15 +1,10 @@
 use rusqlite::{backup::*, named_params, params, Connection, Result as SqliteResult};
 
-use shiratsu_stone::{
-    PlatformId, StonePlatforms, find_mimetype
-};
+use shiratsu_stone::{find_mimetype, PlatformId, StonePlatforms};
 
 use shiratsu_dat::{DevelopmentStatus, GameEntry};
 
-use shiratsu_naming::{
-    region::Region,
-    naming::*,
-};
+use shiratsu_naming::{naming::*, region::Region};
 
 use std::path::Path;
 use std::result;
@@ -221,7 +216,7 @@ fn insert_entry(
     })?;
 
     let game_id = tx.last_insert_rowid();
-    
+
     for rom in entry.rom_entries().iter() {
         tx.execute_named(
             r#"

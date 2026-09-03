@@ -23,91 +23,104 @@ pub enum NoIntroToken<'a> {
     /// region flag, and the list of parsed regions, since regions may
     /// undergo expansion.
     ///
-    /// ## Tuple elements
-    /// 0. The region strings that correspond to the parsed regions.
-    /// 1. The parsed regions.
-    Region(Vec<&'a str>, Vec<Region>),
+    Region {
+        /// The region strings that correspond to the parsed regions.
+        region_strings: Vec<&'a str>,
+        /// The parsed regions.
+        regions: Vec<Region>,
+    },
 
     /// A version flag.
     ///
     /// A version flag may contain one or more versions, separated by a separator.
     ///
-    /// ## Tuple elements
-    /// Each tuple in the contained vector has the following format.
-    ///
-    /// 0. The version type, such as `Rev` or `v`, or the empty string.
-    ///    * Note that `v` and the empty string implies that there are no spaces in the source version
-    ///      between the type and the major version.
-    /// 1. The major version.
-    /// 2. The minor version, separated by a dot (`.`).
-    /// 3. The version prefix, if any.
-    ///    This is not the version type, but the prefix that appears, separated by a space, before the type.
-    /// 4. The version suffix, if any.
-    ///    This appears after the version number, separated by a space.
-    /// 5. The version separator that appears _before_ the version type or prefix.
+    /// See [`NoIntroVersion`] for the structure of each parsed version.
     ///
     /// ## Examples
-    /// * `(v1.0)` parses to `Version(vec![("v", "1", Some("0"), None, None, None)])`
-    /// * `(v1.0, PS3 v3.35 Alt)`
-    ///    parses to `Version(vec![("v", "1", Some("0"), ...),
-    ///    ("v", "3", Some("35"), Some("PS3"), Some(vec!["Alt"]), Some(", ")`
-    Version(
-        Vec<(
-            &'a str,
-            &'a str,
-            Option<&'a str>,
-            Option<&'a str>,
-            Option<Vec<&'a str>>,
-            Option<&'a str>,
-        )>,
-    ),
+    /// * `(v1.0)` parses to `Version(vec![NoIntroVersion { version_type: "v", major: "1", minor: Some("0"), prefix: None, suffixes: None, separator: None }])`
+    /// * `(v1.0, PS3 v3.35 Alt)` parses to two `NoIntroVersion` values.
+    Version(Vec<NoIntroVersion<'a>>),
 
     /// A release status flag, such as `(Sample)` or `(Beta)`
     ///
-    /// ## Tuple elements
-    /// 0. The type of release status
-    /// 1. The number of the release status flag, if any.
-    Release(&'a str, Option<&'a str>),
+    Release {
+        /// The type of release status.
+        status: &'a str,
+        /// The number of the release status flag, if any.
+        number: Option<&'a str>,
+    },
 
     /// A media part number flag.
     ///
-    /// ## Tuple elements
-    /// 0. The media part name
-    /// 1. The number of the media part.
-    ///
     /// ## Examples
-    /// * `(Disc 1)` parses to `Media("Disc", "1")`.
-    Media(&'a str, &'a str),
+    /// * `(Disc 1)` parses to `Media { media_type: "Disc", number: "1" }`.
+    Media {
+        /// The media part name.
+        media_type: &'a str,
+        /// The number of the media part.
+        number: &'a str,
+    },
 
     /// A scene number with an optional type
     ///
     /// This appears before the title, preceding the string ` - `
     ///
-    /// ## Tuple elements
-    /// 0. The number of the scene number.
-    /// 1. The letter type of the scene number, if any.
-    ///
     /// ## Examples
-    /// * `1234` parses to `Scene("1234", None)`
-    /// * `z123` parses to `Scene("123", Some("z"))`
-    /// * `x123` parses to `Scene("123", Some("x"))`
-    /// * `xB123` parses to `Scene("123", Some("xB"))`
-    Scene(&'a str, Option<&'a str>),
+    /// * `1234` parses to `Scene { number: "1234", prefix: None }`
+    /// * `z123` parses to `Scene { number: "123", prefix: Some("z") }`
+    /// * `x123` parses to `Scene { number: "123", prefix: Some("x") }`
+    /// * `xB123` parses to `Scene { number: "123", prefix: Some("xB") }`
+    Scene {
+        /// The scene number.
+        number: &'a str,
+        /// The letter prefix of the scene number, if any.
+        prefix: Option<&'a str>,
+    },
 
     /// A language flag containing one or more languages.
     ///
-    /// ## Tuple elements.
-    /// Each tuple in the contained vector has the following format.
-    ///
-    /// 0. The language code of the language.
-    /// 1. The variant code of the language, separated by a hyphen (`-`).
+    /// See [`NoIntroLanguage`] for the structure of each parsed language.
     ///
     /// ## Examples
-    /// * `(En, Zh-Hant)` parses to `Languages(vec![("En", None), ("Zh", Some("Hant"))])`
-    Languages(Vec<(&'a str, Option<&'a str>)>),
+    /// * `(En, Zh-Hant)` parses to `Languages(vec![NoIntroLanguage { code: "En", variant: None }, NoIntroLanguage { code: "Zh", variant: Some("Hant") }])`
+    Languages(Vec<NoIntroLanguage<'a>>),
 
     /// A generic, non-defined, or unknown flag.
-    Flag(FlagType, &'a str),
+    Flag {
+        /// The flag's delimiter type.
+        flag_type: FlagType,
+        /// The text inside the flag's delimiters.
+        flag: &'a str,
+    },
+}
+
+/// A version parsed from a No-Intro version flag.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct NoIntroVersion<'a> {
+    /// The version type, such as `Rev` or `v`, or the empty string.
+    ///
+    /// `v` and the empty string indicate that no space occurs between the type and
+    /// the major version in the source.
+    pub version_type: &'a str,
+    /// The major version.
+    pub major: &'a str,
+    /// The minor version, separated from the major version by a dot (`.`).
+    pub minor: Option<&'a str>,
+    /// A prefix appearing before the version type, separated by a space, if any.
+    pub prefix: Option<&'a str>,
+    /// Suffixes appearing after the version number, if any.
+    pub suffixes: Option<Vec<&'a str>>,
+    /// The separator appearing before this version's type or prefix, if any.
+    pub separator: Option<&'a str>,
+}
+
+/// A language parsed from a No-Intro language flag.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct NoIntroLanguage<'a> {
+    /// The language code.
+    pub code: &'a str,
+    /// The language variant code, separated from the language code by a hyphen (`-`), if any.
+    pub variant: Option<&'a str>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -159,17 +172,26 @@ impl Display for NoIntroName<'_> {
                 NoIntroToken::Title(title) => {
                     buf.push_str(title);
                 }
-                NoIntroToken::Region(rstrs, _) => {
+                NoIntroToken::Region {
+                    region_strings: rstrs,
+                    regions: _,
+                } => {
                     buf.push_str(" (");
                     buf.push_str(&rstrs.join(", "));
                     buf.push(')');
                 }
-                NoIntroToken::Flag(FlagType::Parenthesized, f) => {
+                NoIntroToken::Flag {
+                    flag_type: FlagType::Parenthesized,
+                    flag: f,
+                } => {
                     buf.push_str(" (");
                     buf.push_str(f);
                     buf.push(')')
                 }
-                NoIntroToken::Flag(FlagType::Bracketed, f) => {
+                NoIntroToken::Flag {
+                    flag_type: FlagType::Bracketed,
+                    flag: f,
+                } => {
                     buf.push_str(" [");
                     buf.push_str(f);
                     buf.push(')');
@@ -178,32 +200,35 @@ impl Display for NoIntroName<'_> {
                 NoIntroToken::Version(versions) => {
                     buf.push_str(" (");
 
-                    for (ver, major, minor, prefix, suffixes, sep) in versions {
-                        if let Some(sep) = sep {
-                            buf.push_str(sep);
+                    for version in versions {
+                        if let Some(separator) = version.separator {
+                            buf.push_str(separator);
                         }
-                        if let Some(prefix) = prefix {
+                        if let Some(prefix) = version.prefix {
                             buf.push_str(prefix);
                             buf.push(' ');
                         }
-                        buf.push_str(ver);
-                        if ver != &"" && ver != &"v" {
+                        buf.push_str(version.version_type);
+                        if version.version_type != "" && version.version_type != "v" {
                             buf.push(' ');
                         }
 
-                        buf.push_str(major);
-                        if let Some(minor) = minor {
+                        buf.push_str(version.major);
+                        if let Some(minor) = version.minor {
                             buf.push('.');
                             buf.push_str(minor);
                         }
 
-                        if let Some(suffixes) = suffixes {
+                        if let Some(suffixes) = &version.suffixes {
                             buf.push_str(&suffixes.join(" "));
                         }
                     }
                     buf.push(')')
                 }
-                NoIntroToken::Release(beta, num) => {
+                NoIntroToken::Release {
+                    status: beta,
+                    number: num,
+                } => {
                     buf.push_str(" (");
                     buf.push_str(beta);
                     if let Some(num) = num {
@@ -212,14 +237,20 @@ impl Display for NoIntroName<'_> {
                     }
                     buf.push(')');
                 }
-                NoIntroToken::Media(part, num) => {
+                NoIntroToken::Media {
+                    media_type: part,
+                    number: num,
+                } => {
                     buf.push_str(" (");
                     buf.push_str(part);
                     buf.push(' ');
                     buf.push_str(num);
                     buf.push(')');
                 }
-                NoIntroToken::Scene(num, prefix) => {
+                NoIntroToken::Scene {
+                    number: num,
+                    prefix,
+                } => {
                     if let Some(prefix) = prefix {
                         buf.push_str(prefix)
                     }
@@ -229,11 +260,11 @@ impl Display for NoIntroName<'_> {
                 NoIntroToken::Languages(langs) => {
                     buf.push_str(" (");
 
-                    for (lang, tag) in langs.iter() {
-                        buf.push_str(lang);
-                        if let Some(tag) = tag {
+                    for language in langs {
+                        buf.push_str(language.code);
+                        if let Some(variant) = language.variant {
                             buf.push('-');
-                            buf.push_str(tag);
+                            buf.push_str(variant);
                         }
                         buf.push(',')
                     }

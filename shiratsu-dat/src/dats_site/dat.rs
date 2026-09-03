@@ -42,7 +42,7 @@ impl From<Rom> for RomEntry {
         rom.md5.make_ascii_lowercase();
         rom.crc.make_ascii_lowercase();
         rom.sha1.make_ascii_lowercase();
-        
+
         RomEntry {
             md5: Some(rom.md5),
             sha1: Some(rom.sha1),
@@ -61,5 +61,14 @@ wrap_error! {
     }
 }
 
-make_parse!("Collectors Love It - The Custom Dats", Game, DatsSiteParserError);
-make_from!("Collectors Love It - The Custom DATs", "http://dats.site/", DatsSite, dats_site);
+make_parse!(
+    "Collectors Love It - The Custom Dats",
+    Game,
+    DatsSiteParserError
+);
+make_from!(
+    "Collectors Love It - The Custom DATs",
+    "http://dats.site/",
+    DatsSite,
+    dats_site
+);

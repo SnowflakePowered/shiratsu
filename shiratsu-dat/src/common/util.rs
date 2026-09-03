@@ -41,7 +41,6 @@ macro_rules! wrap_error {
 
 macro_rules! make_parse {
     ($hp: literal, $game: ty, $error: ty) => {
-
         use crate::xml::*;
         use crate::*;
 
@@ -62,13 +61,11 @@ macro_rules! make_parse {
         }
 
         fn parse_buf<R: std::io::BufRead>(f: R) -> Result<Vec<Result<GameEntry>>> {
-            Ok(
-                parse_dat_buf::<R, $game, $error>(f, Some($hp))?
-                    .game
-                    .into_iter()
-                    .map(|g| g.try_into())
-                    .collect(),
-            )
+            Ok(parse_dat_buf::<R, $game, $error>(f, Some($hp))?
+                .game
+                .into_iter()
+                .map(|g| g.try_into())
+                .collect())
         }
         fn parse_unchecked_buf<R: std::io::BufRead>(f: R) -> Result<Vec<Result<GameEntry>>> {
             Ok(parse_dat_unchecked_buf::<R, $game, $error>(f)?
@@ -77,7 +74,7 @@ macro_rules! make_parse {
                 .map(|g| g.try_into())
                 .collect())
         }
-    }
+    };
 }
 
 macro_rules! make_from {
@@ -207,7 +204,6 @@ fn move_articles(title: &mut String, articles: &[Article]) {
     }
 }
 
-
 /// Mutates the provided title so that the first article encountered
 /// comes at the beginning of the string, if it is somewhere after a comma.
 ///
@@ -230,13 +226,11 @@ pub(crate) fn replace_hyphen_mut(title: &mut String) {
 }
 
 #[cfg(test)]
-mod tests
-{
+mod tests {
     use crate::common::util::replace_hyphen_mut;
 
     #[test]
-    fn test_replace_hyphen()
-    {
+    fn test_replace_hyphen() {
         let mut s = String::from("Hello - World - Foo - Bar");
         replace_hyphen_mut(&mut s);
         assert_eq!(s, String::from("Hello: World: Foo: Bar"));

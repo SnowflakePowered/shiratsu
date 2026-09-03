@@ -1,10 +1,10 @@
-use shiratsu_naming::region::Region;
-use crate::DevelopmentStatus;
-use shiratsu_naming::naming::{NamingConvention, FlagType, TokenizedName};
-use shiratsu_naming::naming::nointro::*;
 use crate::common::util::{move_default_articles_mut, replace_hyphen_mut};
+use crate::DevelopmentStatus;
 use shiratsu_naming::naming::goodtools::*;
+use shiratsu_naming::naming::nointro::*;
 use shiratsu_naming::naming::tosec::*;
+use shiratsu_naming::naming::{FlagType, NamingConvention, TokenizedName};
+use shiratsu_naming::region::Region;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct NameInfo {
@@ -63,22 +63,21 @@ impl NameInfo {
     }
 }
 
-pub trait ToNameInfo
-{
+pub trait ToNameInfo {
     /// Creates a new `NameInfo` object from the name data.
     fn to_name_info(&self) -> NameInfo;
 }
 
 impl<'a, T> From<T> for NameInfo
-    where T: ToNameInfo
+where
+    T: ToNameInfo,
 {
     fn from(name: T) -> Self {
         name.to_name_info()
     }
 }
 
-impl <'a> ToNameInfo for NoIntroName<'a>
-{
+impl<'a> ToNameInfo for NoIntroName<'a> {
     fn to_name_info(&self) -> NameInfo {
         let mut name = NameInfo {
             entry_title: "".to_string(),
@@ -93,33 +92,64 @@ impl <'a> ToNameInfo for NoIntroName<'a>
             naming_convention: NamingConvention::NoIntro,
         };
 
-        for token in self.iter()
-        {
+        for token in self.iter() {
             match &token {
-                NoIntroToken::Title(title) => {
-                    name.entry_title = title.to_string()
+                NoIntroToken::Title(title) => name.entry_title = title.to_string(),
+                NoIntroToken::Flag {
+                    flag_type: _,
+                    flag: "Kiosk",
                 }
-                NoIntroToken::Flag(_, "Kiosk")
-                | NoIntroToken::Flag(_, "Kiosk Demo")
-                | NoIntroToken::Flag(_, "Bonus Game")
-                | NoIntroToken::Flag(_, "Taikenban Sample ROM")
-                | NoIntroToken::Release("Demo", _)
-                | NoIntroToken::Release("Sample", _) => {
-                    name.is_demo = true
+                | NoIntroToken::Flag {
+                    flag_type: _,
+                    flag: "Kiosk Demo",
                 }
-                NoIntroToken::Release("Beta", _) => { name.status = DevelopmentStatus::Prerelease }
-                NoIntroToken::Release("Proto", _) => { name.status = DevelopmentStatus::Prototype }
-                NoIntroToken::Flag(_, "Unl") => { name.is_unlicensed = true }
-                NoIntroToken::Version(versions) => {
-                    match versions.first() {
-                        Some((_, major, None, _, _, _)) => { name.version = Some(major.to_string()) }
-                        Some((_, major, Some(minor), _, _, _)) => { name.version = Some(format!("{}.{}", major, minor)) }
-                        _ => {}
-                    }
+                | NoIntroToken::Flag {
+                    flag_type: _,
+                    flag: "Bonus Game",
                 }
-                NoIntroToken::Media(_, part) => { name.part_number = part.parse::<i32>().ok() }
-                NoIntroToken::Region(_, region) => { name.region = region.clone() }
-                NoIntroToken::Flag(_, "BIOS") => { name.is_system = true }
+                | NoIntroToken::Flag {
+                    flag_type: _,
+                    flag: "Taikenban Sample ROM",
+                }
+                | NoIntroToken::Release {
+                    status: "Demo",
+                    number: _,
+                }
+                | NoIntroToken::Release {
+                    status: "Sample",
+                    number: _,
+                } => name.is_demo = true,
+                NoIntroToken::Release {
+                    status: "Beta",
+                    number: _,
+                } => name.status = DevelopmentStatus::Prerelease,
+                NoIntroToken::Release {
+                    status: "Proto",
+                    number: _,
+                } => name.status = DevelopmentStatus::Prototype,
+                NoIntroToken::Flag {
+                    flag_type: _,
+                    flag: "Unl",
+                } => name.is_unlicensed = true,
+                NoIntroToken::Version(versions) => match versions.first() {
+                    Some(version) => match version.minor {
+                        Some(minor) => name.version = Some(format!("{}.{}", version.major, minor)),
+                        None => name.version = Some(version.major.to_string()),
+                    },
+                    _ => {}
+                },
+                NoIntroToken::Media {
+                    media_type: _,
+                    number: part,
+                } => name.part_number = part.parse::<i32>().ok(),
+                NoIntroToken::Region {
+                    region_strings: _,
+                    regions: region,
+                } => name.region = region.clone(),
+                NoIntroToken::Flag {
+                    flag_type: _,
+                    flag: "BIOS",
+                } => name.is_system = true,
                 _ => {}
             }
         }
@@ -133,9 +163,7 @@ impl <'a> ToNameInfo for NoIntroName<'a>
     }
 }
 
-
-impl <'a> ToNameInfo for GoodToolsName<'a>
-{
+impl<'a> ToNameInfo for GoodToolsName<'a> {
     fn to_name_info(&self) -> NameInfo {
         let mut name = NameInfo {
             entry_title: "".to_string(),
@@ -152,22 +180,48 @@ impl <'a> ToNameInfo for GoodToolsName<'a>
         for token in self.iter() {
             match token {
                 GoodToolsToken::Title(t) => name.entry_title = t.to_string(),
-                GoodToolsToken::Region(_, region) => name.region = region.clone(),
-                GoodToolsToken::Version(_, major, Some(minor)) =>
-                    name.version = Some(format!("{}.{}", major, minor)),
-                GoodToolsToken::Version(_, major, _) =>
-                    name.version = Some(major.to_string()),
-                GoodToolsToken::Flag(FlagType::Parenthesized, "Unl")
-                => name.is_unlicensed = true,
-                GoodToolsToken::Flag(FlagType::Parenthesized, "Kiosk Demo")
-                | GoodToolsToken::Flag(FlagType::Parenthesized, "Demo")
-                => name.is_demo = true,
-                GoodToolsToken::Flag(FlagType::Parenthesized, "Beta")
-                | GoodToolsToken::Flag(FlagType::Parenthesized, "Alpha")
-                | GoodToolsToken::Flag(FlagType::Parenthesized, "Pre-Release")
-                => name.status = DevelopmentStatus::Prerelease,
-                GoodToolsToken::Flag(FlagType::Parenthesized, "Prototype")
-                => name.status = DevelopmentStatus::Prototype,
+                GoodToolsToken::Region {
+                    region_strings: _,
+                    regions: region,
+                } => name.region = region.clone(),
+                GoodToolsToken::Version {
+                    prefix: _,
+                    major,
+                    minor: Some(minor),
+                } => name.version = Some(format!("{}.{}", major, minor)),
+                GoodToolsToken::Version {
+                    prefix: _,
+                    major,
+                    minor: _,
+                } => name.version = Some(major.to_string()),
+                GoodToolsToken::Flag {
+                    flag_type: FlagType::Parenthesized,
+                    flag: "Unl",
+                } => name.is_unlicensed = true,
+                GoodToolsToken::Flag {
+                    flag_type: FlagType::Parenthesized,
+                    flag: "Kiosk Demo",
+                }
+                | GoodToolsToken::Flag {
+                    flag_type: FlagType::Parenthesized,
+                    flag: "Demo",
+                } => name.is_demo = true,
+                GoodToolsToken::Flag {
+                    flag_type: FlagType::Parenthesized,
+                    flag: "Beta",
+                }
+                | GoodToolsToken::Flag {
+                    flag_type: FlagType::Parenthesized,
+                    flag: "Alpha",
+                }
+                | GoodToolsToken::Flag {
+                    flag_type: FlagType::Parenthesized,
+                    flag: "Pre-Release",
+                } => name.status = DevelopmentStatus::Prerelease,
+                GoodToolsToken::Flag {
+                    flag_type: FlagType::Parenthesized,
+                    flag: "Prototype",
+                } => name.status = DevelopmentStatus::Prototype,
                 _ => {}
             }
         }
@@ -181,9 +235,7 @@ impl <'a> ToNameInfo for GoodToolsName<'a>
     }
 }
 
-
-impl <'a> ToNameInfo for TOSECName<'a>
-{
+impl<'a> ToNameInfo for TOSECName<'a> {
     fn to_name_info(&self) -> NameInfo {
         let mut name = NameInfo {
             entry_title: "".to_string(),
@@ -198,23 +250,20 @@ impl <'a> ToNameInfo for TOSECName<'a>
             naming_convention: NamingConvention::TOSEC,
         };
 
-        for token in self.iter()
-        {
+        for token in self.iter() {
             match token {
-                TOSECToken::Title(title) => {
-                    name.entry_title = title.to_string()
-                }
-                TOSECToken::Region(_, regions) => {
-                    name.region = regions.clone()
-                }
+                TOSECToken::Title(title) => name.entry_title = title.to_string(),
+                TOSECToken::Region {
+                    region_strings: _,
+                    regions,
+                } => name.region = regions.clone(),
                 TOSECToken::Media(parts) => {
-                    if let Some(parts) = parts.first()
-                    {
-                        if parts.0 != "Side" {
-                            name.part_number = parts.1.parse::<i32>().ok()
+                    if let Some(part) = parts.first() {
+                        if part.media_type != "Side" {
+                            name.part_number = part.number.parse::<i32>().ok()
                         } else {
                             // Match Side A and B
-                            match parts.1 {
+                            match part.number {
                                 "A" => name.part_number = Some(1),
                                 "B" => name.part_number = Some(2),
                                 _ => {}
@@ -222,34 +271,31 @@ impl <'a> ToNameInfo for TOSECName<'a>
                         }
                     }
                 }
-                TOSECToken::Version(_, major, minor) => {
-                    match minor {
-                        None => { name.version = Some(major.to_string()) }
-                        Some(minor) => { name.version = Some(format!("{}.{}", major, minor)) }
-                    }
-                }
-                TOSECToken::DumpInfo("p", _, _) => {
-                    name.is_unlicensed = true
-                }
-                TOSECToken::Demo(_) => {
-                    name.is_demo = true
-                }
+                TOSECToken::Version {
+                    version_type: _,
+                    major,
+                    minor,
+                } => match minor {
+                    None => name.version = Some(major.to_string()),
+                    Some(minor) => name.version = Some(format!("{}.{}", major, minor)),
+                },
+                TOSECToken::DumpInfo {
+                    code: "p",
+                    number: _,
+                    info: _,
+                } => name.is_unlicensed = true,
+                TOSECToken::Demo(_) => name.is_demo = true,
                 TOSECToken::Development("proto")
                 | TOSECToken::Development("Proto")
                 | TOSECToken::Development("Prototype") => {
                     name.status = DevelopmentStatus::Prototype
                 }
-                TOSECToken::Development(_) => {
-                    name.status = DevelopmentStatus::Prerelease
-                }
+                TOSECToken::Development(_) => name.status = DevelopmentStatus::Prerelease,
                 _ => {}
-
             }
         }
 
-        if name.entry_title.ends_with("BIOS")
-            || name.entry_title.ends_with("System Software")
-        {
+        if name.entry_title.ends_with("BIOS") || name.entry_title.ends_with("System Software") {
             name.is_system = true;
         }
 
@@ -261,4 +307,3 @@ impl <'a> ToNameInfo for TOSECName<'a>
         name
     }
 }
-

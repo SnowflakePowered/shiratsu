@@ -4,9 +4,9 @@ use console::style;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use lazy_static::lazy_static;
 use rusqlite::backup::Progress;
+use shiratsu_dat::DatError;
 use shiratsu_naming::naming::NameError;
 use slog::{error, info, warn};
-use shiratsu_dat::DatError;
 
 lazy_static! {
     static ref SAVE_PB: ProgressBar = ProgressBar::hidden();

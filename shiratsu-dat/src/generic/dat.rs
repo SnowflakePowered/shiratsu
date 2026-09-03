@@ -42,7 +42,7 @@ impl From<Rom> for RomEntry {
         rom.md5.make_ascii_lowercase();
         rom.crc.make_ascii_lowercase();
         rom.sha1.make_ascii_lowercase();
-        
+
         RomEntry {
             md5: Some(rom.md5),
             sha1: Some(rom.sha1),
@@ -79,7 +79,6 @@ fn parse_unchecked_buf<R: std::io::BufRead>(f: R) -> Result<Vec<Result<GameEntry
 
 /// Provides methods that parse XML .dat files
 pub trait FromGeneric {
-
     /// Parses the contents of a generic DAT XML
     fn try_from_str(dat: &str) -> Result<Vec<Result<GameEntry>>>;
 

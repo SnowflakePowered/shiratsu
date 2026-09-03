@@ -30,7 +30,10 @@ fn parse_goodtools_region_tag(input: &str) -> IResult<&str, Vec<TOSECToken>> {
         input,
         vec![
             TOSECToken::Warning(TOSECWarn::GoodToolsRegionCode(region_inner)),
-            TOSECToken::Region(strs, regions),
+            TOSECToken::Region {
+                region_strings: strs,
+                regions,
+            },
         ],
     ))
 }
@@ -44,7 +47,14 @@ fn parse_dumpinfo_tag<'a>(
         let (input, index) = opt(take_while1(|c: char| c.is_ascii_digit()))(input)?;
         let (input, params) = opt(preceded(char(' '), take_till1(|c| c == ']')))(input)?;
         let (input, _) = tag("]")(input)?;
-        Ok((input, TOSECToken::DumpInfo(infotag, index, params)))
+        Ok((
+            input,
+            TOSECToken::DumpInfo {
+                code: infotag,
+                number: index,
+                info: params,
+            },
+        ))
     }
 }
 
@@ -115,7 +125,11 @@ fn parse_date(input: &str) -> IResult<&str, Vec<TOSECToken>> {
             input,
             vec![
                 TOSECToken::Warning(TOSECWarn::UndelimitedDate(datestr)),
-                TOSECToken::Date(year, Some(month), Some(day)),
+                TOSECToken::Date {
+                    year,
+                    month: Some(month),
+                    day: Some(day),
+                },
             ],
         ))
     }
@@ -157,7 +171,7 @@ fn parse_date(input: &str) -> IResult<&str, Vec<TOSECToken>> {
         }
     }
 
-    parses.push(TOSECToken::Date(year, month, day));
+    parses.push(TOSECToken::Date { year, month, day });
     Ok((input, parses))
 }
 
@@ -174,25 +188,29 @@ fn parse_region(input: &str) -> IResult<&str, (Vec<&str>, Vec<Region>)> {
 fn parse_region_tag(input: &str) -> IResult<&str, TOSECToken> {
     let (input, region_inner) = in_parens(is_not(")"))(input)?;
     let (_, (strs, regions)) = parse_region(region_inner)?;
-    Ok((input, TOSECToken::Region(strs, regions)))
+    Ok((
+        input,
+        TOSECToken::Region {
+            region_strings: strs,
+            regions,
+        },
+    ))
 }
 
 make_parens_tag!(parse_publisher_tag, parse_publisher, TOSECToken);
 fn parse_publisher(input: &str) -> IResult<&str, TOSECToken> {
-
-   fn parse_dash_publisher(input: &str) -> IResult<&str, &str> {
-       let (input, _) = char('-')(input)?;
-       let (input, rest) = take_until("-")(input)?;
-       let (input, _) = char('-')(input)?;
-       Ok((input, rest))
-   }
-
-    if let Ok((input, (value, _))) = consumed(parse_dash_publisher)(input) {
-        return Ok((input, TOSECToken::Publisher(Some(vec![value]))))
+    fn parse_dash_publisher(input: &str) -> IResult<&str, &str> {
+        let (input, _) = char('-')(input)?;
+        let (input, rest) = take_until("-")(input)?;
+        let (input, _) = char('-')(input)?;
+        Ok((input, rest))
     }
 
-    if let Ok((input, _)) = char::<&str, nom::error::Error<&str>>('-')
-        (input) {
+    if let Ok((input, (value, _))) = consumed(parse_dash_publisher)(input) {
+        return Ok((input, TOSECToken::Publisher(Some(vec![value]))));
+    }
+
+    if let Ok((input, _)) = char::<&str, nom::error::Error<&str>>('-')(input) {
         return Ok((input, TOSECToken::Publisher(None)));
     }
 
@@ -233,7 +251,7 @@ fn parse_language(input: &str) -> IResult<&str, TOSECToken> {
 
 make_parens_tag!(parse_media_tag, parse_media, TOSECToken);
 fn parse_media(input: &str) -> IResult<&str, TOSECToken> {
-    fn parse_single_part(input: &str) -> IResult<&str, (&str, &str, Option<&str>)> {
+    fn parse_single_part(input: &str) -> IResult<&str, TOSECMedia> {
         let (input, ty) = alt((
             tag("Disk"),
             tag("Disc"),
@@ -247,14 +265,28 @@ fn parse_media(input: &str) -> IResult<&str, TOSECToken> {
             tag(" of "),
             take_while(|c: char| c.is_ascii_alphanumeric() || c == '-'),
         ))(input)?;
-        Ok((input, (ty, part, total)))
+        Ok((
+            input,
+            TOSECMedia {
+                media_type: ty,
+                number: part,
+                total,
+            },
+        ))
     }
 
-    fn parse_side(input: &str) -> IResult<&str, (&str, &str, Option<&str>)> {
+    fn parse_side(input: &str) -> IResult<&str, TOSECMedia> {
         let (input, sidetag) = tag("Side")(input)?;
         let (input, side) =
             preceded(char(' '), take_while(|c: char| c.is_ascii_alphanumeric()))(input)?;
-        Ok((input, (sidetag, side, None)))
+        Ok((
+            input,
+            TOSECMedia {
+                media_type: sidetag,
+                number: side,
+                total: None,
+            },
+        ))
     }
 
     let mut parts = Vec::new();
@@ -379,14 +411,26 @@ fn parse_parens_tag(input: &str) -> IResult<&str, TOSECToken> {
     let (input, _) = tag("(")(input)?;
     let (input, add_tag) = take_till1(|c: char| c == ')')(input)?;
     let (input, _) = tag(")")(input)?;
-    Ok((input, TOSECToken::Flag(FlagType::Parenthesized, add_tag)))
+    Ok((
+        input,
+        TOSECToken::Flag {
+            flag_type: FlagType::Parenthesized,
+            flag: add_tag,
+        },
+    ))
 }
 
 fn parse_moreinfo_tag(input: &str) -> IResult<&str, TOSECToken> {
     let (input, _) = tag("[")(input)?;
     let (input, add_tag) = take_till1(|c: char| c == ']')(input)?;
     let (input, _) = tag("]")(input)?;
-    Ok((input, TOSECToken::Flag(FlagType::Bracketed, add_tag)))
+    Ok((
+        input,
+        TOSECToken::Flag {
+            flag_type: FlagType::Bracketed,
+            flag: add_tag,
+        },
+    ))
 }
 
 fn parse_version_tag(input: &str) -> IResult<&str, Vec<TOSECToken>> {
@@ -402,7 +446,14 @@ fn parse_version_string(input: &str) -> IResult<&str, TOSECToken> {
         let (input, rev) = tag("Rev")(input)?;
         let (input, _) = char(' ')(input)?;
         let (input, version) = take_while(|c: char| c.is_ascii_alphanumeric())(input)?;
-        Ok((input, TOSECToken::Version(rev, version, None)))
+        Ok((
+            input,
+            TOSECToken::Version {
+                version_type: rev,
+                major: version,
+                minor: None,
+            },
+        ))
     }
 
     fn parse_version(input: &str) -> IResult<&str, TOSECToken> {
@@ -422,7 +473,14 @@ fn parse_version_string(input: &str) -> IResult<&str, TOSECToken> {
                 ErrorKind::TakeWhile1,
             )));
         }
-        Ok((input, TOSECToken::Version(v, major, minor)))
+        Ok((
+            input,
+            TOSECToken::Version {
+                version_type: v,
+                major,
+                minor,
+            },
+        ))
     }
 
     let (input, version) = alt((parse_revision, parse_version))(input)?;
@@ -778,10 +836,21 @@ mod test {
                 "",
                 vec![
                     TOSECToken::Title("Loopz"),
-                    TOSECToken::Version("v", "0", Some("06")),
-                    TOSECToken::Date("19xx", None, None),
+                    TOSECToken::Version {
+                        version_type: "v",
+                        major: "0",
+                        minor: Some("06")
+                    },
+                    TOSECToken::Date {
+                        year: "19xx",
+                        month: None,
+                        day: None
+                    },
                     TOSECToken::Publisher(None),
-                    TOSECToken::Region(vec!["US"], vec![Region::UnitedStates]),
+                    TOSECToken::Region {
+                        region_strings: vec!["US"],
+                        regions: vec![Region::UnitedStates]
+                    },
                     TOSECToken::Development("beta")
                 ]
                 .into()
@@ -800,19 +869,35 @@ mod test {
                     vec![
                         vec![
                             TOSECToken::Title("Amidar"),
-                            TOSECToken::Date("19xx", None, None),
+                            TOSECToken::Date {
+                                year: "19xx",
+                                month: None,
+                                day: None
+                            },
                             TOSECToken::Publisher(Some(vec!["Devstudio"]))
                         ],
                         vec![
                             TOSECToken::Title("Amigos"),
-                            TOSECToken::Date("1987", None, None),
+                            TOSECToken::Date {
+                                year: "1987",
+                                month: None,
+                                day: None
+                            },
                             TOSECToken::Publisher(Some(vec!["Mr. Tosec"]))
                         ],
                     ],
                     vec![
                         TOSECToken::Copyright("PD"),
-                        TOSECToken::Media(vec![("Disk", "1", Some("2"))]),
-                        TOSECToken::DumpInfo("a", None, None)
+                        TOSECToken::Media(vec![TOSECMedia {
+                            media_type: "Disk",
+                            number: "1",
+                            total: Some("2")
+                        }]),
+                        TOSECToken::DumpInfo {
+                            code: "a",
+                            number: None,
+                            info: None
+                        }
                     ]
                 )
             ))
@@ -831,12 +916,22 @@ mod test {
                     TOSECToken::Warning(TOSECWarn::MissingDate),
                     TOSECToken::Warning(TOSECWarn::MissingPublisher),
                     TOSECToken::Warning(TOSECWarn::GoodToolsRegionCode("U")),
-                    TOSECToken::Region(vec!["U"], vec![Region::UnitedStates]),
+                    TOSECToken::Region {
+                        region_strings: vec!["U"],
+                        regions: vec![Region::UnitedStates]
+                    },
                     TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
-                    TOSECToken::Flag(FlagType::Parenthesized, "CES Version"),
+                    TOSECToken::Flag {
+                        flag_type: FlagType::Parenthesized,
+                        flag: "CES Version"
+                    },
                     TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
                     TOSECToken::Warning(TOSECWarn::VersionInFlag),
-                    TOSECToken::Version("v", "3", Some("0"))
+                    TOSECToken::Version {
+                        version_type: "v",
+                        major: "3",
+                        minor: Some("0")
+                    }
                 ]
             ))
         );
@@ -851,7 +946,11 @@ mod test {
                     TOSECToken::Warning(TOSECWarn::MissingDate),
                     TOSECToken::Warning(TOSECWarn::MissingPublisher),
                     TOSECToken::Warning(TOSECWarn::VersionInFlag),
-                    TOSECToken::Version("Rev", "20040529", None),
+                    TOSECToken::Version {
+                        version_type: "Rev",
+                        major: "20040529",
+                        minor: None
+                    },
                     TOSECToken::Warning(TOSECWarn::MalformedDevelopmentStatus("Beta")),
                     TOSECToken::Development("Beta")
                 ]
@@ -868,13 +967,20 @@ mod test {
                     TOSECToken::Warning(TOSECWarn::MissingDate),
                     TOSECToken::Warning(TOSECWarn::MissingPublisher),
                     TOSECToken::Warning(TOSECWarn::GoodToolsRegionCode("U")),
-                    TOSECToken::Region(vec!["U"], vec![Region::UnitedStates]),
+                    TOSECToken::Region {
+                        region_strings: vec!["U"],
+                        regions: vec![Region::UnitedStates]
+                    },
                     TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
                     TOSECToken::Warning(TOSECWarn::MalformedDevelopmentStatus("Beta")),
                     TOSECToken::Development("Beta"),
                     TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
                     TOSECToken::Warning(TOSECWarn::VersionInFlag),
-                    TOSECToken::Version("v", "0", Some("06"))
+                    TOSECToken::Version {
+                        version_type: "v",
+                        major: "0",
+                        minor: Some("06")
+                    }
                 ]
             ))
         );
@@ -886,7 +992,11 @@ mod test {
                 vec![
                     TOSECToken::Warning(TOSECWarn::ZZZUnknown),
                     TOSECToken::Title("Tron 6 fun"),
-                    TOSECToken::Version("v", "0", Some("15")),
+                    TOSECToken::Version {
+                        version_type: "v",
+                        major: "0",
+                        minor: Some("15")
+                    },
                     TOSECToken::Warning(TOSECWarn::MissingDate),
                     TOSECToken::Warning(TOSECWarn::MissingPublisher)
                 ]
@@ -900,7 +1010,11 @@ mod test {
                 vec![
                     TOSECToken::Warning(TOSECWarn::ZZZUnknown),
                     TOSECToken::Title("Poker Game 512"),
-                    TOSECToken::Date("2005", Some("06"), Some("20")),
+                    TOSECToken::Date {
+                        year: "2005",
+                        month: Some("06"),
+                        day: Some("20")
+                    },
                     TOSECToken::Warning(TOSECWarn::MissingPublisher)
                 ]
             ))
@@ -915,7 +1029,10 @@ mod test {
                     TOSECToken::Title("rapide_racer"),
                     TOSECToken::Warning(TOSECWarn::MissingDate),
                     TOSECToken::Warning(TOSECWarn::MissingPublisher),
-                    TOSECToken::Flag(FlagType::Bracketed, "lyx")
+                    TOSECToken::Flag {
+                        flag_type: FlagType::Bracketed,
+                        flag: "lyx"
+                    }
                 ]
             ))
         );
@@ -928,7 +1045,11 @@ mod test {
                     TOSECToken::Warning(TOSECWarn::ZZZUnknown),
                     TOSECToken::Title("Befok#Packraw"),
                     TOSECToken::Warning(TOSECWarn::UndelimitedDate("20021012")),
-                    TOSECToken::Date("2002", Some("10"), Some("12")),
+                    TOSECToken::Date {
+                        year: "2002",
+                        month: Some("10"),
+                        day: Some("12")
+                    },
                     TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
                     TOSECToken::Warning(TOSECWarn::ByPublisher),
                     TOSECToken::Publisher(Some(vec!["Jum Hig"])),
@@ -995,7 +1116,10 @@ mod test {
                     TOSECToken::Warning(TOSECWarn::MissingDate),
                     TOSECToken::Warning(TOSECWarn::MissingPublisher),
                     TOSECToken::Warning(TOSECWarn::GoodToolsRegionCode("U")),
-                    TOSECToken::Region(vec!["U"], vec![Region::UnitedStates]),
+                    TOSECToken::Region {
+                        region_strings: vec!["U"],
+                        regions: vec![Region::UnitedStates]
+                    },
                     TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
                     TOSECToken::Warning(TOSECWarn::MalformedDevelopmentStatus("Beta")),
                     TOSECToken::Development("Beta")
@@ -1016,7 +1140,11 @@ mod test {
                     TOSECToken::Warning(TOSECWarn::PublisherBeforeDate),
                     TOSECToken::Warning(TOSECWarn::ByPublisher),
                     TOSECToken::Publisher(Some(vec!["Schick, Bastian"])),
-                    TOSECToken::Date("199x", None, None),
+                    TOSECToken::Date {
+                        year: "199x",
+                        month: None,
+                        day: None
+                    },
                     TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
                     TOSECToken::Copyright("PD")
                 ]
@@ -1034,7 +1162,11 @@ mod test {
                     TOSECToken::Warning(TOSECWarn::PublisherBeforeDate),
                     TOSECToken::Warning(TOSECWarn::ByPublisher),
                     TOSECToken::Publisher(Some(vec!["Domin, Matthias"])),
-                    TOSECToken::Date("2001", None, None),
+                    TOSECToken::Date {
+                        year: "2001",
+                        month: None,
+                        day: None
+                    },
                     TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
                     TOSECToken::Copyright("PD")
                 ]
@@ -1056,7 +1188,11 @@ mod test {
                     TOSECToken::Warning(TOSECWarn::ZZZUnknown),
                     TOSECToken::Title("Befok#Packraw"),
                     TOSECToken::Warning(TOSECWarn::UndelimitedDate("20021012")),
-                    TOSECToken::Date("2002", Some("10"), Some("12")),
+                    TOSECToken::Date {
+                        year: "2002",
+                        month: Some("10"),
+                        day: Some("12")
+                    },
                     TOSECToken::Publisher(Some(vec!["Jum Hig"])),
                 ]
             ))
@@ -1071,9 +1207,16 @@ mod test {
                 "",
                 vec![
                     TOSECToken::Title("Segoin Demo Ikinä!"),
-                    TOSECToken::Date("2015", Some("03"), Some("28")),
+                    TOSECToken::Date {
+                        year: "2015",
+                        month: Some("03"),
+                        day: Some("28")
+                    },
                     TOSECToken::Publisher(Some(vec!["AirZero"])),
-                    TOSECToken::Region(vec!["FI"], vec![Region::Finland])
+                    TOSECToken::Region {
+                        region_strings: vec!["FI"],
+                        regions: vec![Region::Finland]
+                    }
                 ]
             ))
         )
@@ -1088,11 +1231,19 @@ mod test {
                 vec![
                     TOSECToken::Warning(TOSECWarn::ZZZUnknown),
                     TOSECToken::Title("Show King Tut"),
-                    TOSECToken::Date("1996", None, None),
+                    TOSECToken::Date {
+                        year: "1996",
+                        month: None,
+                        day: None
+                    },
                     TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
                     TOSECToken::Publisher(Some(vec!["Schick, Bastian"])),
                     TOSECToken::Warning(TOSECWarn::UnexpectedSpace),
-                    TOSECToken::DumpInfo("a", None, None)
+                    TOSECToken::DumpInfo {
+                        code: "a",
+                        number: None,
+                        info: None
+                    }
                 ]
             ))
         );
@@ -1107,7 +1258,11 @@ mod test {
                 vec![
                     TOSECToken::Warning(TOSECWarn::ZZZUnknown),
                     TOSECToken::Title("UNK But Ok"),
-                    TOSECToken::Date("199x", None, None),
+                    TOSECToken::Date {
+                        year: "199x",
+                        month: None,
+                        day: None
+                    },
                     TOSECToken::Publisher(None),
                 ]
             ))
@@ -1124,11 +1279,22 @@ mod test {
                 "",
                 vec![
                     TOSECToken::Title("Escape from the Mindmaster"),
-                    TOSECToken::Date("1982", None, None),
+                    TOSECToken::Date {
+                        year: "1982",
+                        month: None,
+                        day: None
+                    },
                     TOSECToken::Publisher(Some(vec!["Starpath"])),
                     TOSECToken::Video("PAL"),
-                    TOSECToken::Media(vec![("Part", "3", Some("4"))]),
-                    TOSECToken::Flag(FlagType::Bracketed, "Supercharger Cassette"),
+                    TOSECToken::Media(vec![TOSECMedia {
+                        media_type: "Part",
+                        number: "3",
+                        total: Some("4")
+                    }]),
+                    TOSECToken::Flag {
+                        flag_type: FlagType::Bracketed,
+                        flag: "Supercharger Cassette"
+                    },
                 ]
             ))
         );
@@ -1137,9 +1303,9 @@ mod test {
             Ok(("",
                 vec![
                     TOSECToken::Title("Dune - The Battle for Arrakis Demo Hack"),
-                    TOSECToken::Date("2009", Some("04"), Some("03")),
+                    TOSECToken::Date { year: "2009", month: Some("04"), day: Some("03") },
                     TOSECToken::Publisher(Some(vec!["Ti_"])),
-                    TOSECToken::DumpInfo("h", None, Some("Dune - The Battle for Arrakis")),]
+                    TOSECToken::DumpInfo { code: "h", number: None, info: Some("Dune - The Battle for Arrakis") },]
             ))
         );
 
@@ -1150,7 +1316,7 @@ mod test {
                     TOSECToken::Title("2600 Digital Clock - Demo 1"),
                     TOSECToken::Demo(None),
                     TOSECToken::Warning(TOSECWarn::MissingSpace),
-                    TOSECToken::Date("1997", Some("10"), Some("03")),
+                    TOSECToken::Date { year: "1997", month: Some("10"), day: Some("03") },
                     TOSECToken::Publisher(Some(vec!["Cracknell, Chris 'Crackers'"])),
                     TOSECToken::Video("NTSC"),
                     TOSECToken::Copyright("PD"),
@@ -1162,9 +1328,17 @@ mod test {
                 "",
                 vec![
                     TOSECToken::Title("Cube CD 20, The (40) - Testing"),
-                    TOSECToken::Version("v", "1", Some("203")),
+                    TOSECToken::Version {
+                        version_type: "v",
+                        major: "1",
+                        minor: Some("203")
+                    },
                     TOSECToken::Demo(None),
-                    TOSECToken::Date("2020", None, None),
+                    TOSECToken::Date {
+                        year: "2020",
+                        month: None,
+                        day: None
+                    },
                     TOSECToken::Publisher(Some(vec!["SomePublisher"])),
                 ]
             ))
@@ -1178,12 +1352,23 @@ mod test {
                 "",
                 vec![
                     TOSECToken::Title("Motocross & Pole Position"),
-                    TOSECToken::Version("Rev", "1", None),
+                    TOSECToken::Version {
+                        version_type: "Rev",
+                        major: "1",
+                        minor: None
+                    },
                     TOSECToken::Warning(TOSECWarn::MissingDate),
                     TOSECToken::Publisher(Some(vec!["Starsoft", "JVP"])),
                     TOSECToken::Video("PAL"),
-                    TOSECToken::DumpInfo("b", Some("1"), None),
-                    TOSECToken::Flag(FlagType::Bracketed, "possible unknown mode"),
+                    TOSECToken::DumpInfo {
+                        code: "b",
+                        number: Some("1"),
+                        info: None
+                    },
+                    TOSECToken::Flag {
+                        flag_type: FlagType::Bracketed,
+                        flag: "possible unknown mode"
+                    },
                 ]
             ))
         );
@@ -1196,8 +1381,15 @@ mod test {
                     TOSECToken::Warning(TOSECWarn::MissingDate),
                     TOSECToken::Publisher(Some(vec!["Starsoft", "JVP"])),
                     TOSECToken::Video("PAL"),
-                    TOSECToken::DumpInfo("b", Some("1"), None),
-                    TOSECToken::Flag(FlagType::Bracketed, "possible unknown mode"),
+                    TOSECToken::DumpInfo {
+                        code: "b",
+                        number: Some("1"),
+                        info: None
+                    },
+                    TOSECToken::Flag {
+                        flag_type: FlagType::Bracketed,
+                        flag: "possible unknown mode"
+                    },
                 ]
             ))
         );
@@ -1211,14 +1403,32 @@ mod test {
                     TOSECToken::Title("Bombsawa (Jumpman Selected levels)"),
                     TOSECToken::Warning(TOSECWarn::MissingSpace),
                     TOSECToken::Warning(TOSECWarn::MalformedDatePlaceholder("19XX")),
-                    TOSECToken::Date("19XX", None, None),
+                    TOSECToken::Date {
+                        year: "19XX",
+                        month: None,
+                        day: None
+                    },
                     TOSECToken::Publisher(None),
-                    TOSECToken::Region(vec!["JP"], vec![Region::Japan]),
+                    TOSECToken::Region {
+                        region_strings: vec!["JP"],
+                        regions: vec![Region::Japan]
+                    },
                     TOSECToken::Languages(TOSECLanguage::Single("ja")),
                     TOSECToken::Copyright("PD"),
-                    TOSECToken::DumpInfo("cr", Some("3"), Some("+test")),
-                    TOSECToken::DumpInfo("h", None, None),
-                    TOSECToken::Flag(FlagType::Bracketed, "test flag"),
+                    TOSECToken::DumpInfo {
+                        code: "cr",
+                        number: Some("3"),
+                        info: Some("+test")
+                    },
+                    TOSECToken::DumpInfo {
+                        code: "h",
+                        number: None,
+                        info: None
+                    },
+                    TOSECToken::Flag {
+                        flag_type: FlagType::Bracketed,
+                        flag: "test flag"
+                    },
                 ]
             ))
         );
@@ -1228,10 +1438,17 @@ mod test {
                 "",
                 vec![
                     TOSECToken::Title("Xevious"),
-                    TOSECToken::Date("1983", None, None),
+                    TOSECToken::Date {
+                        year: "1983",
+                        month: None,
+                        day: None
+                    },
                     TOSECToken::Publisher(Some(vec!["CCE"])),
                     TOSECToken::Video("NTSC"),
-                    TOSECToken::Region(vec!["BR"], vec![Region::Brazil]),
+                    TOSECToken::Region {
+                        region_strings: vec!["BR"],
+                        regions: vec![Region::Brazil]
+                    },
                 ]
             ))
         );
@@ -1242,22 +1459,35 @@ mod test {
                 "",
                 vec![
                     TOSECToken::Title("Mega Man III - Sample version"),
-                    TOSECToken::Date("1992", None, None),
+                    TOSECToken::Date {
+                        year: "1992",
+                        month: None,
+                        day: None
+                    },
                     TOSECToken::Publisher(Some(vec!["Capcom"])),
-                    TOSECToken::Region(vec!["US"], vec![Region::UnitedStates]),
+                    TOSECToken::Region {
+                        region_strings: vec!["US"],
+                        regions: vec![Region::UnitedStates]
+                    },
                 ]
             ))
         );
         assert_eq!(
-            do_parse(
-                "Deadeus v1.3.8 (2021-02-07)(-IZMA-)"
-            ),
+            do_parse("Deadeus v1.3.8 (2021-02-07)(-IZMA-)"),
             Ok((
                 "",
                 vec![
                     TOSECToken::Title("Deadeus"),
-                    TOSECToken::Version("v", "1", Some("3.8")),
-                    TOSECToken::Date("2021", Some("02"), Some("07")),
+                    TOSECToken::Version {
+                        version_type: "v",
+                        major: "1",
+                        minor: Some("3.8")
+                    },
+                    TOSECToken::Date {
+                        year: "2021",
+                        month: Some("02"),
+                        day: Some("07")
+                    },
                     TOSECToken::Publisher(Some(vec!["-IZMA-"])),
                 ]
             ))
@@ -1267,17 +1497,38 @@ mod test {
     fn test_parse_dumpinfo() {
         assert_eq!(
             parse_dumpinfo_tag("cr")("[cr]"),
-            Ok(("", TOSECToken::DumpInfo("cr", None, None)))
+            Ok((
+                "",
+                TOSECToken::DumpInfo {
+                    code: "cr",
+                    number: None,
+                    info: None
+                }
+            ))
         );
 
         assert_eq!(
             parse_dumpinfo_tag("cr")("[cr2]"),
-            Ok(("", TOSECToken::DumpInfo("cr", Some("2"), None)))
+            Ok((
+                "",
+                TOSECToken::DumpInfo {
+                    code: "cr",
+                    number: Some("2"),
+                    info: None
+                }
+            ))
         );
 
         assert_eq!(
             parse_dumpinfo_tag("cr")("[cr2 Crack]"),
-            Ok(("", TOSECToken::DumpInfo("cr", Some("2"), Some("Crack"))))
+            Ok((
+                "",
+                TOSECToken::DumpInfo {
+                    code: "cr",
+                    number: Some("2"),
+                    info: Some("Crack")
+                }
+            ))
         );
         assert_eq!(
             parse_dumpinfo_tag("cr")("[cr2Crack]"),
@@ -1288,7 +1539,11 @@ mod test {
             parse_dumpinfo_tag("cr")("[cr2 PDX - TRSi]"),
             Ok((
                 "",
-                TOSECToken::DumpInfo("cr", Some("2"), Some("PDX - TRSi"))
+                TOSECToken::DumpInfo {
+                    code: "cr",
+                    number: Some("2"),
+                    info: Some("PDX - TRSi")
+                }
             ))
         );
     }
@@ -1297,19 +1552,44 @@ mod test {
     fn test_parse_parts() {
         assert_eq!(
             parse_media("Disc 2 of 2"),
-            Ok(((""), TOSECToken::Media(vec![("Disc", "2", Some("2"))])))
+            Ok((
+                (""),
+                TOSECToken::Media(vec![TOSECMedia {
+                    media_type: "Disc",
+                    number: "2",
+                    total: Some("2")
+                }])
+            ))
         );
 
         assert_eq!(
             parse_media("Side B"),
-            Ok(((""), TOSECToken::Media(vec![("Side", "B", None)])))
+            Ok((
+                (""),
+                TOSECToken::Media(vec![TOSECMedia {
+                    media_type: "Side",
+                    number: "B",
+                    total: None
+                }])
+            ))
         );
 
         assert_eq!(
             parse_media("Disc 2 of 2 Side C"),
             Ok((
                 (""),
-                TOSECToken::Media(vec![("Disc", "2", Some("2")), ("Side", "C", None)])
+                TOSECToken::Media(vec![
+                    TOSECMedia {
+                        media_type: "Disc",
+                        number: "2",
+                        total: Some("2")
+                    },
+                    TOSECMedia {
+                        media_type: "Side",
+                        number: "C",
+                        total: None
+                    }
+                ])
             ))
         );
 
@@ -1317,7 +1597,18 @@ mod test {
             parse_media("Side 2 of 2 Side C"),
             Ok((
                 (""),
-                TOSECToken::Media(vec![("Side", "2", Some("2")), ("Side", "C", None)])
+                TOSECToken::Media(vec![
+                    TOSECMedia {
+                        media_type: "Side",
+                        number: "2",
+                        total: Some("2")
+                    },
+                    TOSECMedia {
+                        media_type: "Side",
+                        number: "C",
+                        total: None
+                    }
+                ])
             ))
         );
     }
@@ -1326,15 +1617,36 @@ mod test {
     fn test_parse_version() {
         assert_eq!(
             parse_version_string("v1.0a"),
-            Ok(((""), TOSECToken::Version("v", "1", Some("0a"))))
+            Ok((
+                (""),
+                TOSECToken::Version {
+                    version_type: "v",
+                    major: "1",
+                    minor: Some("0a")
+                }
+            ))
         );
         assert_eq!(
             parse_version_string("Rev 1b"),
-            Ok(((""), TOSECToken::Version("Rev", "1b", None)))
+            Ok((
+                (""),
+                TOSECToken::Version {
+                    version_type: "Rev",
+                    major: "1b",
+                    minor: None
+                }
+            ))
         );
         assert_eq!(
             parse_version_string("v20000101"),
-            Ok(((""), TOSECToken::Version("v", "20000101", None)))
+            Ok((
+                (""),
+                TOSECToken::Version {
+                    version_type: "v",
+                    major: "20000101",
+                    minor: None
+                }
+            ))
         );
     }
 
@@ -1362,19 +1674,47 @@ mod test {
     fn test_parse_date() {
         assert_eq!(
             parse_date("1999"),
-            Ok(("", vec![TOSECToken::Date("1999", None, None)]))
+            Ok((
+                "",
+                vec![TOSECToken::Date {
+                    year: "1999",
+                    month: None,
+                    day: None
+                }]
+            ))
         );
         assert_eq!(
             parse_date("199x"),
-            Ok(("", vec![TOSECToken::Date("199x", None, None)]))
+            Ok((
+                "",
+                vec![TOSECToken::Date {
+                    year: "199x",
+                    month: None,
+                    day: None
+                }]
+            ))
         );
         assert_eq!(
             parse_date("199x-2x"),
-            Ok(("", vec![TOSECToken::Date("199x", Some("2x"), None)]))
+            Ok((
+                "",
+                vec![TOSECToken::Date {
+                    year: "199x",
+                    month: Some("2x"),
+                    day: None
+                }]
+            ))
         );
         assert_eq!(
             parse_date("199x-2x-10"),
-            Ok(("", vec![TOSECToken::Date("199x", Some("2x"), Some("10"))]))
+            Ok((
+                "",
+                vec![TOSECToken::Date {
+                    year: "199x",
+                    month: Some("2x"),
+                    day: Some("10")
+                }]
+            ))
         );
     }
 
@@ -1402,17 +1742,20 @@ mod test {
             parse_region_tag("(US)"),
             Ok((
                 "",
-                TOSECToken::Region(vec!["US"], vec![Region::UnitedStates])
+                TOSECToken::Region {
+                    region_strings: vec!["US"],
+                    regions: vec![Region::UnitedStates]
+                }
             ))
         );
         assert_eq!(
             parse_region_tag("(US-ZZ)"),
             Ok((
                 "",
-                TOSECToken::Region(
-                    vec!["US", "ZZ"],
-                    vec![Region::UnitedStates, Region::Unknown]
-                )
+                TOSECToken::Region {
+                    region_strings: vec!["US", "ZZ"],
+                    regions: vec![Region::UnitedStates, Region::Unknown]
+                }
             ))
         );
     }
