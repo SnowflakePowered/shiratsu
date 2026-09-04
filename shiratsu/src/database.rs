@@ -13,7 +13,7 @@ use std::{io, io::ErrorKind};
 
 use uuid::Uuid;
 
-const SCHEMA_VERSION: &'static str = "3.0.0";
+const SCHEMA_VERSION: &'static str = "3.1.0";
 
 pub struct ShiratsuDatabase {
     memory_connection: Connection,
@@ -122,6 +122,7 @@ fn write_meta_table(conn: &mut Connection) -> SqliteResult<(String, String)> {
 }
 
 fn create_database(conn: &mut Connection) -> SqliteResult<()> {
+    conn.execute_batch("PRAGMA foreign_keys = ON;")?;
     let tx = conn.transaction()?;
     tx.execute(
         "CREATE TABLE game ( 
@@ -162,8 +163,21 @@ fn create_database(conn: &mut Connection) -> SqliteResult<()> {
         sha1 TEXT,
         size INTEGER NOT NULL,
         game_id INTEGER NOT NULL,
+        UNIQUE (game_id, file_name),
         FOREIGN KEY (game_id) REFERENCES game (game_id)
     )",
+        params![],
+    )?;
+
+    tx.execute(
+        "CREATE TABLE cue (
+        game_id INTEGER NOT NULL,
+        file_name TEXT NOT NULL,
+        contents BLOB NOT NULL CHECK (length(contents) > 0),
+        PRIMARY KEY (game_id, file_name),
+        FOREIGN KEY (game_id) REFERENCES game (game_id),
+        FOREIGN KEY (game_id, file_name) REFERENCES rom (game_id, file_name)
+    ) WITHOUT ROWID",
         params![],
     )?;
     tx.commit()
@@ -239,6 +253,24 @@ fn insert_entry(
                 ":sha1": rom.hash_sha1(),
                 ":size": rom.size(),
                 ":game_id": game_id,
+            },
+        )?;
+    }
+
+    for cue_sheet in entry.cue_sheets().iter() {
+        tx.execute_named(
+            r#"
+            INSERT INTO cue(
+                game_id,
+                file_name,
+                contents
+            )
+            VALUES (:game_id, :file_name, :contents)
+        "#,
+            named_params! {
+                ":game_id": game_id,
+                ":file_name": cue_sheet.file_name(),
+                ":contents": cue_sheet.contents(),
             },
         )?;
     }

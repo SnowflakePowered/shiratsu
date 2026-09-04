@@ -27,13 +27,16 @@ impl TryFrom<Game> for GameEntry {
     fn try_from(game: Game) -> Result<Self> {
         let rom = game.rom;
         let name = game.name;
-        Ok(GameEntry {
-            info: Some(GoodToolsName::try_parse(&name)?.into()),
-            entry_name: name,
-            serials: vec![],
-            rom_entries: rom.into_iter().map(|r| r.into()).collect(),
-            source: "OpenGood",
-        })
+        let info = Some(GoodToolsName::try_parse(&name)?.into());
+        let rom_entries = rom.into_iter().map(|r| r.into()).collect();
+        Ok(GameEntry::new(
+            name,
+            rom_entries,
+            vec![],
+            vec![],
+            "OpenGood",
+            info,
+        ))
     }
 }
 

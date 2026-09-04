@@ -1,22 +1,43 @@
-use crate::{NameInfo, RomEntry, Serial};
+use crate::{CueSheet, NameInfo, RomEntry, Serial};
 
 /// A single entry that describes a game, which may hold a collection of RomEntries
 #[derive(Debug)]
 pub struct GameEntry {
     /// The name of the game entry, as is.
-    pub(in super::super) entry_name: String,
+    entry_name: String,
     /// Any ROM entries that are part of this game entry.
-    pub(in super::super) rom_entries: Vec<RomEntry>,
+    rom_entries: Vec<RomEntry>,
     /// Any serials this game was released under.
-    pub(in super::super) serials: Vec<Serial>,
+    serials: Vec<Serial>,
+    /// Any CUE sheets that describe the layout of this game entry's dumps.
+    cue_sheets: Vec<CueSheet>,
     /// The source of the game.
-    pub(in super::super) source: &'static str,
+    source: &'static str,
     /// Any information retrieved from the name of the game entry, if any.
-    pub(in super::super) info: Option<NameInfo>,
+    info: Option<NameInfo>,
 }
 
 /// A single entry that describes a game, which may hold a collection of RomEntries
 impl GameEntry {
+    /// Instantiates a GameEntry
+    pub fn new(
+        entry_name: String,
+        rom_entries: Vec<RomEntry>,
+        serials: Vec<Serial>,
+        cue_sheets: Vec<CueSheet>,
+        source: &'static str,
+        info: Option<NameInfo>,
+    ) -> Self {
+        Self {
+            entry_name,
+            rom_entries,
+            serials,
+            cue_sheets,
+            source,
+            info,
+        }
+    }
+
     /// The name of the game entry, as is.
     pub fn entry_name(&self) -> &str {
         &self.entry_name
@@ -29,6 +50,10 @@ impl GameEntry {
     pub fn serials(&self) -> &[Serial] {
         &self.serials
     }
+    /// Any CUE sheets that describe the layout of this game entry's dumps.
+    pub fn cue_sheets(&self) -> &[CueSheet] {
+        &self.cue_sheets
+    }
     /// The source of the game.
     pub fn source(&self) -> &str {
         self.source
@@ -37,3 +62,4 @@ impl GameEntry {
         self.info.as_ref()
     }
 }
+
