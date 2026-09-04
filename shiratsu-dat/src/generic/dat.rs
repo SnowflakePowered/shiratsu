@@ -27,13 +27,15 @@ impl TryFrom<Game> for GameEntry {
     fn try_from(game: Game) -> Result<Self> {
         let rom = game.rom;
         let name = game.name;
-        Ok(GameEntry {
-            info: None,
-            entry_name: name,
-            serials: vec![],
-            rom_entries: rom.into_iter().map(|r| r.into()).collect(),
-            source: "Generic",
-        })
+        let rom_entries = rom.into_iter().map(|r| r.into()).collect();
+        Ok(GameEntry::new(
+            name,
+            rom_entries,
+            vec![],
+            vec![],
+            "Generic",
+            None,
+        ))
     }
 }
 

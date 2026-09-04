@@ -29,21 +29,25 @@ impl TryFrom<Game> for GameEntry {
     fn try_from(game: Game) -> Result<Self> {
         let rom = game.rom;
         let name = game.name;
-        Ok(GameEntry {
-            info: Some(NoIntroName::try_parse(&name)?.into()),
-            entry_name: name,
-            serials: rom
-                .iter()
-                .filter_map(|r| r.serial.clone())
-                .flat_map(|s| {
-                    s.split(",")
-                        .map(|s| Serial::new(String::from(s.trim())))
-                        .collect::<Vec<_>>()
-                })
-                .collect(),
-            rom_entries: rom.into_iter().map(|r| r.into()).collect(),
-            source: "No-Intro",
-        })
+        let info = Some(NoIntroName::try_parse(&name)?.into());
+        let serials = rom
+            .iter()
+            .filter_map(|r| r.serial.clone())
+            .flat_map(|s| {
+                s.split(",")
+                    .map(|s| Serial::new(String::from(s.trim())))
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+        let rom_entries = rom.into_iter().map(|r| r.into()).collect();
+        Ok(GameEntry::new(
+            name,
+            rom_entries,
+            serials,
+            vec![],
+            "No-Intro",
+            info,
+        ))
     }
 }
 
