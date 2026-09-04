@@ -3,7 +3,7 @@ mod ingest;
 mod log;
 mod sortrules;
 
-use shiratsu_stone::{PlatformId, StonePlatforms};
+use consolespec::MachineSpec;
 
 use shiratsu_dat::{
     *,
@@ -123,27 +123,33 @@ pub enum Event<'a> {
         &'a ProgressBar,
         &'a Path,
         u64,
-        &'a PlatformId,
+        &'a MachineSpec,
         &'a str,
         &'a Logger,
         &'a Logger,
     ),
     ProcessEntry(
         &'a ProgressBar,
-        &'a PlatformId,
+        &'a MachineSpec,
         &'a Path,
         &'a str,
         &'a Logger,
     ),
     ParseEntryError(&'a DatError, &'a Logger),
     ProcessEntrySuccess(&'a ProgressBar),
-    DatProcessingSuccess(&'a ProgressBar, &'a PlatformId, &'a Path, usize, &'a Logger),
+    DatProcessingSuccess(
+        &'a ProgressBar,
+        &'a MachineSpec,
+        &'a Path,
+        usize,
+        &'a Logger,
+    ),
     DbSaveSuccess(&'a Path, &'a String, &'a String, u64),
     DbSaveError(&'a Path, &'a Logger),
     LoadInternalSortingRules,
     LoadExternalSortingRules,
     LoadedSortingRules(&'a str),
-    SortedFile(&'a std::ffi::OsStr, &'a PlatformId),
+    SortedFile(&'a std::ffi::OsStr, &'a MachineSpec),
     SortingSuccess(usize, u64),
     NoEntriesFound(&'a OsStr, &'a Logger),
 }
@@ -159,8 +165,8 @@ where
         create_dir(&current_dir)?;
         event_fn(Event::CreatedDirectory(&current_dir));
     }
-    for platform_id in StonePlatforms::get().ids() {
-        current_dir.push(platform_id.as_ref());
+    for platform_id in MachineSpec::all() {
+        current_dir.push(platform_id.id());
         if !current_dir.exists() {
             create_dir(&current_dir)?;
             event_fn(Event::CreatedDirectory(&current_dir));
@@ -212,7 +218,7 @@ where
                     &pb,
                     dir.path(),
                     entries.len() as u64,
-                    platform_id,
+                    &platform_id,
                     source,
                     &root,
                     &filelog,
@@ -223,7 +229,7 @@ where
                         Ok(game) => {
                             event_fn(Event::ProcessEntry(
                                 &pb,
-                                platform_id,
+                                &platform_id,
                                 dir.path(),
                                 game.entry_name(),
                                 &root,
@@ -237,7 +243,7 @@ where
 
                 event_fn(Event::DatProcessingSuccess(
                     &pb,
-                    platform_id,
+                    &platform_id,
                     dir.path(),
                     entries.len(),
                     &root,
@@ -309,7 +315,7 @@ where
     let mut count: usize = 0;
 
     for (platform_id, rules) in rules.iter() {
-        current_dir.push(platform_id.as_ref());
+        current_dir.push(platform_id.id());
         for path in rules
             .iter()
             .flat_map(|rule| glob_with(rule, options))
