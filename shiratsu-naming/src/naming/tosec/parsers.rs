@@ -201,7 +201,7 @@ make_parens_tag!(parse_publisher_tag, parse_publisher, TOSECToken);
 fn parse_publisher(input: &str) -> IResult<&str, TOSECToken> {
     fn parse_dash_publisher(input: &str) -> IResult<&str, &str> {
         let (input, _) = char('-')(input)?;
-        let (input, rest) = take_until("-")(input)?;
+        let (input, rest) = take_until_is(")", "-")(input)?;
         let (input, _) = char('-')(input)?;
         Ok((input, rest))
     }
@@ -1768,6 +1768,16 @@ mod test {
         );
 
         assert_eq!(
+            parse_publisher_tag("(-)[GK-192 board]"),
+            Ok(("[GK-192 board]", TOSECToken::Publisher(None)))
+        );
+
+        assert_eq!(
+            parse_publisher_tag("(-)(en-es)"),
+            Ok(("(en-es)", TOSECToken::Publisher(None)))
+        );
+
+        assert_eq!(
             parse_publisher_tag("(-IZMA-)"),
             Ok(("", TOSECToken::Publisher(Some(vec!["-IZMA-"]))))
         );
@@ -1794,5 +1804,9 @@ mod test {
                 TOSECToken::Publisher(Some(vec!["Smith, R.", "White, P.S."]))
             ))
         );
+
+        assert!(do_parse("Brick Kick (198x)(-)(NTSC)[aka Peter Penguin - RJPG]").is_ok());
+        assert!(do_parse("FIFA 2010 (19xx)(-)(RU)(en-es)[h FIFA International Soccer][p]")
+            .is_ok());
     }
 }
