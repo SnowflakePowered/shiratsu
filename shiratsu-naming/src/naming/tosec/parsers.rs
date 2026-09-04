@@ -1806,7 +1806,6 @@ mod test {
         );
 
         assert!(do_parse("Brick Kick (198x)(-)(NTSC)[aka Peter Penguin - RJPG]").is_ok());
-        assert!(do_parse("FIFA 2010 (19xx)(-)(RU)(en-es)[h FIFA International Soccer][p]")
-            .is_ok());
+        assert!(do_parse("FIFA 2010 (19xx)(-)(RU)(en-es)[h FIFA International Soccer][p]").is_ok());
     }
 }

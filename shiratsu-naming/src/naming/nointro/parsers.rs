@@ -86,6 +86,13 @@ nointro_brackets_flag_parser!(parse_bios_tag, "BIOS");
 // 4 digit versions can only appear AFTER a v... tag.
 make_parens_tag!(parse_version_tag, parse_version_string, NoIntroToken);
 fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken> {
+    fn parse_minor_version(input: &str) -> IResult<&str, &str> {
+        recognize(pair(
+            take_while(|c: char| c.is_alphanumeric() || c == '.' || c == '-' || c == '_'),
+            opt(in_parens(alphanumeric1)),
+        ))(input)
+    }
+
     fn parse_revision_version(input: &str) -> IResult<&str, NoIntroVersion> {
         let (input, tag) = tag("Rev")(input)?;
         let (input, _) = char(' ')(input)?;
@@ -110,10 +117,7 @@ fn parse_version_string(input: &str) -> IResult<&str, NoIntroToken> {
         let (input, ver) = tag("v")(input)?;
 
         let (input, major) = digit1(input)?;
-        let (input, minor) = opt(preceded(
-            char('.'),
-            take_while(|c: char| c.is_alphanumeric() || c == '.' || c == '-'),
-        ))(input)?;
+        let (input, minor) = opt(preceded(char('.'), parse_minor_version))(input)?;
         let (input, suffix) = opt(preceded(char(' '), tag("Alt")))(input)?;
 
         Ok((
@@ -733,6 +737,34 @@ mod tests {
 
     #[test]
     fn parse_ver_test() {
+        assert_eq!(
+            parse_version_tag("(v1.8.7(1))"),
+            Ok((
+                "",
+                NoIntroToken::Version(vec![NoIntroVersion {
+                    version_type: "v",
+                    major: "1",
+                    minor: Some("8.7(1)"),
+                    prefix: None,
+                    suffixes: None,
+                    separator: None
+                }])
+            ))
+        );
+        assert_eq!(
+            parse_version_tag("(v2.11.1_A(6))"),
+            Ok((
+                "",
+                NoIntroToken::Version(vec![NoIntroVersion {
+                    version_type: "v",
+                    major: "2",
+                    minor: Some("11.1_A(6)"),
+                    prefix: None,
+                    suffixes: None,
+                    separator: None
+                }])
+            ))
+        );
         assert_eq!(
             parse_version_tag("(v10.XX)"),
             Ok((
