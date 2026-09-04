@@ -12,9 +12,9 @@ use shiratsu_naming::naming::TokenizedName;
 struct Rom {
     name: String,
     size: Option<i64>,
-    crc: String,
-    md5: String,
-    sha1: String,
+    crc: Option<String>,
+    md5: Option<String>,
+    sha1: Option<String>,
     serial: Option<String>,
 }
 
@@ -54,14 +54,20 @@ impl TryFrom<Game> for GameEntry {
 
 impl From<Rom> for RomEntry {
     fn from(mut rom: Rom) -> Self {
-        rom.md5.make_ascii_lowercase();
-        rom.crc.make_ascii_lowercase();
-        rom.sha1.make_ascii_lowercase();
+        rom.md5
+            .iter_mut()
+            .for_each(|hash| hash.make_ascii_lowercase());
+        rom.crc
+            .iter_mut()
+            .for_each(|hash| hash.make_ascii_lowercase());
+        rom.sha1
+            .iter_mut()
+            .for_each(|hash| hash.make_ascii_lowercase());
 
         RomEntry {
-            md5: Some(rom.md5),
-            sha1: Some(rom.sha1),
-            crc: Some(rom.crc),
+            md5: rom.md5,
+            sha1: rom.sha1,
+            crc: rom.crc,
             file_name: rom.name,
             size: rom.size.unwrap_or(0),
         }

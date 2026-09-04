@@ -36,6 +36,8 @@ impl std::fmt::Display for DatabaseError {
     }
 }
 
+impl std::error::Error for DatabaseError {}
+
 impl From<rusqlite::Error> for DatabaseError {
     fn from(err: rusqlite::Error) -> Self {
         DatabaseError::SqliteError(err)

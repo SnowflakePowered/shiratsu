@@ -1,4 +1,5 @@
 use crate::{CueSheet, NameInfo, RomEntry, Serial};
+use std::collections::HashSet;
 
 /// A single entry that describes a game, which may hold a collection of RomEntries
 #[derive(Debug)]
@@ -25,12 +26,14 @@ impl GameEntry {
     pub fn new(
         entry_name: String,
         raw_title: Option<String>,
-        rom_entries: Vec<RomEntry>,
+        mut rom_entries: Vec<RomEntry>,
         serials: Vec<Serial>,
         cue_sheets: Vec<CueSheet>,
         source: &'static str,
         info: Option<NameInfo>,
     ) -> Self {
+        let mut file_names = HashSet::new();
+        rom_entries.retain(|rom| file_names.insert(rom.file_name().to_string()));
         Self {
             entry_name,
             raw_title,
