@@ -40,6 +40,7 @@ impl TryFrom<Game> for GameEntry {
         let rom_entries = rom.into_iter().map(|r| r.into()).collect();
         Ok(GameEntry::new(
             name,
+            None,
             rom_entries,
             serials,
             vec![],

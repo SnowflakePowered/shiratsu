@@ -132,6 +132,7 @@ fn create_database(conn: &mut Connection) -> SqliteResult<()> {
         entry_name TEXT NOT NULL,
         entry_title TEXT,
         release_title TEXT,
+        raw_title TEXT,
         region TEXT NOT NULL,
         part_number INTEGER,
         is_unlicensed BOOLEAN NOT NULL,
@@ -199,6 +200,7 @@ fn insert_entry(
             entry_name,
             entry_title,
             release_title,
+            raw_title,
             region,
             part_number,
             is_unlicensed,
@@ -209,13 +211,14 @@ fn insert_entry(
             naming_convention,
             source
         )
-        VALUES (:platform_id, :entry_name, :entry_title, :release_title, :region, :part_number, :is_unlicensed, :is_demo, :is_system, :version, :status, :naming_convention, :source)
+        VALUES (:platform_id, :entry_name, :entry_title, :release_title, :raw_title, :region, :part_number, :is_unlicensed, :is_demo, :is_system, :version, :status, :naming_convention, :source)
     "#,
     named_params! {
         ":platform_id": platform.id(),
         ":entry_name": entry.entry_name(),
         ":entry_title": entry.info().map(|n| n.entry_title()),
         ":release_title": entry.info().map(|n| n.release_title()),
+        ":raw_title": entry.raw_title(),
         ":region": region_str.as_deref().unwrap_or(Region::Unknown.as_ref()),
         ":part_number": entry.info().map(|n| n.part_number()),
         ":is_unlicensed": entry.info().map(|n| n.is_unlicensed()).unwrap_or(false),
