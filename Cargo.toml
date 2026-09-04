@@ -3,6 +3,5 @@
 members = [
     "shiratsu",
     "shiratsu-naming",
-    "shiratsu-stone",
     "shiratsu-dat"
 ]

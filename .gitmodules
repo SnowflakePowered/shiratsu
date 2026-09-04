@@ -1,6 +1,0 @@
-[submodule "res/stone"]
-	path = res/stone
-	url = https://github.com/SnowflakePowered/stone
-[submodule "stone"]
-	path = shiratsu-stone/stone
-	url = https://github.com/SnowflakePowered/stone

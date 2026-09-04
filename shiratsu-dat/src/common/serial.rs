@@ -1,6 +1,5 @@
 use lazy_static::lazy_static;
 use regex::Regex;
-use shiratsu_stone::PlatformId;
 use std::borrow::Cow;
 
 #[derive(Debug, Clone)]
@@ -12,8 +11,8 @@ impl Serial {
         Serial(serial_str)
     }
 
-    pub fn as_normalized(&self, ruleset: &PlatformId) -> Cow<Serial> {
-        match ruleset.as_ref() {
+    pub fn as_normalized(&self, platform_id: &str) -> Cow<'_, Serial> {
+        match platform_id {
             "SONY_PSX" | "SONY_PS2" | "SONY_PS3" | "SONY_PS4" | "SONY_PSP" | "SONY_PSV" => {
                 rule_sony(self)
             }

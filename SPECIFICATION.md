@@ -1,7 +1,7 @@
 # shiragame database specification
 
 **Schema Version:** `4.0.0`
-**Stone Version:** `^11.2.0`
+**consolespec Version:** `^0.0.1`
 
 This document defines the schema and semantics of the shiragame games database. 
 
@@ -11,9 +11,7 @@ Defined terms will be indicated in *italics* throughout the document. Their defi
 
 ## Preface
 
-shiragame is a games database similar to [OpenVGDB](https://github.com/OpenVGDB/OpenVGDB), created primarily for use with [Snowflake](https://github.com/SnowflakePowered/snowflake), but is also intended to be widely applicable to many use cases involving emulation, game preservation, archival, and verification. shiragame uses [Stone](https://stone.snowflakepowe.red/#/) *platform ID*s and mimetypes to facilitate precise identification of the gaming platform a *dump* belongs to, as well as the format of a *dump*. 
-
-For definitions of "*platform*" and "*format*", please refer to the Stone specification document.
+shiragame is a games database similar to [OpenVGDB](https://github.com/OpenVGDB/OpenVGDB), created primarily for use with [Snowflake](https://github.com/SnowflakePowered/snowflake), but is also intended to be widely applicable to many use cases involving emulation, game preservation, archival, and verification. shiragame uses [consolespec](https://github.com/SnowflakePowered/consolespec/) *platform ID*s to identify the gaming platform a *dump* belongs to.
 
 ### Rationale
 
@@ -36,7 +34,7 @@ Each row of the `game` table is REQUIRED to describe a single *game entry*.
 | Column              | Description                                                                                                                            | Status   |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | `game_id`           | An internal ID used to refer to the `serial` and `rom` rows related to this `game` row. This ID is unstable and MUST NOT be persisted. | REQUIRED |
-| `platform_id`       | The Stone *platform ID* of the *platform* this *game entry* was intended for.                                                          | REQUIRED |
+| `platform_id`       | The consolespec *platform ID* of the *platform* this *game entry* was intended for.                                                     | REQUIRED |
 | `entry_name`        | The canonical name of the *game entry*                                                                                                 | REQUIRED |
 | `entry_title`       | The canonical name of the *game entry*, with any metadata flags removed.                                                               | REQUIRED |
 | `release_title`     | The distribution or release name of the *game entry* that is is known as.†\* This is usable as a search term for scraping purposes.    | REQUIRED |
@@ -90,7 +88,6 @@ Each row of the `rom` table describes a single *dump entry* with the following s
 | ----------- | ----------------------------------------------------------------------------------------------------------- | ----------- |
 | `rom_id`    | An internal ID used to refer to this specific dump in the table. This ID is unstable and MUST NOT be persisted. | REQUIRED |
 | `file_name` | The *canonical filename* assigned to this *dump* by the *cataloguing organization*.                         | REQUIRED    |
-| `mimetype`  | The Stone mimetype of the *format* of this file the *dump entry* refers to.                                 | REQUIRED    |
 | `md5`       | The MD5 hash of the file this *dump entry* refers to.                                                       | RECOMMENDED |
 | `crc`       | The CRC32 hash of the file this *dump entry* refers to.                                                     | RECOMMENDED |
 | `sha1`      | The SHA1 hash of the file this *dump entry* refers to.                                                      | RECOMMENDED |
@@ -110,7 +107,7 @@ A *game entry* MAY have zero or more CUE sheets. Each row stores the exact conte
 | `rom_id`   | Refers to the specific dump entry represented by this CUE sheet. There MUST be a row in `rom` with the same value.    | REQUIRED |
 | `contents` | The exact, unmodified bytes of the CUE sheet. The encoding of this CUE sheet is unspecified.                          | REQUIRED |
 
-`rom_id` is the primary key, enforcing at most one CUE payload for a dump entry. The filename, hashes, size, mimetype, and owning game are stored only in the corresponding `rom` row.
+`rom_id` is the primary key, enforcing at most one CUE payload for a dump entry. The filename, hashes, size, and owning game are stored only in the corresponding `rom` row.
 
 ### The Serial Number table (`serial`)
 
@@ -150,12 +147,11 @@ Describes this release of the shiragame database. This table MUST only contain o
 | ---------------- | ---------------------------------------------------------------------------------------------------------------- | -------- |
 | `shiragame`      | The string `shiragame`.                                                                                          | REQUIRED |
 | `schema_version` | The version of the schema used by this database.                                                                 | REQUIRED |
-| `stone_version`  | The version of the [Stone definitions file][stone.dist] used by this database, for *platform IDs* and mimetypes. | REQUIRED |
+| `consolespec_version` | The version of consolespec used by this database for *platform IDs*.                                           | REQUIRED |
 | `generated`      | The time this release was created, expressed as a Unix timestamp (seconds since epoch).                          | REQUIRED |
 | `release`        | A version 4 UUID that identifies this shiragame database.                                                        | REQUIRED |
 | `aggregator`     | The aggregator that generated this shiragame database. In shiratsu's case, the string `shiratsu`.                | REQUIRED |
 
-[stone.dist]: https://github.com/SnowflakePowered/stone/blob/master/dist/stone.dist.json
 
 ## Versioning
 Both the schema and the releases of the shiragame database itself are versioned. As of schema version `^2.0.0`, The shiragame schema is versioned with [Semantic Versioning](https://semver.org/). 
@@ -163,7 +159,7 @@ Both the schema and the releases of the shiragame database itself are versioned.
 The following changes to the schema incur an API breakage, and the MAJOR version number MUST be incremented.
 
 * Dropping or renaming a table or column.
-* The MAJOR version of the Stone definitions file used is increased.
+* A change to the consolespec platform IDs makes existing `platform_id` values incompatible.
 * Any sufficiently major change to the schema as decided by the project maintainers.
 
 The following changes to the schema do not incur an API breakage, and the MINOR version number MUST be incremented.
@@ -203,11 +199,9 @@ The re-distribution of a release of the shiragame database MUST be consistent wi
 
 ## Definitions
 * **platform ID** 
-The Stone specified ID for a platform. See the [list of defined Stone platforms](https://stone.snowflakepowe.red/#/defs/platforms).
+The ID assigned to a machine by [consolespec](https://github.com/SnowflakePowered/consolespec/).
 * **platform**
-Refer to the [Stone specification on Platforms](https://stone.snowflakepowe.red/#/spec/platforms).
-* **format**
- Refer to the [Stone specification on Platforms](https://stone.snowflakepowe.red/#/spec/platforms).
+A game system represented by a consolespec machine specification.
 * **canonical filename** 
 The file name given to a *dump* by a *cataloguing organization*.
 * **canonical name** 

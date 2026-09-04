@@ -80,13 +80,13 @@ pub fn print_event(e: Event) {
                 "Found {} DAT File at {} ({})",
                 source = source,
                 path = p.display(),
-                platform_id = platform_id.as_ref()
+                platform_id = platform_id.id()
             );
 
             info!(
                 filelog,
                 "{}: {}",
-                platform_id = platform_id.as_ref(),
+                platform_id = platform_id.id(),
                 path = p.display(),
             );
 
@@ -99,11 +99,11 @@ pub fn print_event(e: Event) {
                 root,
                 "Adding game entry \"{}\" ({})",
                 entry_name = entry_name,
-                platform_id = platform_id.as_ref(),
+                platform_id = platform_id.id(),
             );
             pb.set_message(&format!(
                 "[{}] {}: {}",
-                platform_id.as_ref(),
+                platform_id.id(),
                 p.display(),
                 entry_name
             ));
@@ -119,7 +119,7 @@ pub fn print_event(e: Event) {
 
             pb.finish_with_message(&format!(
                 "[{}] Finished processing {}, added {} entries.",
-                platform_id.as_ref(),
+                platform_id.id(),
                 style(p.display()).cyan(),
                 len
             ))
@@ -161,7 +161,7 @@ pub fn print_event(e: Event) {
                 " {} Sorted {:#?} as {}",
                 "✓".green(),
                 style(f).cyan(),
-                platform_id.as_ref()
+                platform_id.id()
             );
         }
         Event::SortingSuccess(count, now) => {

@@ -1,6 +1,6 @@
 use rusqlite::{backup::*, named_params, params, Connection, Result as SqliteResult};
 
-use shiratsu_stone::{find_mimetype, PlatformId, StonePlatforms};
+use consolespec::MachineSpec;
 
 use shiratsu_dat::{DevelopmentStatus, GameEntry};
 
@@ -14,6 +14,7 @@ use std::{io, io::ErrorKind};
 use uuid::Uuid;
 
 const SCHEMA_VERSION: &'static str = "4.0.0";
+const CONSOLESPEC_VERSION: &'static str = "0.0.1";
 
 pub struct ShiratsuDatabase {
     memory_connection: Connection,
@@ -58,7 +59,7 @@ impl ShiratsuDatabase {
         })
     }
 
-    pub fn add_entry(&mut self, entry: &GameEntry, platform: &PlatformId) -> Result<()> {
+    pub fn add_entry(&mut self, entry: &GameEntry, platform: MachineSpec) -> Result<()> {
         insert_entry(entry, platform, &mut self.memory_connection)?;
         Ok(())
     }
@@ -98,7 +99,7 @@ fn write_meta_table(conn: &mut Connection) -> SqliteResult<(String, String)> {
         "CREATE TABLE shiragame (
         shiragame TEXT,
         schema_version TEXT,
-        stone_version TEXT,
+        consolespec_version TEXT,
         generated TEXT,
         release TEXT,
         aggregator TEXT
@@ -107,12 +108,12 @@ fn write_meta_table(conn: &mut Connection) -> SqliteResult<(String, String)> {
     )?;
     let uuid = Uuid::new_v4().to_string();
     let time = get_unix_time_string();
-    tx.execute_named("INSERT INTO shiragame (shiragame, schema_version, stone_version, generated, release, aggregator)
-                                        VALUES(:shiragame, :schema_version, :stone_version, :generated, :release, :aggregator)",
+    tx.execute_named("INSERT INTO shiragame (shiragame, schema_version, consolespec_version, generated, release, aggregator)
+                                        VALUES(:shiragame, :schema_version, :consolespec_version, :generated, :release, :aggregator)",
                     named_params! {
                         ":shiragame": "shiragame",
                         ":schema_version": SCHEMA_VERSION,
-                        ":stone_version": StonePlatforms::version(),
+                        ":consolespec_version": CONSOLESPEC_VERSION,
                         ":generated": time,
                         ":release": uuid,
                         ":aggregator": "shiratsu"
@@ -158,7 +159,6 @@ fn create_database(conn: &mut Connection) -> SqliteResult<()> {
         "CREATE TABLE rom ( 
         rom_id INTEGER PRIMARY KEY,
         file_name TEXT NOT NULL,
-        mimetype TEXT,
         md5 TEXT,
         crc TEXT,
         sha1 TEXT,
@@ -183,7 +183,7 @@ fn create_database(conn: &mut Connection) -> SqliteResult<()> {
 
 fn insert_entry(
     entry: &GameEntry,
-    platform: &PlatformId,
+    platform: MachineSpec,
     conn: &mut Connection,
 ) -> SqliteResult<()> {
     let tx = conn.transaction()?;
@@ -212,7 +212,7 @@ fn insert_entry(
         VALUES (:platform_id, :entry_name, :entry_title, :release_title, :region, :part_number, :is_unlicensed, :is_demo, :is_system, :version, :status, :naming_convention, :source)
     "#,
     named_params! {
-        ":platform_id": platform.as_ref(),
+        ":platform_id": platform.id(),
         ":entry_name": entry.entry_name(),
         ":entry_title": entry.info().map(|n| n.entry_title()),
         ":release_title": entry.info().map(|n| n.release_title()),
@@ -234,18 +234,16 @@ fn insert_entry(
             r#"
             INSERT INTO rom(
                 file_name,
-                mimetype,
                 md5,
                 crc,
                 sha1,
                 size,
                 game_id
             )
-            VALUES (:file_name, :mimetype, :md5, :crc, :sha1, :size, :game_id)
+            VALUES (:file_name, :md5, :crc, :sha1, :size, :game_id)
         "#,
             named_params! {
                 ":file_name": rom.file_name(),
-                ":mimetype": find_mimetype(platform, rom.file_name(), rom.hash_md5()),
                 ":md5": rom.hash_md5(),
                 ":crc": rom.hash_crc(),
                 ":sha1": rom.hash_sha1(),
@@ -289,7 +287,7 @@ fn insert_entry(
         "#,
             named_params! {
                 ":serial" : serial.as_ref(),
-                ":normalized" : serial.as_normalized(platform).as_ref().as_ref(),
+                ":normalized" : serial.as_normalized(platform.id()).as_ref().as_ref(),
                 ":game_id": game_id,
             },
         )?;
