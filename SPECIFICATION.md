@@ -34,10 +34,11 @@ Each row of the `game` table is REQUIRED to describe a single *game entry*.
 | Column              | Description                                                                                                                            | Status   |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | `game_id`           | An internal ID used to refer to the `serial` and `rom` rows related to this `game` row. This ID is unstable and MUST NOT be persisted. | REQUIRED |
-| `platform_id`       | The consolespec *platform ID* of the *platform* this *game entry* was intended for.                                                     | REQUIRED |
+| `platform_id`       | The consolespec *platform ID* of the *platform* this *game entry* was intended for.                                                    | REQUIRED |
 | `entry_name`        | The canonical name of the *game entry*                                                                                                 | REQUIRED |
 | `entry_title`       | The canonical name of the *game entry*, with any metadata flags removed.                                                               | REQUIRED |
 | `release_title`     | The distribution or release name of the *game entry* that is is known as.†\* This is usable as a search term for scraping purposes.    | REQUIRED |
+| `raw_title`         | The distribution or release name of the *game entry* that is is known as, without normalization, if available.†\* This is usable as a search term for scraping purposes.    | OPTIONAL |
 | `region`            | The region the game was released under.†                                                                                               | REQUIRED |
 | `part_number`       | If this *game entry* is multi-part, or is one part of multiple discs or tapes, the part number thereof.†                               | OPTIONAL |
 | `is_unlicensed`     | If this *game entry* is of an unlicensed release.†                                                                                     | REQUIRED |

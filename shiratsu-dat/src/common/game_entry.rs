@@ -5,6 +5,8 @@ use crate::{CueSheet, NameInfo, RomEntry, Serial};
 pub struct GameEntry {
     /// The name of the game entry, as is.
     entry_name: String,
+    /// The unnormalized source title, if available.
+    raw_title: Option<String>,
     /// Any ROM entries that are part of this game entry.
     rom_entries: Vec<RomEntry>,
     /// Any serials this game was released under.
@@ -22,6 +24,7 @@ impl GameEntry {
     /// Instantiates a GameEntry
     pub fn new(
         entry_name: String,
+        raw_title: Option<String>,
         rom_entries: Vec<RomEntry>,
         serials: Vec<Serial>,
         cue_sheets: Vec<CueSheet>,
@@ -30,6 +33,7 @@ impl GameEntry {
     ) -> Self {
         Self {
             entry_name,
+            raw_title,
             rom_entries,
             serials,
             cue_sheets,
@@ -41,6 +45,10 @@ impl GameEntry {
     /// The name of the game entry, as is.
     pub fn entry_name(&self) -> &str {
         &self.entry_name
+    }
+    /// The unnormalized source title, if available.
+    pub fn raw_title(&self) -> Option<&str> {
+        self.raw_title.as_deref()
     }
     /// Any ROM entries that are part of this game entry.
     pub fn rom_entries(&self) -> &[RomEntry] {
