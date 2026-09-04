@@ -30,6 +30,7 @@ use lazy_static_include::*;
 
 use glob::glob_with;
 use glob::MatchOptions;
+use shiratsu_dat::redump::db::Database as RedumpDatabase;
 use shiratsu_dat::GameEntry;
 
 type ParseResult<T> = std::result::Result<T, DatError>;
@@ -188,7 +189,11 @@ where
     Ok(())
 }
 
-fn create_db<S: AsRef<str>, F>(save_path: S, event_fn: F) -> Result<()>
+fn create_db<S: AsRef<str>, F>(
+    save_path: S,
+    redump_database: Option<&Path>,
+    event_fn: F,
+) -> Result<()>
 where
     F: Fn(Event) -> (),
 {
@@ -213,6 +218,9 @@ where
         let reader = BufReader::new(File::open(dir.path())?);
         match get_entries(reader) {
             Ok(Some((entries, source))) => {
+                if redump_database.is_some() && source == "Redump" {
+                    continue;
+                }
                 let pb = ProgressBar::new(entries.len() as u64);
                 event_fn(Event::FoundDatFile(
                     &pb,
@@ -258,6 +266,10 @@ where
         }
     }
 
+    if let Some(redump_path) = redump_database {
+        ingest_redump_database(&mut db, redump_path, &root, &filelog, &event_fn)?;
+    }
+
     match db.save(save_path, Some(log::process_duration)) {
         Ok((uuid, time)) => {
             event_fn(Event::DbSaveSuccess(
@@ -277,6 +289,66 @@ where
             })
         }
     }
+}
+
+fn ingest_redump_database<F>(
+    target: &mut ShiratsuDatabase,
+    database_path: &Path,
+    root: &Logger,
+    filelog: &Logger,
+    event_fn: &F,
+) -> Result<()>
+where
+    F: Fn(Event) -> (),
+{
+    let source = RedumpDatabase::open(database_path)?;
+    for system in source.systems()? {
+        let platform = match ingest::redump_platform(system.code()) {
+            Some(platform) => platform,
+            None => continue,
+        };
+        let entries = source.entries(system.code())?;
+        let pb = ProgressBar::new(entries.len() as u64);
+        event_fn(Event::FoundDatFile(
+            &pb,
+            database_path,
+            entries.len() as u64,
+            &platform,
+            "Redump",
+            root,
+            filelog,
+        ));
+
+        let mut parse_errors = Vec::new();
+        for game in &entries {
+            match game {
+                Ok(game) => {
+                    event_fn(Event::ProcessEntry(
+                        &pb,
+                        &platform,
+                        database_path,
+                        game.entry_name(),
+                        root,
+                    ));
+                    target.add_entry(game, platform)?;
+                    event_fn(Event::ProcessEntrySuccess(&pb));
+                }
+                Err(error) => parse_errors.push(Event::ParseEntryError(error, root)),
+            }
+        }
+
+        event_fn(Event::DatProcessingSuccess(
+            &pb,
+            &platform,
+            database_path,
+            entries.len(),
+            root,
+        ));
+        for error in parse_errors {
+            event_fn(error);
+        }
+    }
+    Ok(())
 }
 
 fn sort_dats<F>(event_fn: F) -> Result<()>
@@ -341,15 +413,22 @@ fn run_app<F>(event_fn: F) -> Result<()>
 where
     F: Fn(Event) -> (),
 {
-    let args = env::args().skip(1).take(1).next();
-    let command = args.ok_or(io::Error::new(
+    let mut args = env::args().skip(1);
+    let command = args.next().ok_or(io::Error::new(
         ErrorKind::NotFound,
         "No save path was specified.",
     ))?;
 
     match command.as_str() {
         "sort" => sort_dats(event_fn),
-        save_path => create_db(save_path, event_fn),
+        save_path => {
+            let redump_database = args.next();
+            create_db(
+                save_path,
+                redump_database.as_deref().map(Path::new),
+                event_fn,
+            )
+        }
     }
 }
 

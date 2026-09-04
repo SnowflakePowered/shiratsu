@@ -27,6 +27,11 @@ $ cargo install shiratsu
     ```bash
     $ shiratsu database.db
     ```
+    To ingest a Redump SQLite export instead of Redump DAT files, pass it as the
+    second argument:
+    ```bash
+    $ shiratsu database.db redump-discs.sqlite.zst
+    ```
     This will write the database to file, and a log file that certifies the contents of the database.
 
 ## Building
