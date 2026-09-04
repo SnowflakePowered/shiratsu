@@ -62,4 +62,3 @@ impl GameEntry {
         self.info.as_ref()
     }
 }
-

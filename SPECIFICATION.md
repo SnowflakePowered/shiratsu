@@ -1,6 +1,6 @@
 # shiragame database specification
 
-**Schema Version:** `3.1.0`
+**Schema Version:** `4.0.0`
 **Stone Version:** `^11.2.0`
 
 This document defines the schema and semantics of the shiragame games database. 
@@ -35,7 +35,7 @@ Each row of the `game` table is REQUIRED to describe a single *game entry*.
 
 | Column              | Description                                                                                                                            | Status   |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| `game_id`           | An internal ID used to refer to the `serial`, `rom`, and `cue` rows related to this `game` row. This ID is unstable and MUST NOT be persisted. | REQUIRED |
+| `game_id`           | An internal ID used to refer to the `serial` and `rom` rows related to this `game` row. This ID is unstable and MUST NOT be persisted. | REQUIRED |
 | `platform_id`       | The Stone *platform ID* of the *platform* this *game entry* was intended for.                                                          | REQUIRED |
 | `entry_name`        | The canonical name of the *game entry*                                                                                                 | REQUIRED |
 | `entry_title`       | The canonical name of the *game entry*, with any metadata flags removed.                                                               | REQUIRED |
@@ -88,6 +88,7 @@ A *game entry* MAY have one or more *dump entries*.
 Each row of the `rom` table describes a single *dump entry* with the following schema.
 | Column      | Description                                                                                                 | Status      |
 | ----------- | ----------------------------------------------------------------------------------------------------------- | ----------- |
+| `rom_id`    | An internal ID used to refer to this specific dump in the table. This ID is unstable and MUST NOT be persisted. | REQUIRED |
 | `file_name` | The *canonical filename* assigned to this *dump* by the *cataloguing organization*.                         | REQUIRED    |
 | `mimetype`  | The Stone mimetype of the *format* of this file the *dump entry* refers to.                                 | REQUIRED    |
 | `md5`       | The MD5 hash of the file this *dump entry* refers to.                                                       | RECOMMENDED |
@@ -104,13 +105,12 @@ The combination of `game_id` and `file_name` MUST be unique so that auxiliary da
 
 A *game entry* MAY have zero or more CUE sheets. Each row stores the exact contents of a CUE sheet described by a corresponding row in `rom`.
 
-| Column      | Description                                                                                                      | Status   |
-| ----------- | ---------------------------------------------------------------------------------------------------------------- | -------- |
-| `game_id`   | Refers to the *game entry* this CUE sheet belongs to. There MUST be a row in `game` with the same value.         | REQUIRED |
-| `file_name` | The canonical filename of the CUE sheet. A `rom` row with the same `game_id` and `file_name` MUST exist.         | REQUIRED |
-| `contents`  | The exact, unmodified bytes of the CUE sheet. The encoding of this CUE sheet is unspecified.                     | REQUIRED |
+| Column     | Description                                                                                                           | Status   |
+| ---------- | --------------------------------------------------------------------------------------------------------------------- | -------- |
+| `rom_id`   | Refers to the specific dump entry represented by this CUE sheet. There MUST be a row in `rom` with the same value.    | REQUIRED |
+| `contents` | The exact, unmodified bytes of the CUE sheet. The encoding of this CUE sheet is unspecified.                          | REQUIRED |
 
-The combination of `game_id` and `file_name` is the primary key. Hashes, size, and mimetype are stored only in the corresponding `rom` row.
+`rom_id` is the primary key, enforcing at most one CUE payload for a dump entry. The filename, hashes, size, mimetype, and owning game are stored only in the corresponding `rom` row.
 
 ### The Serial Number table (`serial`)
 

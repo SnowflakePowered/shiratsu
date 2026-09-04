@@ -13,7 +13,7 @@ use std::{io, io::ErrorKind};
 
 use uuid::Uuid;
 
-const SCHEMA_VERSION: &'static str = "3.1.0";
+const SCHEMA_VERSION: &'static str = "4.0.0";
 
 pub struct ShiratsuDatabase {
     memory_connection: Connection,
@@ -156,6 +156,7 @@ fn create_database(conn: &mut Connection) -> SqliteResult<()> {
 
     tx.execute(
         "CREATE TABLE rom ( 
+        rom_id INTEGER PRIMARY KEY,
         file_name TEXT NOT NULL,
         mimetype TEXT,
         md5 TEXT,
@@ -171,12 +172,9 @@ fn create_database(conn: &mut Connection) -> SqliteResult<()> {
 
     tx.execute(
         "CREATE TABLE cue (
-        game_id INTEGER NOT NULL,
-        file_name TEXT NOT NULL,
+        rom_id INTEGER PRIMARY KEY,
         contents BLOB NOT NULL CHECK (length(contents) > 0),
-        PRIMARY KEY (game_id, file_name),
-        FOREIGN KEY (game_id) REFERENCES game (game_id),
-        FOREIGN KEY (game_id, file_name) REFERENCES rom (game_id, file_name)
+        FOREIGN KEY (rom_id) REFERENCES rom (rom_id)
     ) WITHOUT ROWID",
         params![],
     )?;
@@ -258,18 +256,22 @@ fn insert_entry(
     }
 
     for cue_sheet in entry.cue_sheets().iter() {
+        let rom_id = tx.query_row(
+            "SELECT rom_id FROM rom WHERE game_id = ?1 AND file_name = ?2",
+            params![game_id, cue_sheet.file_name()],
+            |row| row.get::<_, i64>(0),
+        )?;
+
         tx.execute_named(
             r#"
             INSERT INTO cue(
-                game_id,
-                file_name,
+                rom_id,
                 contents
             )
-            VALUES (:game_id, :file_name, :contents)
+            VALUES (:rom_id, :contents)
         "#,
             named_params! {
-                ":game_id": game_id,
-                ":file_name": cue_sheet.file_name(),
+                ":rom_id": rom_id,
                 ":contents": cue_sheet.contents(),
             },
         )?;
